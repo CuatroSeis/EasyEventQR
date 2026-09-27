@@ -48,3 +48,9 @@ ui-debug.log
 *.njsproj
 *.sln
 *.sw?
+
+# El `vercel link` agrega un ".env*" acá. NO se deja: el patrón es más
+# ancho que las reglas de arriba y matchea .env.example, que como último
+# patrón gana mata la negación "!.env.example". Con las reglas de arriba
+# (.env, .env.*, !.env.example) el OIDC token que escribe el CLI igual
+# queda cubierto, y el ejemplo sigue versionable.
