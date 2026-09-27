@@ -28,6 +28,16 @@ public/widget/
 # Vercel
 .vercel
 
+# JRE portable para los emuladores de Firebase (se descarga, no se versiona).
+# Es un .tar de 50 MB que no tiene nada que ver con el código.
+.tools/
+
+# Salidas de los emuladores
+.emulator-data/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,239 @@
+rules_version = '2';
+
+// ==================================================================
+//  REGLAS DE SEGURIDAD — la frontera real del sistema
+// ==================================================================
+//  Todo lo que hay en el frontend es PELIGROSO por definición. El
+//  navegador es del visitante, y un visitante puede abrir la consola
+//  y llamar al SDK de Firebase a mano con lo que quiera.
+//
+//  Si una operación no está permitida explícitamente acá, está
+//  denegada. No hay ningún `allow read, write: if true` en este archivo
+//  y ese es el motivo por el que el archivo entero tiene sentido.
+//
+//  Las tres invariantes que tienen que quedar garantizadas:
+//
+//   1. Un organizador sólo lee y escribe sus propios datos.
+//   2. El cliente NUNCA escribe un /registros: eso lo hace el backend
+//      con el Admin SDK, que además valida capacidad y genera el QR.
+//   3. El interruptor del plan no lo puede tocar el propio cliente,
+//      ni al crearse la cuenta ni después. Si pudiera, cualquier
+//      organizador se autopromovería a pro+ editando su documento.
+//
+//  Las pruebas de esto están en tests/rules/ y se ejecutan contra el
+//  emulador, sin tocar el proyecto real. `npm run test:rules`.
+// ==================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==============================================================
+    //  Funciones
+    // ==============================================================
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    // El super-admin se marca con un custom claim, no con un campo de
+    // un documento: es la única forma de que las reglas no tengan que
+    // consultar la base para decidir, y no se puede falsificar desde el
+    // cliente.
+    //
+    // OJO con el `in` de adentro. `request.auth.token.admin` a secas NO
+    // devuelve null cuando el claim no existe: LANZA error, y un error
+    // dentro de una regla deniega la operación entera. Como casi
+    // ningún organizador tiene el claim, sin el `in` esto reventaría
+    // todos los `esSuperAdmin() || loMio()`: el lado izquierdo explota
+    // y se deniega aunque el usuario sea legítimo. El `in` lo hace
+    // fallar en falso, que es lo correcto.
+    function esSuperAdmin() {
+      return estaAutenticado()
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
+    }
+
+    // `get()` sobre un documento inexistente devuelve un Document cuyo
+    // `.data` es null. OJO con las dos trampas de acá:
+    //
+    //  1. El lenguaje de reglas NO tiene `exists()`.
+    //     `get(...).exists()` compila pero al evaluarlo tira
+    //     "Function not found error: Name: [exists]", y ese error
+    //     deniega la operación. La forma correcta de preguntar por
+    //     existencia es comparar `.data != null`.
+    //
+    //  2. Una función NO puede devolver el resultado de un get().
+    //     Si la función lo devuelve y el llamador hace `org.data`, el
+    //     Document llega como null y revienta con "Null value error".
+    //     Por eso el get() va inline en un `let`, no en un helper.
+    function organizacionActiva() {
+      let org = get(/databases/$(database)/documents/organizadores/$(request.auth.uid));
+      return estaAutenticado()
+        && org.data != null
+        && org.data.estadoSuscripcion == 'activo';
+    }
+
+    // El documento /registros/{id} NO tiene campo organizadorId (a
+    // propósito: se lo agrega el atacante y auto-asigna el registro).
+    // Para saber de quién es hay que saltar al evento padre. Este salto
+    // es el motivo por el que /registros no se puede filtrar con un
+    // where() barato: cada documento evaluado paga un get() extra.
+    function perteneceAlOrganizadorDelEvento(eventoId) {
+      let evento = get(/databases/$(database)/documents/eventos/$(eventoId));
+      return evento.data != null && evento.data.organizadorId == request.auth.uid;
+    }
+
+    // ==============================================================
+    //  /organizadores/{uid}
+    // ==============================================================
+    match /organizadores/{uid} {
+
+      function esPropio() {
+        return estaAutenticado() && request.auth.uid == uid;
+      }
+
+      // La propiedad de seguridad, enunciada como igualdad y no como
+      // lista blanca. Importa la diferencia:
+      //
+      //   affectedKeys().hasOnly([...])  →  si el diff está VACÍO,
+      //   hasOnly([]) devuelve true, o sea que un update que no cambia
+      //   nada pasa. Y un set() que se olvide de mandar `plan` lo
+      //   sobreescribe con null sin que se note en el diff.
+      //
+      // Comparar los campos privilegiados contra el valor actual es
+      // "falla cerrada": cualquier intento de tocarlos se deniega,
+      // venga de un update parcial o de un set() completo. Después, el
+      // hasOnly agrega la forma: no se pueden agregar campos nuevos
+      // (un `esAdmin: true` inventado tampoco pasa, aunque hoy nadie
+      // lo leería).
+      function noCambiaPrivilegios() {
+        return request.resource.data.plan == resource.data.plan
+          && request.resource.data.estadoSuscripcion == resource.data.estadoSuscripcion
+          && request.resource.data.limitesPersonalizacion == resource.data.limitesPersonalizacion
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email;
+      }
+
+      // Lo único que el dueño controla de su propia cuenta.
+      function soloCamposPermitidos() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nombre', 'brandingPanel']);
+      }
+
+      // Condiciones del alta. Acá está replicado LIMITES_POR_PLAN.gratis
+      // de src/shared/types.ts, porque las reglas no pueden importar
+      // TypeScript. La sincronía entre los dos no es a ojo:
+      // tests/rules/aislamiento.test.ts crea la cuenta con los valores
+      // de la tabla de TypeScript, así que si cambiás una y no la otra,
+      // el test falla.
+      function altaValida() {
+        return request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.get('email', '')
+          && request.resource.data.plan == 'gratis'
+          && request.resource.data.estadoSuscripcion == 'activo'
+          && request.resource.data.limitesPersonalizacion != null
+          && request.resource.data.limitesPersonalizacion.bannerPermitido == false
+          && request.resource.data.limitesPersonalizacion.colorPersonalizadoPermitido == true
+          && request.resource.data.limitesPersonalizacion.logoPermitido == false;
+      }
+
+      allow get: if esPropio() || esSuperAdmin();
+      allow list: if esSuperAdmin();
+
+      // El super-admin también da de alta: es como se corrige a mano una
+      // cuenta a la que el alta automática no llegó (Fase 8).
+      allow create: if esSuperAdmin() || (esPropio() && altaValida());
+
+      allow update: if esSuperAdmin()
+                    || (esPropio() && noCambiaPrivilegios() && soloCamposPermitidos());
+
+      // Borrar la cuenta es cosa del super-admin, no del usuario:
+      // un organizador que se va deja eventos con invitados adentro.
+      allow delete: if esSuperAdmin();
+    }
+
+    // ==============================================================
+    //  /eventos/{eventoId}
+    // ==============================================================
+    match /eventos/{eventoId} {
+
+      // En update se lee resource.data (el valor actual). En create NO
+      // existe todavía y hay que leer request.resource.data. Es el
+      // error clásico: usar resource.data en un create deniega todo.
+      function esMio() {
+        return organizacionActiva() && resource.data.organizadorId == request.auth.uid;
+      }
+
+      function loCreoComoMio() {
+        return request.resource.data.organizadorId == request.auth.uid;
+      }
+
+      function noCambiaDueno() {
+        return resource.data.organizadorId == request.resource.data.organizadorId;
+      }
+
+      // Para list, las reglas se evalúan documento por documento: un
+      // where('organizadorId','==',uid) sólo devuelve los suyos, y un
+      // list() sin filtro no devuelve nada. Por eso no hace falta
+      // filtrar en el cliente: las reglas ya no dejan pasar los ajenos.
+      allow get: if esSuperAdmin() || esMio();
+      // El `.get('organizadorId', null)` en lugar de
+      // `resource.data.organizadorId` es a propósito. En un list() sin
+      // filtro el motor llega a evaluar la regla contra un recurso que
+      // no tiene ese campo, y leer una propiedad inexistente LANZA
+      // error en vez de devolver null; ese error deniega el list
+      // entero con un "Property organizadorId is undefined" que no
+      // dice nada. Map.get con valor por defecto devuelve null, la
+      // comparación falla en falso y el documento queda fuera, que es
+      // la respuesta correcta.
+      allow list: if esSuperAdmin()
+                  || (organizacionActiva()
+                      && resource.data.get('organizadorId', null) == request.auth.uid);
+
+      allow create: if esSuperAdmin()
+                    || (organizacionActiva() && loCreoComoMio()
+                        && request.resource.data.estado == 'activo');
+
+      allow update: if esSuperAdmin() || (esMio() && noCambiaDueno());
+      allow delete: if esSuperAdmin() || esMio();
+    }
+
+    // ==============================================================
+    //  /registros/{registroId}
+    // ==============================================================
+    match /registros/{registroId} {
+
+      function perteneceAlOrganizadorDelRegistro() {
+        return organizacionActiva() && perteneceAlOrganizadorDelEvento(resource.data.eventoId);
+      }
+
+      // El organizador puede aprobar, rechazar, editar los datos de
+      // contacto y borrar. NO puede tocar `usado` ni `fechaUso`: eso lo
+      // escribe la transacción de la Fase 7, y si el organizador
+      // pudiera marcar unUsed=false, podría reutilizar entradas.
+      // Tampoco puede mover el registro a otro evento.
+      function soloCamposDelOrganizador() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['estado', 'nombre', 'email', 'telefono']);
+      }
+
+      allow get: if esSuperAdmin() || perteneceAlOrganizadorDelRegistro();
+      allow list: if esSuperAdmin() || perteneceAlOrganizadorDelRegistro();
+
+      // El alta del registro pasa por /api/registro con el Admin SDK:
+      // es el único que puede generar el QR, verificar la capacidad
+      // máxima y mandar el mail. Abrir el create acá sería abrir un
+      // formulario público de escritura sin control de spam.
+      allow create: if false;
+
+      allow update: if esSuperAdmin()
+                    || (perteneceAlOrganizadorDelRegistro() && soloCamposDelOrganizador());
+
+      allow delete: if esSuperAdmin() || perteneceAlOrganizadorDelRegistro();
+    }
+
+    // Cualquier otra colección o subcolección queda denegada:
+    // las reglas son de denegación por defecto, y acá no se declara
+    // ninguna otra.
+  }
+}

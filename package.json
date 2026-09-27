@@ -15,7 +15,11 @@
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "preview": "vite preview",
-    "svc:preparar": "node scripts/preparar-service-account.mjs"
+    "emuladores": "node scripts/emuladores.mjs",
+    "test:rules": "node scripts/emuladores.mjs test:rules",
+    "test": "npm run typecheck && npm run lint && npm run test:rules",
+    "svc:preparar": "node scripts/preparar-service-account.mjs",
+    "auth:admin": "node scripts/asignar-admin.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",
@@ -27,6 +31,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
     "@types/qrcode": "^1.5.6",
@@ -34,6 +39,7 @@
     "@types/react-dom": "^19.2.7",
     "@vercel/node": "^16.0.1",
     "@vitejs/plugin-react": "^6.1.1",
+    "firebase-tools": "^15.31.0",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
