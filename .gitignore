@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# ------------------------------------------------------------------
+# Secretos. Esto NUNCA se sube al repo.
+# El .env local lo completás vos con tus claves.
+# ------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# Credenciales del service account de Firebase (descargadas de la consola)
+*service-account*.json
+serviceAccount*.json
+
+# Salida del build del widget: se genera, no se versiona
+public/widget/
+
+# Vercel
+.vercel
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

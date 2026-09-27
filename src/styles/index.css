@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+/* ==================================================================
+   EL PATRÓN DE THEMING
+   ==================================================================
+   La consigna dice: "no clases Tailwind hardcodeadas por cliente".
+   Esto es lo que lo cumple.
+
+   Hay DOS familias de variables, y no es redundancia:
+
+     --c-*        Las que ESCRIBE el código, leyendo un documento de
+                  Firestore. Son datos, no estilos. Nadie las define
+                  a mano salvo este archivo.
+
+     --color-*    Las que ENTIENDE Tailwind. Cada una apunta a una --c-*.
+
+   El resultado: la clase NUNCA cambia. Es siempre bg-primario.
+   Lo que cambia es el valor, y ese valor viene de la base de datos.
+
+     evento A (color rojo)   ->  --c-primario: #dc2626  ->  bg-primario rojo
+     evento B (color azul)   ->  --c-primario: #2563eb  ->  bg-primario azul
+
+   Mismo componente, mismos bytes de JS, dos aspectos distintos.
+
+   ¿Por qué la indirección (--color-primario: var(--c-primario))?
+   Tailwind v4 sólo emite una variable de @theme si alguna utilidad la
+   usa. Si escribiéramos el color literal en @theme, y en algún momento
+   ningún componente usara bg-primario, la variable desaparecería del
+   CSS y setProperty() en runtime no tendría a qué escribir.
+   Con la indirección, --c-primario vive en :root y siempre existe.
+   ================================================================== */
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-primario: var(--c-primario);
+  --color-secundario: var(--c-secundario);
+  --color-superficie: var(--c-superficie);
+  --color-texto: var(--c-texto);
+  --color-texto-suave: var(--c-texto-suave);
+  --color-borde: var(--c-borde);
+  --color-sobre-primario: var(--c-sobre-primario);
+}
+
+/* Valores por defecto. El tema de un evento sólo pisa lo que trae. */
+:root {
+  --c-primario: #2563eb;
+  --c-secundario: #0f172a;
+  --c-superficie: #ffffff;
+  --c-texto: #0f172a;
+  --c-texto-suave: #64748b;
+  --c-borde: #e2e8f0;
+  --c-sobre-primario: #ffffff;
+
+  /* Área táctil mínima comfortable para un dedo.
+     44px es el número que usan iOS y Material como referencia. */
+  --touch-min: 44px;
+}
+
+@layer base {
+  html {
+    /* Sin esto, iOS agranda el texto solo en los inputs al hacer zoom
+       y en un formulario de la puerta del evento eso rompe el layout. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--c-superficie);
+    color: var(--c-texto);
+    font-family: var(--font-sans);
+    /* iPhone con notch: el contenido nunca queda debajo de la muesca. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Foco visible siempre. En la puerta del evento se escanea con una
+     mano y a veces con guantes: el foco tiene que verse. */
+  :focus-visible {
+    outline: 2px solid var(--c-primario);
+    outline-offset: 2px;
+  }
+}

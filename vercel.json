@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/:ruta*", "destination": "/api/:ruta*" },
+    { "source": "/:ruta*", "destination": "/index.html" }
+  ]
+}
