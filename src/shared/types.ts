@@ -12,11 +12,25 @@ export type Plan = 'gratis' | 'pro' | 'pro+'
 
 export type EstadoSuscripcion = 'activo' | 'suspendido'
 
-/** Los 3 interruptores que controlan qué personalización se puede usar. */
+/** Los interruptores que controlan qué personalización se puede usar. */
 export interface LimitesPersonalizacion {
   bannerPermitido: boolean
   colorPersonalizadoPermitido: boolean
   logoPermitido: boolean
+  /**
+   * Tope de entradas que puede tener UN evento.
+   *
+   * Va en el documento del organizador y no en la tabla de planes para
+   * que el super-admin pueda Exceptuar a un cliente sin redeployar: si
+   * estuviera sólo en LIMITES_POR_PLAN habría que tocar código y volver
+   * a desplegar por cada excepción comercial.
+   *
+   * Lo valida la regla del create de /eventos, leyendo estos mismos
+   * campos con un get(). O sea que el límite no depende de que el
+   * cliente se porte bien: sin esto, un plan gratis puede crear un
+   * evento de un millón de entradas desde la consola.
+   */
+  capacidadMaximaPorEvento: number
 }
 
 /**
@@ -27,11 +41,32 @@ export interface LimitesPersonalizacion {
  * (por si hay excepciones comerciales). Esta tabla es la que se aplica
  * al crear una cuenta nueva. Así se puede dar un plan distinto a un
  * cliente puntual sin tocar código ni redeployar.
+ *
+ * Los números de capacidad son decisión comercial, no técnica: 100
+ * entradas para el plan gratis es lo que entra cómodo en el envío de
+ * mails de Brevo del mes (300/día) y en la planilla del organizador.
+ * Cuando el precio cambie, cambian los dos lados —esta tabla y
+ * firestore.rules— y los tests avisan.
  */
 export const LIMITES_POR_PLAN: Record<Plan, LimitesPersonalizacion> = {
-  gratis: { bannerPermitido: false, colorPersonalizadoPermitido: true, logoPermitido: false },
-  pro: { bannerPermitido: true, colorPersonalizadoPermitido: true, logoPermitido: false },
-  'pro+': { bannerPermitido: true, colorPersonalizadoPermitido: true, logoPermitido: true },
+  gratis: {
+    bannerPermitido: false,
+    colorPersonalizadoPermitido: true,
+    logoPermitido: false,
+    capacidadMaximaPorEvento: 100,
+  },
+  pro: {
+    bannerPermitido: true,
+    colorPersonalizadoPermitido: true,
+    logoPermitido: false,
+    capacidadMaximaPorEvento: 1_000,
+  },
+  'pro+': {
+    bannerPermitido: true,
+    colorPersonalizadoPermitido: true,
+    logoPermitido: true,
+    capacidadMaximaPorEvento: 5_000,
+  },
 }
 
 export interface Organizador {

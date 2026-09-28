@@ -134,7 +134,66 @@ service cloud.firestore {
           && request.resource.data.limitesPersonalizacion != null
           && request.resource.data.limitesPersonalizacion.bannerPermitido == false
           && request.resource.data.limitesPersonalizacion.colorPersonalizadoPermitido == true
-          && request.resource.data.limitesPersonalizacion.logoPermitido == false;
+          && request.resource.data.limitesPersonalizacion.logoPermitido == false
+          && request.resource.data.limitesPersonalizacion.capacidadMaximaPorEvento == 100;
+      }
+
+      // ==================================================================
+      //  Los límites de marca, aplicados de verdad
+      // ==================================================================
+      //
+      //  `soloCamposPermitidos` deja editar `brandingPanel` entero, y
+      //  hasta ahora nada miraba `limitesPersonalizacion` al hacerlo. O
+      //  sea que los tres interruptores eran decorativos: un plan gratis
+      //  podía poner un logo desde la consola con
+      //
+      //      updateDoc(doc(db,'organizadores',uid),
+      //                {'brandingPanel.logoUrl':'https://…'})
+      //
+      //  y la UI que respeta los límites no alcanzaba: la UI es el lugar
+      //  donde uno se porta bien, las reglas son donde no.
+      //
+      //  Los límites se LEEN del documento del propio organizador con un
+      //  get(), en vez de hardcodear la tabla como hace altaValida().
+      //  Con el get() una excepción comercial del super-admin se
+      //  respeta sin tocar código: alcanza con cambiarle el campo al
+      //  cliente, y la regla lo lee.
+      //
+      //  El get() va inline en un `let` porque una función no puede
+      //  devolver un get() (ver la nota de organizacionActiva()).
+      // El "o" es lo importante: O te dejan cambiar el color, O el color
+      // tiene que seguir siendo el de ahora. Si se escribiera
+      // `lim.colorPersonalizadoPermitido &&` a secas, el plan gratis —que
+      // es el único que tiene colorPersonalizadoPermitido en true— nunca
+      // podría cambiarlo, que es exactamente lo contrario de lo que
+      // ofrece el plan.
+      //
+      //  bannerPermitido no aparece acá a propósito: brandingPanel no
+      //  tiene bannerUrl. El banner vive en el evento (personalizacion),
+      //  y lo limita la Fase 3.
+      function respetaLimitesDeMarca() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        return lim != null
+          && (lim.colorPersonalizadoPermitido
+              || request.resource.data.brandingPanel.colorPrimario == resource.data.brandingPanel.colorPrimario)
+          && (lim.colorPersonalizadoPermitido
+              || request.resource.data.brandingPanel.colorSecundario == resource.data.brandingPanel.colorSecundario);
+      }
+
+      // El logo tiene su propio permiso porque es el único de los tres
+      // que está detrás de un plan pago: pro+ y no antes.
+      //
+      // La comparación es contra `resource.data`, no contra null. Es lo
+      // que hace que un logo concedido por excepción comercial no se
+      // pierda: si el plan no lo permite, el valor tiene que SEGUIR SIENDO
+      // el que ya está, no tiene que volver a null. Si comparáramos
+      // contra null obligaríamos al super-admin a tocar las reglas cada
+      // vez que otorga una excepción.
+      function respetaLimiteDeLogo() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        return lim != null
+          && (lim.logoPermitido
+              || request.resource.data.brandingPanel.logoUrl == resource.data.brandingPanel.logoUrl);
       }
 
       allow get: if esPropio() || esSuperAdmin();
@@ -144,8 +203,12 @@ service cloud.firestore {
       // cuenta a la que el alta automática no llegó (Fase 8).
       allow create: if esSuperAdmin() || (esPropio() && altaValida());
 
+      // esSuperAdmin() queda por fuera de las dos reglas de marca a
+      // propósito: es quien otorga las excepciones, no debería estar
+      // sujeto a ellas.
       allow update: if esSuperAdmin()
-                    || (esPropio() && noCambiaPrivilegios() && soloCamposPermitidos());
+                    || (esPropio() && noCambiaPrivilegios() && soloCamposPermitidos()
+                        && respetaLimitesDeMarca() && respetaLimiteDeLogo());
 
       // Borrar la cuenta es cosa del super-admin, no del usuario:
       // un organizador que se va deja eventos con invitados adentro.
@@ -172,6 +235,37 @@ service cloud.firestore {
         return resource.data.organizadorId == request.resource.data.organizadorId;
       }
 
+      // ==================================================================
+      //  La capacidad máxima no depende de que el cliente se porte bien
+      // ==================================================================
+      //
+      //  `capacidadMaxima` es un número que el organizador elige, y sin
+      //  este chequeo un plan gratis puede abrir un evento de un millón
+      //  de entradas. La UI lo valida, pero la UI es sólo donde uno se
+      //  porta bien.
+      //
+      //  El tope se lee del documento del organizador con un get(), que
+      //  es lo que hace que valga la excepción comercial: si el
+      //  super-admin le sube capacidadMaximaPorEvento a un cliente, la
+      //  regla lo levanta sin deployar nada.
+      //
+      //  Lo que NO se puede hacer acá es limitar la CANTIDAD de eventos
+      //  (eventosMaximos): el lenguaje de reglas no tiene count(), así
+      //  que no hay forma de preguntar cuántos documentos tiene un
+      //  organizador desde una regla. Si algún día hace falta, va por un
+      //  contador en el doc del organizador o por el backend de la Fase 3.
+      //
+      //  `is int` evita el caso raro de que un string o un float pasen
+      //  la comparación por coerción. Y >0 porque una capacidad de cero
+      //  es un evento que no existe.
+      function capacidadDentroDelPlan() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        return lim != null
+          && request.resource.data.capacidadMaxima is int
+          && request.resource.data.capacidadMaxima > 0
+          && request.resource.data.capacidadMaxima <= lim.capacidadMaximaPorEvento;
+      }
+
       // Para list, las reglas se evalúan documento por documento: un
       // where('organizadorId','==',uid) sólo devuelve los suyos, y un
       // list() sin filtro no devuelve nada. Por eso no hace falta
@@ -192,7 +286,8 @@ service cloud.firestore {
 
       allow create: if esSuperAdmin()
                     || (organizacionActiva() && loCreoComoMio()
-                        && request.resource.data.estado == 'activo');
+                        && request.resource.data.estado == 'activo'
+                        && capacidadDentroDelPlan());
 
       allow update: if esSuperAdmin() || (esMio() && noCambiaDueno());
       allow delete: if esSuperAdmin() || esMio();
