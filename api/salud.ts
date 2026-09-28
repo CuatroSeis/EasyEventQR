@@ -1,6 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { credencialesConfiguradas, getDb, getProjectId } from './lib/firebase-admin'
+// OJO con la extensión `.js` del import: es obligatoria, y no es un
+// capricho de estilo.
+//
+// package.json tiene "type": "module", así que Vercel compila este archivo
+// a ESM y Node lo ejecuta con su resolver nativo, que NO hace resolución
+// de extensión implícita. TypeScript acepta './lib/firebase-admin' y en
+// local el bundler lo resuelve, así que el error aparece únicamente en
+// producción, como un 500 opaque:
+//
+//   ERR_MODULE_NOT_FOUND: Cannot find module '/var/task/api/lib/firebase-admin'
+//
+// Con la extensión TypeScript sigue apuntando al .ts (es la convención
+// de TS con moduleResolution node16/nodenext) y el .js compilado resuelve
+// contra el archivo real.
+import { credencialesConfiguradas, getDb, getProjectId } from './lib/firebase-admin.js'
 
 /**
  * GET /api/salud — comprobador de la cadena completa del backend.

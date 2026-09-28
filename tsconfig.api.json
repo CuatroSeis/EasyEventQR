@@ -7,7 +7,11 @@
     "types": ["node", "@vercel/node"],
     "skipLibCheck": true,
 
-    /* Bundler mode: Vercel compila /api/ con esbuild, no con tsc */
+    /* Bundler mode: es lo más cercano a cómo se ejecuta /api/ en Vercel.
+       OJO, la analogía es sólo para el typecheck. En producción NO es
+       esbuild: Vercel transpila archivo por archivo y deja imports
+       relativos sin resolver, que es exactamente lo que dispara el
+       ERR_MODULE_NOT_FOUND de los imports sin extensión .js. */
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
