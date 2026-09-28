@@ -16,11 +16,14 @@ Tres actores, tres superficies distintas:
 Cada fase es un entregable que anda por sí solo. Se termina una, se muestra, y
 se pasa a la siguiente.
 
+El detalle de qué quedó hecho en cada una, cómo se comprobó, y qué falta
+está en [`PLAN.md`](./PLAN.md), que es el documento de trabajo del proyecto.
+
 | # | Entregable | Estado |
 |---|---|---|
 | 0 | Vite + React + Tailwind + Firebase, dos builds, deploy en Vercel | ✅ |
 | 1 | Login con Google + reglas de seguridad multi-tenant | ✅ |
-| 2 | CRUD de eventos (mobile-first) + branding del panel | |
+| 2 | CRUD de eventos (mobile-first) + branding del panel | ✅ |
 | 3 | Registro público + theming dinámico + QR + mail | |
 | 4 | `<ticket-widget>` embebible (Shadow DOM, bundle propio) | |
 | 5 | Capa de pagos desacoplada (modo simulado) + webhook firmado | |
