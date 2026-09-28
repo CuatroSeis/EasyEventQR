@@ -8,6 +8,36 @@ mañana.
 Cuando se termine una fase, se actualizan las dos tablas de más abajo. Si una
 decisión del código no se entiende leyendo el código, se escribe acá.
 
+## 0. Dónde quedó la última sesión
+
+Fases 0, 1 y 2 terminadas y desplegadas. El backend de `/api/` quedó con
+credenciales reales y verificado. **La Fase 3 es el próximo trabajo y se empezó
+por el principio, pero se decidió pausar ahí para retomarla otro día.**
+
+Para retomar, en este orden:
+
+1. Migrar a Firebase Auth Anonymous, para que el asistente se registre sin
+   cuenta. Es el primer paso porque las reglas de `registros/` van a depender de
+   que exista un uid anónimo, y escribirlas antes de eso sería al revés.
+2. Página pública del evento en `/e/:eventoId`, con `aplicarTema()` leyendo
+   `personalizacion` del evento en vez de los colores del panel. Esa función ya
+   está hecha y es la misma que va a usar el widget de la Fase 4.
+3. Registro del asistente: documento de reserva con reglas que verifiquen cupo
+   y que el evento esté abierto.
+4. QR: token único por reserva, guardado hasheado en Firestore y en claro sólo
+   por mail.
+5. Mail con Brevo, que necesita la clave y el remitente verificado.
+
+Antes de arrancar, dos cosas que conviene tener presentes:
+
+- **El servicio de reservas tiene que hablar por `/api/`, no desde el
+  navegador**, salvo la parte que las reglas puedan validar. Es la primera vez
+  que el Admin SDK hace algo real, y el patrón de `api/lib/firebase-admin.ts`
+  ya está para eso.
+- **La brecha de capacidad en `update` está abierta** (ver pendientes). Si la
+  Fase 3 mete un flujo que permita tocar el cupo, conviene resolverla antes y
+  no después.
+
 ## 1. Estado real por fase
 
 El `README.md` tiene la tabla de las 10 fases con un ✅ o nada. Acá está el
@@ -146,9 +176,15 @@ pero nadie puede reservar.
   que va a Firestore; el token en claro sólo se manda por mail.
 - Mail de confirmación con Brevo.
 
-**La bloquea `FIREBASE_SERVICE_ACCOUNT`, que todavía no está en Vercel.** Sin
-eso `/api/salud` responde `ok: false` con `etapa: "service-account"`, que es la
-respuesta diseñada, no un error. Y falta la clave de Brevo.
+**Ya no está bloqueada.** El service account se cargó y se verificó:
+`/api/salud` responde `{"ok":true,"proyecto":"easyeventqr-dev",...}`, lo que
+prueba las tres cosas de golpe (la función corrió, la credencial es válida y
+Firestore respondió). Ese era el único bloqueo duro de la parte de registro y
+QR.
+
+Lo que **queda** antes de poder enviar el mail de la Fase 3 es la clave de
+Brevo y un remitente verificado. La parte de registro público y QR se puede
+arrancar sin eso.
 
 **Criterio de cierre:** alguien que no tiene cuenta entra a `/e/<id>`, se
 anota, recibe el mail con un QR, y ese QR pasa el control de entrada.
@@ -216,12 +252,21 @@ pública con datos de ejemplo.
 
 Nada de esto es una fase. Son cosas que están abiertas.
 
-- **`FIREBASE_SERVICE_ACCOUNT` sin configurar.** No bloquea las Fases 1 y 2
-  (son todo cliente), pero bloquea la 3. Es un JSON con clave privada y va
-  únicamente en variables de entorno de Vercel.
-- **Clave de Brevo sin configurar.** Bloquea el mail de la Fase 3. Ojo con
-  "Block unknown IP addresses": los correos salen desde IPs dinámicas de Vercel y
-  el envío se rompe de forma intermitente.
+- **`FIREBASE_SERVICE_ACCOUNT` ✅ ya configurada.** Cargada en Vercel para
+  Production y Preview, con `/api/salud` respondiendo `ok: true`. La clave ya no
+  está en la máquina: el `.json` que baja la consola de Firebase se borró, y
+  Vercel la guarda cifrada. Ojo con esto la próxima vez: el `.gitignore` ahora
+  cubre `*-firebase-adminsdk-*.json`, pero los patrones que tenía antes
+  (`*service-account*.json`) no matcheaban el nombre real que usa Firebase, así
+  que la clave quedó untracked y sin ignorar a un `git add -A` de terminar en
+  el repo público. No se llegó a commitear, pero el agujero estaba.
+- **Clave de Brevo sin configurar.** Es lo único que queda bloqueando el mail
+  de la Fase 3. Ojo con "Block unknown IP addresses": los correos salen desde
+  IPs dinámicas de Vercel y el envío se rompe de forma intermitente. El
+  remitente tiene que estar verificado en Senders & Domains. Cuando se cargue,
+  en Preview va con `--git-branch ""` a propósito: sin ese flag el CLI pide la
+  rama interactivamente aunque le mandes el valor por stdin, y en modo no
+  interactivo se queda esperando y no guarda nada.
 - **La capacidad se puede subir editando el evento.** La regla
   `capacidadDentroDelPlan` valida en `create` y no en `update`, así que un
   organizador puede crear un evento con 100 y después subirlo a 5000
