@@ -7,6 +7,7 @@ import {
 } from '@firebase/rules-unit-testing'
 
 import { nuevoDocumentoOrganizador } from '../../src/services/organizadores.ts'
+import { nuevoDocumentoEvento } from '../../src/services/documentoEvento.ts'
 
 // El projectId tiene que coincidir con el que arranca el emulador
 // (emulators:exec --project easyeventqr-dev). El emulador no se
@@ -78,26 +79,29 @@ export function datosOrganizador(
   }
 }
 
-/** Espejo de la interfaz `Evento`. */
+/** Espejo de la interfaz `Evento`.
+ *
+ *  Arranca del constructor real de la app (nuevoDocumentoEvento) y le
+ *  pisa lo que el test necesite, igual que datosOrganizador con
+ *  nuevoDocumentoOrganizador. La razón es la misma: si el documento que
+ *  la app manda y el que la regla espera son dos copias escritas a mano,
+ *  no hay forma de que nadie note cuándo dejan de coincidir. */
 export function datosEvento(organizadorId: string, nombre: string): DatosOrganizador {
   return {
-    organizadorId,
-    nombre,
-    fecha: FECHAS.fecha,
-    lugar: 'Salón de ejemplo',
-    descripcion: 'Evento de prueba',
-    capacidadMaxima: 100,
-    estado: 'activo',
-    requierePago: false,
-    precioEntrada: null,
-    personalizacion: {
-      bannerUrl: null,
-      logoUrl: null,
-      colorPrimario: null,
-      colorSecundario: null,
-      textoBienvenida: null,
-      textoConfirmacion: null,
-    },
+    ...nuevoDocumentoEvento(organizadorId, {
+      nombre,
+      fecha: new Date(FECHAS.fecha),
+      lugar: 'Salón de ejemplo',
+      descripcion: 'Evento de prueba',
+      // Justo en el límite del plan gratis, a propósito: la regla acepta
+      // <=, y tests/rules/limites.test.ts tiene el test de borde de que
+      // 100 con un tope de 100 tiene que pasar. Si este valor subiera
+      // por encima del límite, todos los tests de aislamiento empezarían a fallar
+      // con un error que no señalaría la causa.
+      capacidadMaxima: 100,
+      requierePago: false,
+      precioEntrada: null,
+    }),
   }
 }
 
