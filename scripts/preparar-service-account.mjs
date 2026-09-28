@@ -15,8 +15,11 @@
  * Uso:
  *   node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json
  *   node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json --write
+ *   node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json --emit
  *
  * Con --write además lo guarda en .env.local para desarrollo.
+ * Con --emit imprime SÓLO el valor, sin banner ni separadores, para que
+ * se pueda mandar derecho a `vercel env add` por pipe.
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -57,23 +60,46 @@ if (problemas.length > 0) {
 
 const valor = JSON.stringify(datos)
 
-console.log('\n Service account válido')
-console.log(`  archivo   ${basename(ruta)}`)
-console.log(`  proyecto  ${datos.project_id}`)
-console.log(`  cuenta    ${datos.client_email}`)
-console.log(`  largo     ${valor.length} caracteres en una línea\n`)
-
-if (bandera === '--write') {
-  writeFileSync('.env.local', `FIREBASE_SERVICE_ACCOUNT='${valor}'\n`)
-  console.log(' Guardado en .env.local (ya está en .gitignore)\n')
-} else {
-  console.log(' Pegá esto en Vercel → Settings → Environment Variables')
-  console.log('   nombre: FIREBASE_SERVICE_ACCOUNT')
-  console.log('   valor:  la línea de abajo\n')
-  console.log('-' + '-'.repeat(78))
-  console.log(valor)
-  console.log('-' + '-'.repeat(78) + '\n')
+// En modo --emit, stdout es un pipe: lo que salga de ahí se guarda como
+// valor de la variable. Los mensajes de información van a stderr para que
+// se sigan viendo en la terminal sin contaminar el pipe. Por eso
+// `info()` y no console.log() directo.
+const emitir = bandera === '--emit'
+const info = (...lineas) => {
+  for (const linea of lineas) {
+    if (emitir) process.stderr.write(`${linea}\n`)
+    else console.log(linea)
+  }
 }
 
-console.log(' Cuando termines: borrá el .json de tu carpeta y poné el valor')
-console.log(' en las variables de Vercel para Production y Preview.\n')
+info('\n Service account válido')
+info(`  archivo   ${basename(ruta)}`)
+info(`  proyecto  ${datos.project_id}`)
+info(`  cuenta    ${datos.client_email}`)
+info(`  largo     ${valor.length} caracteres en una línea\n`)
+
+  if (bandera === '--write') {
+    writeFileSync('.env.local', `FIREBASE_SERVICE_ACCOUNT='${valor}'\n`)
+    console.log(' Guardado en .env.local (ya está en .gitignore)\n')
+  } else if (emitir) {
+    // Modo máquina: una sola línea con el valor y nada más. Esto existe
+    // porque el modo por defecto no se puede pipear: si su salida se
+    // mandara a `vercel env add`, el banner y los separadores se
+    // guardarían como valor y la variable quedaría rota, con un error
+    // de credencial inválida que no dice nada útil.
+    //
+    // Por lo mismo va con process.stdout.write y no con console.log: si
+    // un día alguien corre esto con NODE_DEBUG o con un --inspector, el
+    // valor tiene que ser lo único que salga por stdout.
+    process.stdout.write(`${valor}\n`)
+  } else {
+    console.log(' Pegá esto en Vercel → Settings → Environment Variables')
+    console.log('   nombre: FIREBASE_SERVICE_ACCOUNT')
+    console.log('   valor:  la línea de abajo\n')
+    console.log('-' + '-'.repeat(78))
+    console.log(valor)
+    console.log('-' + '-'.repeat(78) + '\n')
+  }
+
+info(' Cuando termines: borrá el .json de tu carpeta y poné el valor')
+info(' en las variables de Vercel para Production y Preview.\n')

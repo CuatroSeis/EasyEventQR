@@ -18,9 +18,23 @@ dist-ssr
 .env.*
 !.env.example
 
-# Credenciales del service account de Firebase (descargadas de la consola)
+# Credenciales del service account de Firebase (descargadas de la consola).
+#
+# OJO: el nombre real que baja la consola es
+#   <proyecto>-firebase-adminsdk-<hash>.json
+# Los patrones de abajo cubren ese nombre Y los nombres de archivo a mano.
+# Antes sólo estaban *service-account*.json y serviceAccount*.json, que no
+# matchean el nombre de Firebase: el archivo quedaba untracked pero NO
+# ignorado, a un `git add -A` de ser publicado en un repo público.
+*adminsdk*.json
+*-firebase-adminsdk-*.json
 *service-account*.json
 serviceAccount*.json
+service_account*.json
+credentials*.json
+# Y por si alguien guarda la clave en la raíz con otro nombre:
+*-service-account.json
+secret*.json
 
 # Salida del build del widget: se genera, no se versiona
 public/widget/
