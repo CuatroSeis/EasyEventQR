@@ -117,7 +117,7 @@ describe('branding: el logo está detrás de un plan pago', () => {
     await entorno.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore()
       await updateDoc(doc(db, 'organizadores', ORG_A), {
-        // Excepción commercial ya revocada: tenía color, ya no le corresponde.
+        // Excepción comercial ya revocada: tenía color, ya no le corresponde.
         limitesPersonalizacion: {
           ...LIMITES_POR_PLAN.gratis,
           colorPersonalizadoPermitido: false,

@@ -19,18 +19,32 @@ import Home from './pages/Home'
  * las rutas se importan sin pensar.
  *
  * Con lazy() el SDK queda en los chunks de /entrar y /panel, y quien
- * abre la home no lo descarga. Además es la behavior correcta para
+ * abre la home no lo descarga. Además es el comportamiento correcto para
  * un producto mobile-first: menos kilobytes en la primera pantalla
  * sobre datos móviles.
  */
 const Login = lazy(() => import('./pages/Login'))
 const Panel = lazy(() => import('./pages/Panel'))
+const EventoForm = lazy(() => import('./pages/EventoForm'))
+const Branding = lazy(() => import('./pages/Branding'))
 const NoEncontrado = lazy(() => import('./pages/NoEncontrado'))
 const Protegido = lazy(() => import('./components/Protegido'))
+const PanelLayout = lazy(() => import('./components/PanelLayout'))
 
 /**
+ * Las rutas de /panel van anidadas, y no como una lista plana.
+ *
+ * La anidacion hace dos cosas a la vez. `Protegido` envuelve a todas:
+ * lee el documento del organizador una vez, comprueba la sesion y
+ * provee el contexto. `PanelLayout` envuelve a todas: la barra de
+ * arriba, la barra fija de abajo y la aplicacion del tema.
+ *
+ * Si esto fuera plano, cada pantalla nueva seria un <Route> suelto, y
+ * para que tenga la barra y el tema habria que acordarse de envolverla a
+ * mano. Acordarse es justo lo que falla la tercera pantalla.
+ *
  * /panel va envuelto en Protegido, que NO es una medida de seguridad:
- * es UX. Si alguien entra a /panel sin sesión, redirige a /entrar. Lo
+ * es UX. Si alguien entra a /panel sin sesion, redirige a /entrar. Lo
  * que protege los datos de verdad son las reglas de Firestore, que
  * funcionan aunque el usuario entre por la URL que quiera.
  */
@@ -41,15 +55,14 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/entrar" element={<Login />} />
-          <Route
-            path="/panel"
-            element={
-              // Render prop: el guarda ya leyó el documento del
-              // organizador y se lo pasa al panel, así el panel no
-              // vuelve a pedirlo.
-              <Protegido>{(organizador) => <Panel organizador={organizador} />}</Protegido>
-            }
-          />
+          <Route element={<Protegido />}>
+            <Route element={<PanelLayout />}>
+              <Route path="/panel" element={<Panel />} />
+              <Route path="/panel/eventos/nuevo" element={<EventoForm />} />
+              <Route path="/panel/eventos/:eventoId" element={<EventoForm />} />
+              <Route path="/panel/branding" element={<Branding />} />
+            </Route>
+          </Route>
           {/* Sin esta ruta, una URL mal escrita muestra una pantalla en
               blanco, que en el móvil se lee como "la app no funciona". */}
           <Route path="*" element={<NoEncontrado />} />

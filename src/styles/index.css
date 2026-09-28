@@ -81,3 +81,36 @@
     outline-offset: 2px;
   }
 }
+
+@layer components {
+  /* El campo de formulario de todo el panel, en un solo lugar.
+     min-height: 44px es --touch-min, el mínimo que no hace fallar un
+     toque con el dedo. Es más alto que el default de un input porque el
+     error más caro de un formulario mobile es que la persona no lo
+     toque, no que se vea feo. */
+  .campo {
+    min-height: var(--touch-min);
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--c-borde);
+    background-color: var(--c-superficie);
+    color: var(--c-texto);
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    /* 16px en los inputs, no 14px: por debajo de eso iOS hace zoom
+       al enfocar y el teclado tapa el campo que estás escribiendo. */
+  }
+
+  .campo:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .campo[aria-invalid='true'] {
+    border-color: #dc2626;
+  }
+
+  .campo::placeholder {
+    color: var(--c-texto-suave);
+  }
+}

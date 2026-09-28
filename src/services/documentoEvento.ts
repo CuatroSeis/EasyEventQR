@@ -1,5 +1,5 @@
-// El import lleva la extensión explícita por el mismo motivo que en
-// organising: este módulo lo importan los tests de reglas, que corren con
+// El import lleva la extension explicita por el mismo motivo que en
+// el resto de los services: los tests de reglas importan este modulo
 // el type-stripping nativo de Node y resuelven en modo "nodenext", donde
 // un import sin extensión no compila.
 import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
@@ -12,7 +12,7 @@ import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
  * que construye el documento y mandarla escribir contra las reglas del
  * emulador. tests/rules/ayudas.ts la usa en `datosEvento`, igual que usa
  * `nuevoDocumentoOrganizador` para las cuentas. Sin eso habría dos
- * copias de la forma del evento drifting en silencio.
+ * copias de la forma del evento que quedan viejo en silencio.
  */
 
 /** Lo que el organizador llena en el formulario. */

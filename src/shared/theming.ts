@@ -9,7 +9,26 @@
  * (elemento host del Shadow DOM).
  */
 
-import type { PersonalizacionEvento } from './types'
+import type { PersonalizacionEvento } from './types.js'
+
+/**
+ * Lo unico que este modulo necesita del elemento donde escribe.
+ *
+ * Se declara estructuralmente en vez de usar `HTMLElement` por dos
+ * razones. Una: el global HTMLElement no existe si el proyecto se
+ * type-checkea sin la lib DOM, que es exactamente lo que pasa con
+ * tsconfig.tests.json, y ahi este archivo se importa para testear la
+ * logica pura. Dos: documenta el contrato real, que son dos metodos de
+ * style, y no media API de elementos.
+ *
+ * `document.documentElement` lo satisface sin problema.
+ */
+export interface RaizCss {
+  style: {
+    setProperty(propiedad: string, valor: string): void
+    removeProperty(propiedad: string): void
+  }
+}
 
 /** Un tema parcial: cada campo ausente significa "no lo toques". */
 export type Tema = Partial<Omit<PersonalizacionEvento, 'bannerUrl' | 'logoUrl'>> &
@@ -79,20 +98,54 @@ export function colorDeTextoSobre(hex: string): string {
  * afuera (this.style.setProperty en el host) y el sitio del organizador
  * no puede filtrar su CSS hacia adentro.
  *
- * Sólo escribe lo que viene informado. Si el evento no define color
- * primario, la variable conserva el valor de :root y se ve el default.
- * Eso es lo que hace que "override parcial" funcione.
+ * LA DIFERENCIA ENTRE null Y undefined, QUE NO ES COSMÉTICA:
+ *
+ *   undefined → "no opines": no se toca la variable.
+ *   null      → "el organizador no quiere personalización": se QUITA el
+ *               override y la variable vuelve al valor de :root.
+ *
+ * Antes los dos caían en el mismo esColorValido() === false y los dos
+ * hacían "nada", que para el caso de undefined era lo correcto y para
+ * null era un bug: un organizador que tenía #dc2626 y después sacaba el
+ * color se quedaba con el rojo pegado en el documentElement para
+ * siempre, sin forma de limpiarlo salvo recargar con otro build. Por eso
+ * null borra la propiedad en vez de ignorarla: removeProperty() es lo
+ * único que devuelve la variable al default del :root.
  */
-export function aplicarTema(tema: Tema | null | undefined, raiz: HTMLElement): void {
+export function aplicarTema(tema: Tema | null | undefined, raiz: RaizCss): void {
   if (!tema) return
 
-  if (esColorValido(tema.colorPrimario)) {
-    const color = tema.colorPrimario.trim()
-    raiz.style.setProperty('--c-primario', color)
-    raiz.style.setProperty('--c-sobre-primario', colorDeTextoSobre(color))
+  escribirColor(raiz, tema.colorPrimario, '--c-primario', '--c-sobre-primario')
+  escribirColor(raiz, tema.colorSecundario, '--c-secundario')
+}
+
+/**
+ * Escribe un color, o lo saca si es null.
+ *
+ * El parámetro variableContraste sólo se usa en el primario: es el único
+ * color sobre el que hay texto, y por eso el único que necesita el
+ * cálculo de contraste. Cuando el secundario lleve texto, se le calcula
+ * el suyo y se le pasa por acá.
+ */
+function escribirColor(
+  raiz: RaizCss,
+  valor: string | null | undefined,
+  variable: string,
+  variableContraste?: string,
+): void {
+  if (valor === undefined) return
+
+  if (valor === null) {
+    raiz.style.removeProperty(variable)
+    if (variableContraste) raiz.style.removeProperty(variableContraste)
+    return
   }
 
-  if (esColorValido(tema.colorSecundario)) {
-    raiz.style.setProperty('--c-secundario', tema.colorSecundario.trim())
-  }
+  // Un color inválido se ignora en vez de romper: un documento con
+  // "azul" donde se esperaba un hex no puede romper el layout.
+  if (!esColorValido(valor)) return
+
+  const color = valor.trim()
+  raiz.style.setProperty(variable, color)
+  if (variableContraste) raiz.style.setProperty(variableContraste, colorDeTextoSobre(color))
 }
