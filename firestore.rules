@@ -19,6 +19,12 @@ rules_version = '2';
 //   3. El interruptor del plan no lo puede tocar el propio cliente,
 //      ni al crearse la cuenta ni después. Si pudiera, cualquier
 //      organizador se autopromovería a pro+ editando su documento.
+//   4. Los campos que el backend necesita exclusively —el contador
+//      `reservas` del evento— tampoco los puede tocar el dueño. Mismo
+//      motivo que el 3, y por el mismo patrón de comparación.
+//
+//  Las pruebas de esto están en tests/rules/ y se ejecutan contra el
+//  emulador, sin tocar el proyecto real. `npm run test:rules`.
 //
 //  Las pruebas de esto están en tests/rules/ y se ejecutan contra el
 //  emulador, sin tocar el proyecto real. `npm run test:rules`.
@@ -255,9 +261,17 @@ service cloud.firestore {
       //  organizador desde una regla. Si algún día hace falta, va por un
       //  contador en el doc del organizador o por el backend de la Fase 3.
       //
-      //  `is int` evita el caso raro de que un string o un float pasen
-      //  la comparación por coerción. Y >0 porque una capacidad de cero
-      //  es un evento que no existe.
+      //  OJO con el `is int`, que para algo distinto de lo que parece:
+      //  comparar cosas de tipos distintos en el motor de reglas da FALSE
+      //  en vez de coercionar, así que una capacidad que llega como texto
+      //  ya queda afuera por el `<= lim.capacidadMaximaPorEvento` de
+      //  abajo y el `is int` no hace nada por eso.
+      //
+      //  Lo que sí atrapa es un float POR DEBAJO del límite: 99.5 es
+      //  `<= 100`, así que sin el `is int` un plan gratis podría abrir un
+      //  evento de 99,5 entradas y el cupo se vuelve fraccional. Hay un
+      //  test de eso. Y >0 porque una capacidad de cero es un evento que
+      //  no existe.
       function capacidadDentroDelPlan() {
         let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
         return lim != null
@@ -270,6 +284,91 @@ service cloud.firestore {
       // where('organizadorId','==',uid) sólo devuelve los suyos, y un
       // list() sin filtro no devuelve nada. Por eso no hace falta
       // filtrar en el cliente: las reglas ya no dejan pasar los ajenos.
+      // ==================================================================
+      //  La personalización del evento también la limita el plan
+      // ==================================================================
+      //
+      //  Misma forma que `respetaLimitesDeMarca()` y `respetaLimiteDeLogo()`
+      //  del /organizadores, pero del otro lado: el logo del PANEL vive en
+      //  `brandingPanel`, y el banner y el logo del EVENTO viven en
+      //  `personalizacion`, que es la que pinta la landing /e/:eventoId.
+      //
+      //  Sin esto, `bannerPermitido` y `logoPermitido` seguían siendo
+      //  decorativos para el evento, igual que lo eran para el panel antes
+      //  de la Fase 2: un plan gratis escribía
+      //
+      //      updateDoc(doc(db,'eventos',id), {personalizacion:{logoUrl:'https://…'}})
+      //
+      //  y la landing lo pintaba. Es el mismo bug, en la otra colección.
+      //  Y es la deuda que el propio archivo anotaba: "El banner vive en
+      //  el evento (personalizacion), y lo limita la Fase 3".
+      //
+      //  Por qué compara contra `resource.data` y no contra null: una
+      //  excepción comercial concedida tiene que sobrevivir a los
+      //  borrados posteriores. Si la regla dijera "si no está permitido,
+      //  el logo tiene que ser null", el siguiente guardado de cualquier
+      //  otro campo borraría el logo que el super-admin habilitó.
+      //
+      //  Por qué no valida que el color sea un hex: el lenguaje de reglas
+      //  no tiene ni regex ni forma de medir un string. Lo que sí se
+      //  puede—that es lo que importa— es que el valor siga siendo el
+      //  mismo tipo. Un color basura lo ignora `aplicarTema()` del lado
+      //  del cliente en vez de romper el layout.
+      //
+      //  OJO con los `Map.get` con default, que acá SÍ hacen falta y en
+      //  `esMio()` parecían opcionales: `updateDoc` NO mergea en
+      //  profundidad, REEMPLAZA el mapa entero. Un
+      //  `updateDoc(..., {personalizacion:{bannerUrl:'…'}})` deja
+      //  `request.resource.data.personalizacion` con una sola clave, y
+      //  leer `.logoUrl` sobre un objeto que no lo tiene LANZA error y
+      //  deniega la operación. Sin el default, poner un banner en un plan
+      //  que lo permite fallaría justamente por el campo que el permiso
+      //  deja tocar.
+      //
+      //  El default además deja la reglaanziuesta: lo que evalúa es
+      //  exactamente "cambió un campo que no podía cambiar", y no "mandó
+      //  el objeto completo".
+      function respetaLimitesDePersonalizacion() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        let antes = resource.data.get('personalizacion', {});
+        let despues = request.resource.data.get('personalizacion', {});
+        return lim != null
+          && (lim.colorPersonalizadoPermitido
+              || despues.get('colorPrimario', null) == antes.get('colorPrimario', null))
+          && (lim.colorPersonalizadoPermitido
+              || despues.get('colorSecundario', null) == antes.get('colorSecundario', null))
+          && (lim.bannerPermitido
+              || despues.get('bannerUrl', null) == antes.get('bannerUrl', null))
+          && (lim.logoPermitido
+              || despues.get('logoUrl', null) == antes.get('logoUrl', null));
+      }
+
+      // ==================================================================
+      //  El contador de reservas es del servidor, no del organizador
+      // ==================================================================
+      //
+      //  `allow update` es `esMio() && noCambiaDueno()`, o sea que el
+      //  dueño de un evento puede escribir CUALQUIER campo del suyo que no
+      //  sea el dueño. Eso incluye el contador que la transacción de
+      //  /api/registro usa para no sobrepasar la capacidad:
+      //
+      //      updateDoc(doc(db,'eventos',id), { reservas: -1000 })
+      //
+      //  abría el cupo del propio evento. Comparar contra
+      //  `resource.data` es la forma de "falla cerrada" que ya usa
+      //  `noCambiaPrivilegios()`: da igual que el update sea parcial o un
+      //  setDoc completo, tocar el contador se deniega.
+      //
+      //  El `get(..., 0)` con default no es paranoia: los eventos creados
+      //  antes de la Fase 3 NO tienen el campo, y leer una propiedad
+      //  inexistente LANZA error en vez de devolver null (es la misma
+      //  trampa del `organizadorId` en el list de más abajo). Sin el
+      //  default, editar el nombre de un evento viejo lo dejaría
+      //  ineditable.
+      function noCambiaReservas() {
+        return request.resource.data.get('reservas', 0) == resource.data.get('reservas', 0);
+      }
+
       allow get: if esSuperAdmin() || esMio();
       // El `.get('organizadorId', null)` en lugar de
       // `resource.data.organizadorId` es a propósito. En un list() sin
@@ -284,12 +383,65 @@ service cloud.firestore {
                   || (organizacionActiva()
                       && resource.data.get('organizadorId', null) == request.auth.uid);
 
+      // Por qué NO se reutiliza `capacidadDentroDelPlan()` en el update,
+      // que es la tentación obvious: produciría un bloqueo real. Si un
+      // organizador tuvo una excepción de 1.000, abrió un evento de 1.000
+      // y el super-admin le saca la excepción, el evento queda con 1.000 y
+      // un tope de nuevo de 100. Con la regla del create, CUALQUIER
+      // update de ese evento se deniega —incluido el que lo baja a 50—
+      // porque el resultado sigue estando por encima del plan. El evento
+      // queda congelado y el organizador no tiene ninguna forma de
+      // sacarlo de ahí.
+      //
+      //  Lo que la regla de verdad quiere decir es "subir la capacidad por
+      // encima del plan está prohibido", no "el evento tiene que estar
+      // siempre dentro del plan". Por eso la condición es: si la capacidad
+      // baja (o queda igual), pasa siempre; si sube, tiene que entrar en
+      // el tope. Bajar es siempre una operación legítima —se vendieron 80
+      // de 100 y achicás el evento— y no puede quedar trancada.
+      //  Ni el `is int` ni el `> 0` de `capacidadDentroDelPlan()` van
+      //  acá, y en los dos casos es porque la rama es inalcanzable para
+      //  ellos. Sólo se llega a esta rama cuando la capacidad SUBE, o sea
+      //  cuando es mayor que la que ya tenía: un float como 99.5 nunca
+      //  sube, y un cero nunca sube. Y para los tipos raros —un string
+      //  "200", un float 150.5— el `<= lim.capacidadMaximaPorEvento`
+      //  alcanza solo, porque comparar tipos distintos da FALSE. Dejar
+      //  condiciones que no se pueden alcanzar es ruido: dice que se
+      //  chequea algo que no se chequea.
+      function subirCapacidadRespetaElPlan() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        return request.resource.data.capacidadMaxima <= resource.data.capacidadMaxima
+          || (lim != null
+              && request.resource.data.capacidadMaxima <= lim.capacidadMaximaPorEvento);
+      }
+
+      // En el create, "no permitido" significa null y no "igual que ahora",
+      // porque no hay valor anterior con el cual comparar. Es la misma
+      // distinción entre create y update que ya aparece arriba, en la nota
+      // de `esMio()`: en create se lee request.resource.data, en update se
+      // leen los dos.
+      function personalizacionAltaValida() {
+        let lim = get(/databases/$(database)/documents/organizadores/$(request.auth.uid)).data.limitesPersonalizacion;
+        let alta = request.resource.data.get('personalizacion', {});
+        return lim != null
+          && (lim.colorPersonalizadoPermitido || alta.get('colorPrimario', null) == null)
+          && (lim.colorPersonalizadoPermitido || alta.get('colorSecundario', null) == null)
+          && (lim.bannerPermitido || alta.get('bannerUrl', null) == null)
+          && (lim.logoPermitido || alta.get('logoUrl', null) == null);
+      }
+
       allow create: if esSuperAdmin()
                     || (organizacionActiva() && loCreoComoMio()
                         && request.resource.data.estado == 'activo'
-                        && capacidadDentroDelPlan());
+                        && request.resource.data.get('reservas', 0) == 0
+                        && capacidadDentroDelPlan()
+                        && personalizacionAltaValida());
 
-      allow update: if esSuperAdmin() || (esMio() && noCambiaDueno());
+      allow update: if esSuperAdmin()
+                    || (esMio() && noCambiaDueno()
+                        && noCambiaReservas()
+                        && subirCapacidadRespetaElPlan()
+                        && respetaLimitesDePersonalizacion());
       allow delete: if esSuperAdmin() || esMio();
     }
 

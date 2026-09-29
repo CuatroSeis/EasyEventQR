@@ -8,6 +8,7 @@ import {
 
 import { nuevoDocumentoOrganizador } from '../../src/services/organizadores.ts'
 import { nuevoDocumentoEvento } from '../../src/services/documentoEvento.ts'
+import type { PersonalizacionEvento } from '../../src/shared/types.ts'
 
 // El projectId tiene que coincidir con el que arranca el emulador
 // (emulators:exec --project easyeventqr-dev). El emulador no se
@@ -85,8 +86,16 @@ export function datosOrganizador(
  *  pisa lo que el test necesite, igual que datosOrganizador con
  *  nuevoDocumentoOrganizador. La razón es la misma: si el documento que
  *  la app manda y el que la regla espera son dos copias escritas a mano,
- *  no hay forma de que nadie note cuándo dejan de coincidir. */
-export function datosEvento(organizadorId: string, nombre: string): DatosOrganizador {
+ *  no hay forma de que nadie note cuándo dejan de coincidir.
+ *
+ *  `extra` existe para los tests de la Fase 3, que necesitan sembrar un
+ *  evento con `reservas` distinto de 0 o con un `personalizacion` que el
+ *  plan no permite, y después comprobar que la regla lo rechaza. */
+export function datosEvento(
+  organizadorId: string,
+  nombre: string,
+  extra: DatosOrganizador = {},
+): DatosOrganizador {
   return {
     ...nuevoDocumentoEvento(organizadorId, {
       nombre,
@@ -102,7 +111,38 @@ export function datosEvento(organizadorId: string, nombre: string): DatosOrganiz
       requierePago: false,
       precioEntrada: null,
     }),
+    ...extra,
   }
+}
+
+/**
+ * Devuelve el evento con `personalizacion` alterada en algunos campos.
+ *
+ * Los tests de la Fase 3 necesitan sembrar eventos CON banner, CON logo o
+ * con color, y escribirlos a mano sería una segunda copia de la forma de
+ * `PersonalizacionEvento` que queda vieja en silencio. Esto parte del
+ * objeto que devuelve el constructor real y pisa sólo lo que el test
+ * quiere, que es lo mismo que hace `extra` con el resto del documento.
+ */
+export function conPersonalizacion(
+  evento: DatosOrganizador,
+  cambios: Partial<PersonalizacionEvento>,
+): DatosOrganizador {
+  const base = evento.personalizacion as PersonalizacionEvento
+  return { ...evento, personalizacion: { ...base, ...cambios } }
+}
+
+/**
+ * El objeto `personalizacion` completo, con algunos campos cambiados.
+ *
+ * Existe aparte de `conPersonalizacion` porque `updateDoc` NO mergea en
+ * profundidad: manda `{personalizacion:{logoUrl:'…'}}` REEMPLAZA el mapa
+ * entero, y los otros cinco campos desaparecen. Un update de la
+ * personalización tiene que mandar el objeto completo, que es lo que va a
+ * hacer `actualizarEvento` en la app.
+ */
+export function personalizacionDe(cambios: Partial<PersonalizacionEvento> = {}): PersonalizacionEvento {
+  return { ...(datosEvento('uid-cualquiera', 'Evento').personalizacion as PersonalizacionEvento), ...cambios }
 }
 
 /**
@@ -111,14 +151,17 @@ export function datosEvento(organizadorId: string, nombre: string): DatosOrganiz
  * auto-asignar un registro escribiéndolo, porque el create está
  * cerrado; pero si algún día se abriera, el campo que hace de
  * armadura es que la propiedad se resuelve saltando al evento.
+ *
+ * El parámetro es `qrHash` y no `qrCode`: en Firestore no está el token
+ * del QR, sólo su SHA-256. El token en claro sale una sola vez por mail.
  */
-export function datosRegistro(eventoId: string, qrCode: string): DatosOrganizador {
+export function datosRegistro(eventoId: string, qrHash: string): DatosOrganizador {
   return {
     eventoId,
     nombre: 'Invitado de prueba',
     email: 'invitado@ejemplo.com',
     telefono: '+5491100000000',
-    qrCode,
+    qrHash,
     estado: 'aprobado',
     pago: {
       requerido: false,

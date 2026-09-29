@@ -63,6 +63,12 @@ function personalizacionVacia(): PersonalizacionEvento {
  * comodidad: es la única forma de que un cliente modificado no pueda
  * crear un evento a nombre de otro. Las reglas lo vuelven a verificar
  * (`loCreoComoMio()`), porque la UI no es la seguridad.
+ *
+ * `reservas` nace en 0 y NO es un parámetro del formulario, por la misma
+ * razón que `estado`: la regla del create exige que venga en 0, así que un
+ * evento que nace "con 50 reservas" es un alta que las reglas rechazan. Es
+ * el servidor, con el Admin SDK y adentro de una transacción, el único
+ * que lo incrementa.
  */
 export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEvento): Evento {
   return {
@@ -72,6 +78,7 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
     lugar: borrador.lugar.trim(),
     descripcion: borrador.descripcion.trim(),
     capacidadMaxima: borrador.capacidadMaxima,
+    reservas: 0,
     estado: 'activo',
     requierePago: borrador.requierePago,
     // Si no requiere pago, el precio se guarda en null y no en 0. La

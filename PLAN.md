@@ -10,33 +10,49 @@ decisión del código no se entiende leyendo el código, se escribe acá.
 
 ## 0. Dónde quedó la última sesión
 
-Fases 0, 1 y 2 terminadas y desplegadas. El backend de `/api/` quedó con
-credenciales reales y verificado. **La Fase 3 es el próximo trabajo y se empezó
-por el principio, pero se decidió pausar ahí para retomarla otro día.**
+Fases 0, 1 y 2 terminadas y desplegadas. **La Fase 3 está implementada de
+capa a capa** y sólo falta lo que necesita una clave de un tercero: sin
+`BREVO_API_KEY` el mail sale por consola, y con la clave sale de verdad.
 
-Para retomar, en este orden:
+Lo que quedó hecho, y por qué en ese orden:
 
-1. Migrar a Firebase Auth Anonymous, para que el asistente se registre sin
-   cuenta. Es el primer paso porque las reglas de `registros/` van a depender de
-   que exista un uid anónimo, y escribirlas antes de eso sería al revés.
-2. Página pública del evento en `/e/:eventoId`, con `aplicarTema()` leyendo
-   `personalizacion` del evento en vez de los colores del panel. Esa función ya
-   está hecha y es la misma que va a usar el widget de la Fase 4.
-3. Registro del asistente: documento de reserva con reglas que verifiquen cupo
-   y que el evento esté abierto.
-4. QR: token único por reserva, guardado hasheado en Firestore y en claro sólo
-   por mail.
-5. Mail con Brevo, que necesita la clave y el remitente verificado.
+1. **Modelo y reglas primero**, antes que los endpoints. `Evento.reservas` y
+   `Registro.qrHash` existen, y las reglas ya protegen el contador y la
+   capacidad. Escribirlos al revés hubiera dejado una semana de endpoints
+   depending de un modelo que después cambió.
+2. **`api/lib/` como módulos hoja puros**: `qr.ts`, `validacion.ts`, `cupo.ts`,
+   `email.ts`, `url.ts`. Puros, sin imports entre ellos, y por eso todos
+   testeables sin emulador y sin red (88 tests nuevos).
+3. **`api/lib/mail.ts` como el único archivo con `fetch` y con
+   `process.env`**, que es lo que hace testeable el resto.
+4. **Los tres endpoints**: `evento-publico.ts`, `registro.ts`, `validar-qr.ts`.
+5. **Las dos páginas públicas**, `EventoPublico.tsx` y `QrPublico.tsx`, con
+   `lazy()` para que el SDK de Firebase no entre en el bundle de la landing.
 
-Antes de arrancar, dos cosas que conviene tener presentes:
+Lo que **queda**, en este orden:
 
-- **El servicio de reservas tiene que hablar por `/api/`, no desde el
-  navegador**, salvo la parte que las reglas puedan validar. Es la primera vez
-  que el Admin SDK hace algo real, y el patrón de `api/lib/firebase-admin.ts`
-  ya está para eso.
-- **La brecha de capacidad en `update` está abierta** (ver pendientes). Si la
-  Fase 3 mete un flujo que permita tocar el cupo, conviene resolverla antes y
-  no después.
+1. Desplegar las reglas de Firestore, antes que nada. Están probadas contra
+   el emulador pero la versión desplegada es la anterior.
+2. Agregar `BREVO_API_KEY` y un remitente verificado en las variables de Vercel.
+   Sin eso el flujo funciona entero y el mail sale por consola.
+3. Probar el circuito con `vercel dev` contra el emulador.
+
+Decisiones que se tomaron acá y conviene no volver a discutir:
+
+- **Auth Anónimo se movió a la Fase 3.5.** El plan original arrancaba migrando
+  a Anonymous Auth, y resultó ser la decisión equivocada: un uid anónimo es
+  un string que el cliente elige, así que no prueba nada. La reserva ahora la
+  hace el servidor con el Admin SDK, y el token es el único secreto. Auth
+  Anónimo queda para cuando haga falta algo que sí necesite un uid (una lista
+  de "mis eventos" de un asistente, por ejemplo), y en ese momento conviene
+  subir a Identity Platform, que ya es el producto pago.
+- **La brecha de capacidad en `update` está cerrada** con
+  `subirCapacidadRespetaElPlan()`: bajar o mantener la capacidad siempre se
+  puede, y subir tiene que respear el plan. Con la versión anterior, un evento
+  sobre el límite por excepción comercial quedaba congelado para siempre si se
+  le revocaba la excepción.
+- **La reserva no se hace desde el navegador.** Es la primera vez que el Admin
+  SDK hace algo real, y el patrón ya estaba en `api/lib/firebase-admin.ts`.
 
 ## 1. Estado real por fase
 
@@ -163,31 +179,95 @@ querer: los links ya compartidos siguen funcionando.
 
 ### Fase 3 — Registro público + theming dinámico + QR + mail
 
+**Estado: implementada, pendiente de deploy y de la clave de Brevo.**
+
 La fase más grande y la que cierra el producto: hasta acá se organizan eventos,
-pero nadie puede reservar.
+pero nadie podía reservar.
 
-- Página pública del evento, mobile-first, sin cuenta ni login.
-- `aplicarTema()` ya está hecho y es el que se usa acá, con los colores que
-  trae `personalizacion` del evento en vez de los del panel. Es la misma función
-  que va a usar el widget de la Fase 4, y por eso vive en `src/shared/`.
-- Registro del asistente: auth anónimo + documento de reserva, con reglas que
-  verifiquen cupo y fecha.
-- QR: token único por reserva, guardado hasheado, y validación. El hash es lo
-  que va a Firestore; el token en claro sólo se manda por mail.
-- Mail de confirmación con Brevo.
+**Qué quedó hecho:**
 
-**Ya no está bloqueada.** El service account se cargó y se verificó:
-`/api/salud` responde `{"ok":true,"proyecto":"easyeventqr-dev",...}`, lo que
-prueba las tres cosas de golpe (la función corrió, la credencial es válida y
-Firestore respondió). Ese era el único bloqueo duro de la parte de registro y
-QR.
+- **Página pública** en `/e/:eventoId`, mobile-first, sin cuenta ni login. Usa
+  `aplicarTema()` con los colores que trae `personalizacion` del evento en vez
+  de los del panel, y limpia las variables al desmontar para que el color de un
+  evento no se le pegue al siguiente en la misma sesión.
+- **Registro del asistente** por `POST /api/registro`, con la reserva y el
+  incremento de `Evento.reservas` en la MISMA transacción. El cupo no se cuenta:
+  se compara contra un contador que escribe el servidor, porque `count()` no es
+  confiable adentro de una transacción y las reglas de Firestore no pueden
+  contar.
+- **QR** con token de 192 bits (`crypto.randomBytes(24)` en base64url). A
+  Firestore va el SHA-256, y el token en claro sale una sola vez, en el mail.
+  El hash es además el ID del documento, así que la validación es un `get` y no
+  una query, y dos reservas con el mismo token son imposibles por construcción.
+- **Validación** por `GET /api/validar-qr?t=<token>`, de sólo lectura, sin
+  email ni nombre en la respuesta. Escribir `usado` es la Fase 7.
+- **Mail con Brevo**, armado en `api/lib/email.ts` (puro, testeable) y enviado
+  por `api/lib/mail.ts` (el único archivo con `fetch`). Sin clave, sale por
+  consola.
+- **Anti-abuso**: límite por IP con lectura primero (60 req/min, 10
+  envíos/hora, 30 envíos/día) y un campo trampa `sitioWeb` que responde 200 con
+  la forma normal sin escribir nada.
 
-Lo que **queda** antes de poder enviar el mail de la Fase 3 es la clave de
-Brevo y un remitente verificado. La parte de registro público y QR se puede
-arrancar sin eso.
+**Lo que NO se hizo, a propósito:**
+
+- **Auth Anónimo.** Se movió a la Fase 3.5. Un uid anónimo lo elige el
+  cliente, así que no sirve para autorizar nada; el servidor con el Admin SDK
+  hace la reserva y el token es el único secreto.
+- **Deduplicación por email.** No hay. Registrarse dos veces con el mismo
+  correo consume dos lugares. El email se normaliza (trim + minúsculas) para
+  que la deduplicación sea un `where` y no una reconstrucción.
+- **Filtro por fecha del evento.** El organizador abre y cierra con `estado`, y
+  un segundo filtro invisible basado en el reloj contradice su elección explícita
+  y produce un fallo que no puede arreglar desde el panel.
+- **Marcar el QR como usado.** Es la Fase 7, con un operador en la puerta.
+
+**Consecuencias que hay que tener presentes:**
+
+- `reservas` cuenta reservas **emitidas**, no vivas. Si el organizador borra un
+  registro desde el panel, el contador no baja. El reconteo en lote es de la
+  Fase 6, y por eso el nombre es `reservas` y no `cupo`.
+- Como sólo se guarda el hash, **no se puede regenerar ni exportar la imagen
+  del QR**. La Fase 6 puede exportar los datos del asistente y reenviar el mail,
+  pero no recuperar el PNG.
+- El **201 no promete que el mail salió**. El mail va después de la
+  transacción y `enviarMail()` no tira nunca: si Brevo está caído, la reserva
+  queda igual y el reenvío es problema de la Fase 6. Un 500 que miente haría
+  reintentar al usuario y duplicaría la reserva.
 
 **Criterio de cierre:** alguien que no tiene cuenta entra a `/e/<id>`, se
-anota, recibe el mail con un QR, y ese QR pasa el control de entrada.
+anota, recibe el mail con un QR, y ese QR pasa el control de entrada. Falta la
+clave de Brevo para el paso del medio, y el deploy de las reglas para que las
+reglas nuevas sean las que corren.
+
+### Fase 3.5 — Auth Anónimo (sacada de la Fase 3)
+
+Lo que la Fase 3 empezó a hacer sin esta pieza, y por qué se postpone.
+
+**Por qué se sacó de la Fase 3.** El plan original arrancaba migrando a
+Firebase Auth Anonymous, con el argumento de que las reglas de `registros/`
+dependen de que exista un uid anónimo. El problema es que un uid anónimo es un
+string que elige el cliente: sirve para agrupar documentos del mismo visitante,
+no para autorizar nada. Como la reserva la hace el servidor con el Admin SDK y
+el único secreto es el token, el uid anónimo no hacía falta para nada.
+
+**Cuándo hace falta, entonces.** Cuando aparezca una función que requiera
+recordar quién es el visitante: "mis eventos" para un asistente, o un
+recordatorio de QR a las 24 horas. Ahí hay que decidir dos cosas.
+
+- **Si vale la pena Anonymous Auth.** Sus cuotas son duras: 50.000 usuarios
+  activos mensuales en el plan Spark, y cada usuario anónimo consume uno. Un
+  evento popular con público que reserva y vuelve al mes siguiente consume
+  usuarios.
+- **Si conviene Identity Platform de una.** Es el producto de pago de Firebase
+  y ya trae lo que el anonimo no da: usuarios que se recuperan, quota que
+  escala, y un lugar único donde después entra la verificación por SMS. Migrar
+  después significa volver a migrar los documentos.
+
+**Recomendación: no hacerlo.** Agregarlo "por las dudas" es la forma más
+cara de no hacer nada, porque una vez que hay documentos que dependen del uid,
+sacarlo es una migración. Lo que hay que hacer en su lugar, cuando aparezca
+la necesidad, es una collection de "visitantes" con un token de sesión propio,
+que ya es el patrón que usa la reserva.
 
 ### Fase 4 — `<ticket-widget>` embebible
 
@@ -212,13 +292,30 @@ el servidor y no en el cliente.
 **Criterio de cierre:** un evento pago toma reservas, el webhook firmado activa
 el QR, y un webhook con firma inválida no activa nada.
 
-### Fase 6 — Panel de registros + descarga de QRs en lote
+### Fase 6 — Panel de registros + exportación en lote
 
 Listado de reservas con búsqueda, y exportación a CSV vía `/api/`. Requiere el
 service account, que también hace falta en las Fases 3 y 5.
 
-**Criterio de cierre:** el organizador ve quién se anotó y baja un CSV que
-sirve para imprimir y controlar la puerta.
+**Lo que hay que corregir de la definición original:** decía "descarga de QRs
+en lote", y no se puede. Como la Fase 3 sólo guarda el SHA-256 del token y no
+el token en claro, la imagen del QR no se puede regenerar a partir del
+documento: no es que sea difícil, es que la información no está. Cualquier
+funcionalidad que asumiera "volver a bajar el QR" tiene que ser otra cosa.
+
+**Lo que sí entra, y es lo que de verdad falta:**
+
+- **CSV de asistentes**, con nombre, correo, teléfono, estado y fecha.
+- **Reenvío del mail** a uno o a todos. Es el arreglo de la reserva sin mail,
+  que es el hueco que dejó el diseño de "el mail va después de la transacción".
+- **El reconteo de `reservas`.** El contador cuenta reservas emitidas y no baja
+  cuando se borra un registro, así que hay que ofrecer "recalcular el cupo real"
+  como una transacción explícita y auditada, no como algo que pase solo.
+- **Un aviso de a quién se va a quedar sin mail.** Los correos rebotados de Brevo se
+  pueden leer por API, y esa es la lista de a quién hay que reenviar.
+
+**Criterio de cierre:** el organizador ve quién se anotó, baja el CSV, y
+reenvía el mail a quien no lo recibió.
 
 ### Fase 7 — Escáner QR + link temporal de operador
 
@@ -267,13 +364,16 @@ Nada de esto es una fase. Son cosas que están abiertas.
   en Preview va con `--git-branch ""` a propósito: sin ese flag el CLI pide la
   rama interactivamente aunque le mandes el valor por stdin, y en modo no
   interactivo se queda esperando y no guarda nada.
-- **La capacidad se puede subir editando el evento.** La regla
-  `capacidadDentroDelPlan` valida en `create` y no en `update`, así que un
-  organizador puede crear un evento con 100 y después subirlo a 5000
-  editándolo. Se decidió así a propósito, para no bloquear la edición, pero
-  es una brecha real del límite comercial. Hay que decidir: o se valida también
-  en update, o se acepta el riesgo hasta que el servidor sea la fuente de
-  verdad en la Fase 5.
+- **~~La capacidad se puede subir editando el evento.~~ Cerrada en la Fase 3.**
+  La brecha era que `capacidadDentroDelPlan` validaba en `create` y no en
+  `update`, así que un organizador podía crear un evento con 100 y subirlo a
+  5000 editándolo. Ahora hay `subirCapacidadRespetaElPlan()` en el `update`.
+  La forma de la regla importa: NO es "el nuevo valor tiene que estar dentro
+  del plan", sino "si el nuevo valor es mayor que el actual, tiene que estar
+  dentro del plan". Con la versión estricta, un evento que quedó por encima del
+  plan por una excepción comercial que después se revocaba quedaba congelado
+  para siempre: no se podía ni bajar. Ahora bajar y mantener siempre se puede.
+  Probado con mutación de la regla, no sólo con casos felices.
 - **No hay CI.** Todo se corre a mano: `npm run typecheck`, `npm run test` y
   `npm run build`. Los tests son rápidos y el emulador levanta solo, así que
   un workflow de GitHub Actions es trabajo de una tarde. Fuera de alcance por
@@ -289,7 +389,15 @@ Nada de esto es una fase. Son cosas que están abiertas.
 - **Vercel Hobby dice "uso personal, no comercial".** Para el MVP va. El día
   que se cobre hay que migrar a Pro, y por eso el backend ya está aislado en
   `api/`.
-- **Sin CI ni tests end-to-end.** Hay 62 tests de reglas y 32 unitarios, pero
-  nada ejercita la UI contra el emulador. La Fase 3 es el momento de decidir si
-  eso alcanza, porque ahí aparecen los flujos de pago y mail, que son los que
-  más se rompen.
+- **Sin CI ni tests end-to-end.** Hay 89 tests de reglas y 120 unitarios, pero
+  nada ejercita la UI ni los endpoints contra el emulador. La Fase 3 puso el
+  primer flujo de verdad que cruza las dos cosas, y el hueco se nota: `api/`
+  se prueba por partes puras, no de punta a punta. Un test de integración de
+  `POST /api/registro` contra el emulador, con Admin SDK apuntando al emulador,
+  es el próximo paso que más valor da por hora. Los flujos de pago y mail de la
+  Fase 5 van a necesitarlo sí o sí.
+- **El límite por IP es un documento por IP, sin limpieza.** La colección
+  `rateLimit/` crece para siempre: un documento por cada IP que intentó
+  reservar, unos 64 bytes. No es un problema hoy y va a ser uno en un año, con
+  una regla de borrado por `desdeDia` que se pueda correr con un trigger o a
+  mano. Queda anotado para que no sorprenda.

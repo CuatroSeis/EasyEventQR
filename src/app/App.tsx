@@ -23,6 +23,15 @@ import Home from './pages/Home'
  * un producto mobile-first: menos kilobytes en la primera pantalla
  * sobre datos móviles.
  */
+/**
+ * Las dos rutas públicas de la Fase 3 van con lazy() por el mismo motivo
+ * que las del panel y con un motivo más: ni una ni otra toca Firebase.
+ * Si se importaran de forma estática, el import estático los mete en el
+ * grafo del bundle inicial y arrastran el SDK entero a la landing
+ * pública, que es la página que abre la mayoría de las visitas.
+ */
+const EventoPublico = lazy(() => import('./pages/EventoPublico'))
+const QrPublico = lazy(() => import('./pages/QrPublico'))
 const Login = lazy(() => import('./pages/Login'))
 const Panel = lazy(() => import('./pages/Panel'))
 const EventoForm = lazy(() => import('./pages/EventoForm'))
@@ -54,6 +63,13 @@ export default function App() {
       <Suspense fallback={<Cargando />}>
         <Routes>
           <Route path="/" element={<Home />} />
+          {/* /e/:eventoId es la landing que se comparte por WhatsApp y
+              /q/:token es lo que escanea el asistente. Ninguna de las dos
+              necesita sesión: es el producto público, y por eso van
+              FUERA del <Protegido>, que además es sólo UX, no
+              seguridad. */}
+          <Route path="/e/:eventoId" element={<EventoPublico />} />
+          <Route path="/q/:token" element={<QrPublico />} />
           <Route path="/entrar" element={<Login />} />
           <Route element={<Protegido />}>
             <Route element={<PanelLayout />}>

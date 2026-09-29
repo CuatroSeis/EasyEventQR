@@ -24,10 +24,10 @@ está en [`PLAN.md`](./PLAN.md), que es el documento de trabajo del proyecto.
 | 0 | Vite + React + Tailwind + Firebase, dos builds, deploy en Vercel | ✅ |
 | 1 | Login con Google + reglas de seguridad multi-tenant | ✅ |
 | 2 | CRUD de eventos (mobile-first) + branding del panel | ✅ |
-| 3 | Registro público + theming dinámico + QR + mail | |
+| 3 | Registro público + theming dinámico + QR + mail | 🟡 |
 | 4 | `<ticket-widget>` embebible (Shadow DOM, bundle propio) | |
 | 5 | Capa de pagos desacoplada (modo simulado) + webhook firmado | |
-| 6 | Panel de gestión de registros + descarga de QRs en lote | |
+| 6 | Panel de gestión de registros + CSV + reenvío de mail | |
 | 7 | Escáner de QR con transacción atómica + link temporal de operador | |
 | 8 | Panel de super-admin (desktop-first) | |
 | 9 | Pulido de UI responsive + README + demo pública | |
@@ -40,7 +40,7 @@ Costo total del MVP: **$0, sin tarjeta de crédito en ningún proveedor.**
 Frontend    Vite + React + Tailwind          →  Vercel Hobby (gratis)
 Backend     Vercel Functions en /api/        →  Admin SDK de Firebase
 Datos       Firestore (plan Spark)            →  1 GiB · 50k lecturas/día
-Auth        Firebase Auth (Google + anónimo)  →  gratis
+Auth        Firebase Auth (Google)            →  gratis
 Mail        Brevo API                         →  300 mails/día
 ```
 
@@ -53,6 +53,13 @@ Dos builds desde un solo repo:
 
 `src/shared/` lo importan los dos builds: una sola lógica de negocio, dos
 empaquetados.
+
+La 3 está implementada de punta a punta pero **sin deploy**: falta subir las
+reglas de Firestore y cargar `BREVO_API_KEY` en Vercel. El 🟡 es por eso, y no
+por falta de código. La diferencia con las otras es que la 3 tiene dos
+dependencias externas que no se pueden resolver desde el repo: las reglas se
+despliegan con el CLI de Firebase y el remitente de Brevo se verifica en el
+panel del proveedor.
 
 ## Puesta en marcha
 
@@ -85,7 +92,18 @@ En Vercel (`Settings → Environment Variables`):
 | `FIREBASE_SERVICE_ACCOUNT` | Admin SDK en `/api/` | **Sí** |
 | `BREVO_API_KEY` | envío de mail | **Sí** |
 | `BREVO_SENDER_EMAIL` | remitente (tiene que estar verificado en Brevo) | No |
+| `BREVO_SENDER_NAME` | nombre que se ve como remitente | No |
+| `APP_URL` | origen público con el que se arma la URL del QR | No |
 | `MERCADOPAGO_*` | Fase 5, vacío en el MVP | **Sí** |
+
+`APP_URL` es opcional: si no está, el QR se arma con el dominio del despliegue
+(`VERCEL_URL`) y, como último recurso, con el `Host` del request. Conviene
+setearla igual, porque el `Host` lo manda el cliente y en producción es la
+única fuente que no se puede falsear.
+
+Sin `BREVO_API_KEY` el registro funciona igual y el mail sale por la consola
+de `vercel dev`. Es el modo en el que se puede probar el circuito entero sin
+gastar un envío de la cuota.
 
 Para el service account: descargalo de la consola de Firebase y pasalo por el
 script, que lo aplana a una línea para que no se rompa al pegarlo:
@@ -242,6 +260,113 @@ consola de Firebase.
 archivos de test comparten el mismo emulador, y `node --test` por defecto los
 corre **en paralelo**, así que el `clearFirestore()` de uno borra los datos del
 otro y los tests fallan con `NOT_FOUND` sin que haya un bug en las reglas.
+
+## Fase 3 — El registro público
+
+La parte del producto donde alguien sin cuenta entra y consigue una entrada.
+Acá está la documentación que hace falta para no romperla.
+
+### Los tres endpoints
+
+| Endpoint | Qué hace | Escribe |
+|---|---|---|
+| `GET /api/evento-publico?id=` | Devuelve el evento con una lista blanca de campos | No |
+| `POST /api/registro` | Crea la reserva y manda el mail | Sí, en una transacción |
+| `GET /api/validar-qr?t=` | Dice si un código sirve | No |
+
+Ninguno de los tres necesita sesión, y ninguno acepta un token de Firebase:
+el único secreto es el token del QR. Por eso **el Admin SDK lee y escribe sin
+que las reglas intervengan**, y por eso las reglas de Firestore NO son la
+frontera de seguridad de esta parte: la frontera es la lista blanca de
+`api/evento-publico.ts` y el hecho de que el token nunca se guarde en claro.
+
+Eso tiene una consecuencia práctica: `api/evento-publico.ts` no puede usar
+`{...evento}` en el `return`, porque cualquier campo nuevo que se le agregue al
+modelo se publica solo. La lista de lo que sale es explícita y a mano.
+
+### Por qué la reserva va por `/api/` y no desde el navegador
+
+Dos razones, y las dos importan:
+
+1. **Las reglas no lo dejarían.** `registros/` exige que quien escribe sea el
+   dueño de la reserva, o el super-admin, y un visitante anónimo no es ninguno
+   de los dos.
+2. **El cupo no se puede validar desde el cliente.** La reserva y el incremento
+   de `Evento.reservas` tienen que ir en la MISMA transacción, y eso sólo se
+   puede hacer con el Admin SDK. Con dos escrituras separadas, dos personas que
+   se anotan en el mismo instante leen el mismo contador y las dos entran
+   aunque quede un solo lugar.
+
+Por eso `Evento.reservas` existe, y por eso hay una regla `noCambiaReservas()`
+que impide que el organizador lo toque: es un campo del servidor.
+
+### El token
+
+- 24 bytes de `crypto.randomBytes`, en base64url: 32 caracteres, 192 bits.
+- A Firestore va el SHA-256, en el campo `qrHash` **y** como ID del documento.
+  Con el hash como ID, la validación es un `get` y no una query, y dos reservas
+  con el mismo token son imposibles por construcción.
+- El token en claro sale **una sola vez**: en el QR del mail. No se guarda, no
+  se registra en logs, no se devuelve en ninguna respuesta HTTP.
+- Por lo mismo, **no se puede regenerar la imagen del QR** desde el
+  documento. La Fase 6 puede exportar los datos del asistente y reenviar el
+  mail, pero no recuperar el PNG.
+
+### El orden dentro de `POST /api/registro`
+
+```
+validar el cuerpo   → 400
+trampa (honeypot)   → 200 falso, sin escribir nada
+límite por IP       → 429
+transacción         → 409 lleno / 503 reintentable
+mandar el mail      → 201 igual
+```
+
+Las dos primeras van antes de tocar Firestore a propósito. Un request con el
+cuerpo roto o con la trampa llena no lee ni escribe nada en la base, y en el
+plan Spark las lecturas son 2,5 veces más caras que las escrituras (50.000
+contra 20.000 por día).
+
+El límite por IP va **después** de validar, y no antes, por un motivo que
+parece contraintuitivo: el contador lleva tres ventanas junta, dos de las
+cuales cuentan envíos de mail. Si el límite corriera antes de validar, diez
+formularios con un error de tipeo gastarían diez de los diez envíos por hora de
+esa conexión, y a la gente real de esa misma IP le diríamos "ya enviamos
+suficientes entradas" sin haber enviado ninguna.
+
+### Por qué el 201 no promete que el mail salió
+
+El mail va **después** de la transacción, porque no se puede meter un `fetch` a
+Brevo adentro de una transacción de Firestore: la transacción tiene tiempo
+máximo de vida y mientras espera a la red mantiene bloqueados los documentos
+del evento, con lo que cualquier otra persona que se esté registrando en ese
+momento ve su transacción abortada.
+
+El orden inverso tiene el problema opuesto: un fallo del mail deja la reserva
+escrita y una respuesta de error, el usuario cree que no se registró, reintenta,
+y quedan dos reservas y dos mails.
+
+Por eso `api/lib/mail.ts` **nunca tira**: registra el fallo en el log y
+devuelve. La reserva vale, el mail queda pendiente de reenvío en la Fase 6, y
+un 201 que es cierto es mejor que un 500 que miente.
+
+### El theming público
+
+`aplicarTema()` es la misma función que usa el panel, con los colores del
+evento. Lo que cambia en la landing es el **cleanup**: al desmontar se llama
+`aplicarTema(null, raiz)`, que borra las variables CSS en vez de no hacer nada.
+Sin eso, visitar dos eventos seguidos en la misma sesión deja el color del
+primero pegado en el segundo. La diferencia entre `null` y `undefined` en esa
+función no es cosmética y está probada en `tests/unit/theming.test.ts`.
+
+### Qué no se validó todavía
+
+`GET /api/validar-qr` es de **sólo lectura**: dice si el código existe, si es
+del evento que se está mostrando y si no está anulado, y no marca nada.
+Escribir `usado` es la Fase 7, con un operador en la puerta y una transacción
+que evite que dos escaneos simultáneos pasen el mismo código. Por eso la
+respuesta tampoco devuelve el email: la idea de "mostrar a quién buscar" es
+justo el dato que no puede estar en una pantalla compartida en la puerta.
 
 ## El patrón de theming
 

@@ -5,11 +5,14 @@ import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebas
 import { LIMITES_POR_PLAN } from '../../src/shared/types.ts'
 import {
   ORG_A,
+  EVENTO_A,
   UID_ADMIN,
   apagarEntorno,
   arrancarEntorno,
+  conPersonalizacion,
   datosEvento,
   datosOrganizador,
+  personalizacionDe,
   sembrarBase,
 } from './ayudas.ts'
 
@@ -230,6 +233,21 @@ describe('capacidad: el evento no puede exceder lo que da el plan', () => {
     )
   })
 
+  it('A NO puede abrir un evento con una capacidad fraccional', async () => {
+    // El otro caso del `is int`, y el que de verdad lo necesita: comparar
+    // cosas de tipos distintos da FALSE, así que un string ya lo rechaza
+    // el `<= 100` de la regla. Pero 99.5 es un número y `99.5 <= 100` es
+    // VERDADERO: sin el `is int` un plan gratis podría abrir un evento con
+    // 99,5 entradas y bajar de ahí en decimales.
+    const db = comoA().firestore()
+    await assertFails(
+      setDoc(doc(db, 'eventos', 'capacidad-decimal'), {
+        ...datosEvento(ORG_A, 'Capacidad fraccional'),
+        capacidadMaxima: 99.5,
+      }),
+    )
+  })
+
   it('la excepción del super-admin levanta el tope sin deployar', async () => {
     await comoAdminConcede({ capacidadMaximaPorEvento: 1_000 })
     const db = comoA().firestore()
@@ -259,15 +277,358 @@ describe('capacidad: el evento no puede exceder lo que da el plan', () => {
   })
 })
 
-describe('capacidad: sólo se valida al crear, no al editar', () => {
-  it('A puede bajar la capacidad de un evento existente', async () => {
+describe('capacidad: editarla también respeta el plan', () => {
+  it('A NO puede subir la capacidad por encima del plan, ni una entrada', async () => {
+    // El test de borde del create (línea de arriba) tiene su espejo acá.
+    // Si la regla fuera `<=` en vez de `<` en la rama de suba, este test
+    // es el que lo detecta: 101 con un tope de 100 tiene que fallar.
+    const db = comoA().firestore()
+    await assertFails(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        capacidadMaxima: LIMITES_POR_PLAN.gratis.capacidadMaximaPorEvento + 1,
+      }),
+    )
+  })
+
+  it('A NO puede abrir un cupo de un millón editando el evento', async () => {
+    // El ataque que la Fase 2 dejó abierto y que la Fase 3 cierra: crear
+    // un evento chico y después agrandarlo por la puerta de atrás.
+    const db = comoA().firestore()
+    await assertFails(updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: 1_000_000 }))
+  })
+
+  it('A NO puede mandar la capacidad como texto para que compare cualquier cosa', async () => {
+    const db = comoA().firestore()
+    await assertFails(
+      updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: '1000000' }),
+    )
+  })
+
+  it('A SÍ puede bajar la capacidad de un evento existente', async () => {
     // Bajar la capacidad es una operación legítima y frecuente: se vendieron
     // 80 de 100 y achicás el evento. Si el update estuviera sujeto al
     // mismo tope del create, un cliente que le bajara la capacidad a un
     // evento chico no podría agrandarlo nunca más y el formulario se
     // volvería imposible de usar.
     const db = comoA().firestore()
-    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-de-a'), { capacidadMaxima: 50 }))
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: 50 }))
+  })
+
+  it('A SÍ puede editar otros campos sin tocar la capacidad', async () => {
+    // Guardarraíl de la regla nueva: no se coló en los updates que no
+    // tocan la capacidad. Renombrar un evento de 100 con un plan de 100
+    // tiene que andar siempre.
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { nombre: 'Concierto renombrado' }))
+  })
+
+  it('con excepción concedida, A SÍ puede subir dentro del tope nuevo y NO una más', async () => {
+    await comoAdminConcede({ capacidadMaximaPorEvento: 1_000 })
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: 1_000 }))
+    await assertFails(updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: 1_001 }))
+  })
+
+  /**
+   * Deja un evento con capacidad por encima del plan del organizador.
+   *
+   * El escenario: una excepción comercial de 1.000, se abre un evento de
+   * 1.000, y después el super-admin le saca la excepción. Es el estado en
+   * el que el evento queda "fuera del plan" y del que hay que salir.
+   */
+  async function sembrarEventoSobreElTope(eventoId: string): Promise<void> {
+    await comoAdminConcede({ capacidadMaximaPorEvento: 1_000 })
+    const db = comoA().firestore()
+    await assertSucceeds(
+      setDoc(doc(db, 'eventos', eventoId), {
+        ...datosEvento(ORG_A, 'Evento grande'),
+        capacidadMaxima: 1_000,
+      }),
+    )
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'organizadores', ORG_A), {
+        limitesPersonalizacion: { ...LIMITES_POR_PLAN.gratis },
+      })
+    })
+  }
+
+  it('un evento que quedó fuera del plan se puede achicar', async () => {
+    // El bloqueo que se evitó poniendo `capacidadDentroDelPlan()` tal cual
+    // en el update: si el update exigiera el tope SIEMPRE, este evento
+    // quedaría congelado y no se podría bajar a 50.
+    await sembrarEventoSobreElTope('evento-sobre-el-tope')
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-sobre-el-tope'), { capacidadMaxima: 50 }))
+  })
+
+  it('un evento que quedó fuera del plan se puede renombrar SIN tocar la capacidad', async () => {
+    // OJO con que este test no baje la capacidad antes. Si lo hiciera, el
+    // renombrado de abajo vería un evento ya dentro del plan y pasaría
+    // siempre, con la regla buena y con la mala: el test no probaría nada.
+    //
+    // Este es el caso que importa de verdad: el organizador quiere
+    // corregir la descripción de un evento que quedó sobre el tope, y no
+    // tiene por qué bajar la capacidad para poder hacerlo. Si la regla
+    // exigiera el tope en todo update, no podría.
+    await sembrarEventoSobreElTope('evento-sobre-el-tope')
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-sobre-el-tope'), { nombre: 'Renombrado' }))
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-sobre-el-tope'), { descripcion: 'Otra descripción' }))
+  })
+
+  it('pero un evento sobre el tope NO puede subir la capacidad un poco más', async () => {
+    // El otro borde del mismo escenario: estar fuera del plan no es un
+    // permiso para empeorar. 1.001 con un tope de 100 se sigue negando.
+    await sembrarEventoSobreElTope('evento-sobre-el-tope')
+    const db = comoA().firestore()
+    await assertFails(updateDoc(doc(db, 'eventos', 'evento-sobre-el-tope'), { capacidadMaxima: 1_001 }))
+  })
+
+  it('el super-admin puede subir la capacidad de cualquier evento', async () => {
+    const db = comoAdmin().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { capacidadMaxima: 1_000_000 }))
+  })
+})
+
+describe('el contador de reservas lo escribe el servidor, no el organizador', () => {
+  it('A SÍ crea un evento con el contador en cero', async () => {
+    const db = comoA().firestore()
+    await assertSucceeds(
+      setDoc(doc(db, 'eventos', 'contador-en-cero'), datosEvento(ORG_A, 'Contador en cero')),
+    )
+  })
+
+  it('A NO puede crear un evento que nazca con reservas', async () => {
+    // El ataque no necesita llegar a la transacción: un `addDoc` con el
+    // contador inventado. Lo que se necesita es que la regla del create
+    // lo pida en cero explícitamente, no que "no lo haya tocando nadie".
+    const db = comoA().firestore()
+    await assertFails(
+      setDoc(doc(db, 'eventos', 'contador-mentiroso'), datosEvento(ORG_A, 'Contador mentiroso', { reservas: 5 })),
+    )
+  })
+
+  it('un evento creado antes de la Fase 3 se puede seguir editando', async () => {
+    // Los eventos que ya están en la base no tienen el campo `reservas`.
+    // Leer una propiedad inexistente LANZA error en el motor de reglas y
+    // deniega la operación entera, así que sin un `get(..., 0)` con
+    // default, todos los eventos viejos quedaban ineditables de golpe.
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      const viejo = datosEvento(ORG_A, 'Evento de antes de la Fase 3')
+      delete viejo.reservas
+      await setDoc(doc(ctx.firestore(), 'eventos', 'evento-viejo'), viejo)
+    })
+
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-viejo'), { nombre: 'Renombrado' }))
+  })
+
+  it('A NO puede ni subir ni bajar el contador de un evento con reservas', async () => {
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'eventos', 'evento-con-reservas'),
+        datosEvento(ORG_A, 'Evento con reservas', { reservas: 3 }),
+      )
+    })
+
+    const db = comoA().firestore()
+    // El ataque real: abrirse el propio cupo.
+    await assertFails(updateDoc(doc(db, 'eventos', 'evento-con-reservas'), { reservas: -1_000 }))
+    await assertFails(updateDoc(doc(db, 'eventos', 'evento-con-reservas'), { reservas: 4 }))
+  })
+
+  it('A NO puede colar el contador en un update que además cambia otra cosa', async () => {
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'eventos', 'evento-con-reservas'),
+        datosEvento(ORG_A, 'Evento con reservas', { reservas: 3 }),
+      )
+    })
+
+    // La comparación contra resource.data no mira el motivo del update:
+    // cambiar el nombre de paso no vuelve legítimo tocar el contador.
+    const db = comoA().firestore()
+    await assertFails(
+      updateDoc(doc(db, 'eventos', 'evento-con-reservas'), { nombre: 'Renombrado', reservas: 0 }),
+    )
+  })
+
+  it('A SÍ puede seguir editando un evento que tiene reservas', async () => {
+    // El otro riesgo de una regla que falla cerrada: que congele el
+    // evento. Con el contador en 3, cambiar el nombre tiene que andar.
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'eventos', 'evento-con-reservas'),
+        datosEvento(ORG_A, 'Evento con reservas', { reservas: 3 }),
+      )
+    })
+
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-con-reservas'), { nombre: 'Renombrado' }))
+  })
+
+  it('el super-admin puede corregir el contador a mano', async () => {
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'eventos', 'evento-con-reservas'),
+        datosEvento(ORG_A, 'Evento con reservas', { reservas: 3 }),
+      )
+    })
+
+    const db = comoAdmin().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', 'evento-con-reservas'), { reservas: 2 }))
+  })
+})
+
+describe('la personalización del evento la limita el plan', () => {
+  it('un plan gratis NO puede crear un evento con banner', async () => {
+    const db = comoA().firestore()
+    await assertFails(
+      setDoc(
+        doc(db, 'eventos', 'con-banner-gratis'),
+        conPersonalizacion(datosEvento(ORG_A, 'Banner sin permiso'), {
+          bannerUrl: 'https://ejemplo.com/banner.png',
+        }),
+      ),
+    )
+  })
+
+  it('un plan gratis NO puede crear un evento con logo', async () => {
+    const db = comoA().firestore()
+    await assertFails(
+      setDoc(
+        doc(db, 'eventos', 'con-logo-gratis'),
+        conPersonalizacion(datosEvento(ORG_A, 'Logo sin permiso'), {
+          logoUrl: 'https://ejemplo.com/logo.png',
+        }),
+      ),
+    )
+  })
+
+  it('un plan gratis SÍ puede crear un evento con color', async () => {
+    // Si esta regla estuviera escrita con un "y" en vez de un "o", el plan
+    // gratis no podría tematizar nada y la landing /e/:id sería siempre
+    // del color por defecto, que es lo contrario de lo que ofrece.
+    const db = comoA().firestore()
+    await assertSucceeds(
+      setDoc(
+        doc(db, 'eventos', 'con-color-gratis'),
+        conPersonalizacion(datosEvento(ORG_A, 'Evento con color'), {
+          colorPrimario: '#7c3aed',
+          colorSecundario: '#0f172a',
+        }),
+      ),
+    )
+  })
+
+  it('un plan gratis NO puede poner banner ni logo en un update', async () => {
+    const db = comoA().firestore()
+    await assertFails(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ bannerUrl: 'https://ejemplo.com/banner.png' }),
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ logoUrl: 'https://ejemplo.com/logo.png' }),
+      }),
+    )
+  })
+
+  it('un plan gratis SÍ puede poner color en un update', async () => {
+    // La contrapartida del test de arriba: la regla no tiene que pasar
+    // siempre, tiene que pasar sólo lo que el plan permite.
+    const db = comoA().firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ colorPrimario: '#7c3aed', colorSecundario: '#0f172a' }),
+      }),
+    )
+  })
+
+  it('con plan pro el banner entra y el logo no', async () => {
+    await comoAdminConcede({ bannerPermitido: true })
+    const db = comoA().firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ bannerUrl: 'https://ejemplo.com/banner.png' }),
+      }),
+    )
+    // El mismo update con un logo tiene que seguir fallando: que el plan
+    // conceda una cosa no concede la otra.
+    await assertFails(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ logoUrl: 'https://ejemplo.com/logo.png' }),
+      }),
+    )
+  })
+
+  it('con plan pro+ el logo entra', async () => {
+    await comoAdminConcede({ logoPermitido: true })
+    const db = comoA().firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ logoUrl: 'https://ejemplo.com/logo.png' }),
+      }),
+    )
+  })
+
+  it('el logo concedido sobrevive a los guardados posteriores', async () => {
+    // Si la regla comparara contra null en vez de contra el valor actual,
+    // el guardado siguiente borraría el logo que el super-adminhabilitó
+    // y la excepción valdría para un solo guardado.
+    await comoAdminConcede({ logoPermitido: true })
+    const db = comoA().firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ logoUrl: 'https://ejemplo.com/logo.png' }),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({ logoUrl: 'https://ejemplo.com/logo.png', colorPrimario: '#0ea5e9' }),
+      }),
+    )
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { nombre: 'Renombrado' }))
+  })
+
+  it('revocado el permiso de color, el valor tiene que SEGUIR SIENDO el que está', async () => {
+    // Ni cambiarlo ni borrarlo. Borrarlo sería lo fácil de hacer y lo que
+    // arruinaría una excepción comercial: el siguiente guardado de
+    // cualquier campo se lleva el color por delante.
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), 'eventos', 'con-color'),
+        conPersonalizacion(datosEvento(ORG_A, 'Evento con color'), { colorPrimario: '#7c3aed' }),
+      )
+      await updateDoc(doc(ctx.firestore(), 'organizadores', ORG_A), {
+        limitesPersonalizacion: { ...LIMITES_POR_PLAN.gratis, colorPersonalizadoPermitido: false },
+      })
+    })
+
+    const db = comoA().firestore()
+    await assertFails(
+      updateDoc(doc(db, 'eventos', 'con-color'), {
+        personalizacion: personalizacionDe({ colorPrimario: '#dc2626' }),
+      }),
+    )
+    await assertFails(
+      updateDoc(doc(db, 'eventos', 'con-color'), {
+        personalizacion: { ...personalizacionDe({}), colorPrimario: null },
+      }),
+    )
+  })
+
+  it('el super-admin no está sujeto a los límites de personalización', async () => {
+    const db = comoAdmin().firestore()
+    await assertSucceeds(
+      updateDoc(doc(db, 'eventos', EVENTO_A), {
+        personalizacion: personalizacionDe({
+          bannerUrl: 'https://ejemplo.com/banner.png',
+          logoUrl: 'https://ejemplo.com/logo.png',
+        }),
+      }),
+    )
   })
 })
 

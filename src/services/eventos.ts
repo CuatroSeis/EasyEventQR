@@ -88,6 +88,11 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
     lugar: String(datos.lugar ?? ''),
     descripcion: String(datos.descripcion ?? ''),
     capacidadMaxima: Number(datos.capacidadMaxima ?? 0),
+    // `?? 0` y no un Number() sobre undefined: un evento creado antes de
+    // la Fase 3 no tiene el campo, y `Number(undefined)` es NaN, que
+    // comparado con cualquier capacidad da NaN y "quedan N lugares" en
+    // pantalla. Un 0 es la lectura honesta de "todavía no reservó nadie".
+    reservas: Number(datos.reservas ?? 0),
     estado: datos.estado === 'cerrado' ? 'cerrado' : 'activo',
     requierePago: datos.requierePago === true,
     precioEntrada: typeof datos.precioEntrada === 'number' ? datos.precioEntrada : null,

@@ -102,6 +102,27 @@ export interface Evento {
   lugar: string
   descripcion: string
   capacidadMaxima: number
+  /**
+   * Cuántas reservas se emitieron para este evento.
+   *
+   * Es el contador que hace posible la transacción de la Fase 3: el
+   * cupo se valida comparando este número contra `capacidadMaxima`, y las
+   * dos escrituras (crear la reserva e incrementar el contador) van en la
+   * MISMA transacción. Sin el contador habría que contar documentos, y las
+   * reglas de Firestore no pueden contar (y `count()` no es confiable
+   * adentro de una transacción).
+   *
+   * IMPORTANTE: lo escribe el servidor con el Admin SDK. Un organizador
+   * con permiso de update sobre su evento NO lo puede tocar, y eso lo
+   * asegura la regla `noCambiaReservas()` comparando contra el valor
+   * actual. Si no estuviera protegido, abriría su propio evento con
+   * `updateDoc(..., { reservas: -1000 })` desde la consola.
+   *
+   * Cuenta reservas EMITIDAS, no vivas: el organizador puede borrar un
+   * registro y el contador no baja. Es el nombre honesto del número. El
+   * uncontado en lote es pendiente de la Fase 6.
+   */
+  reservas: number
   estado: EstadoEvento
   requierePago: boolean
   precioEntrada: number | null
@@ -130,9 +151,20 @@ export interface Registro {
   nombre: string
   email: string
   telefono: string
-  /** Viaja DENTRO del QR. Nunca datos personales: el QR no dice
-   *  "Juan Pérez, juan@mail.com", dice sólo este identificador. */
-  qrCode: string
+  /**
+   * El SHA-256 del token del QR, en hexadecimal.
+   *
+   * OJO con el nombre, porque antes decía `qrCode` y mentía: el token en
+   * claro NO está en Firestore, sale una sola vez por mail y no se
+   * regenera. Lo que queda acá es su huella, y `qrHash` dice eso sin
+   * ambigüedad (un `grep qrCode` ya no sugiere que haya un QR guardado).
+   *
+   * El token son 192 bits de `crypto.randomBytes(24)` en base64url. La
+   * huella viaja ADEMÁS como ID del documento, así que la validación es
+   * un `getDoc` en vez de un `query` y el doble registro es imposible
+   * por construcción: los IDs de Firestore son únicos.
+   */
+  qrHash: string
   estado: EstadoRegistro
   pago: Pago
   usado: boolean
