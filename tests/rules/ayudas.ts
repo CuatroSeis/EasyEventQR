@@ -110,6 +110,7 @@ export function datosEvento(
       capacidadMaxima: 100,
       requierePago: false,
       precioEntrada: null,
+      bannerUrl: null,
     }),
     ...extra,
   }

@@ -33,6 +33,7 @@ function borradorValido(extra: Partial<BorradorEvento> = {}): BorradorEvento {
     capacidadMaxima: 30,
     requierePago: false,
     precioEntrada: null,
+    bannerUrl: null,
     ...extra,
   }
 }

@@ -34,19 +34,12 @@ export const EsquemaRegistro = z.object({
     .trim()
     .min(1, 'Falta el evento.')
     .max(128, 'El evento no existe.')
-    // Los IDs de Firestore son [A-Za-z0-9_-]{1,1500}. Sin esto, alguien
-    // puede mandar cualquier cosa y el `get()` de Firestore la rechaza
-    // con un error 500 en vez de un 400 con un mensaje útil.
     .regex(/^[A-Za-z0-9_-]+$/, 'El evento no existe.'),
   nombre: z
     .string()
     .trim()
     .min(2, 'Poné tu nombre.')
     .max(80, 'El nombre es demasiado largo.'),
-  // El orden importa: `trim().toLowerCase()` ANTES del chequeo de
-  // formato, con un `pipe` en el medio. Pegar un correo suele traer
-  // espacios, y si `z.email()` corre primero, " juan@ejemplo.com " es un
-  // 400 para una dirección perfectamente válida.
   email: z
     .string()
     .trim()
@@ -58,6 +51,13 @@ export const EsquemaRegistro = z.object({
     .max(32, 'El teléfono es demasiado largo.')
     .optional()
     .default(''),
+  dni: z
+    .string()
+    .trim()
+    .regex(/^\d{7,8}$/, 'El DNI debe tener 7 u 8 dígitos numéricos.'),
+  fechaNacimiento: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha de nacimiento no es válida.'),
   sitioWeb: z.string().max(200).optional().default(''),
 })
 
@@ -67,6 +67,8 @@ export interface BorradorRegistro {
   nombre: string
   email: string
   telefono: string
+  dni: string
+  fechaNacimiento: string
   sitioWeb: string
 }
 
@@ -104,7 +106,22 @@ export function validarRegistro(cuerpo: unknown): ResultadoValidacion {
     }
   }
 
-  const { eventoId, nombre, email, telefono, sitioWeb } = resultado.data
+  const { eventoId, nombre, email, telefono, dni, fechaNacimiento, sitioWeb } = resultado.data
+
+  // Validar mayor de edad (18 años)
+  const hoy = new Date()
+  const nacimiento = new Date(fechaNacimiento)
+  let edad = hoy.getFullYear() - nacimiento.getFullYear()
+  const mesDiff = hoy.getMonth() - nacimiento.getMonth()
+  if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
+    edad--
+  }
+  if (edad < 18) {
+    return {
+      ok: false,
+      problemas: [{ campo: 'fechaNacimiento', mensaje: 'El evento es solo para mayores de 18 años.' }],
+    }
+  }
 
   return {
     ok: true,
@@ -113,6 +130,8 @@ export function validarRegistro(cuerpo: unknown): ResultadoValidacion {
       nombre,
       email: email.trim().toLowerCase(),
       telefono,
+      dni,
+      fechaNacimiento,
       sitioWeb,
     },
   }

@@ -36,6 +36,12 @@ const Login = lazy(() => import('./pages/Login'))
 const Panel = lazy(() => import('./pages/Panel'))
 const EventoForm = lazy(() => import('./pages/EventoForm'))
 const Branding = lazy(() => import('./pages/Branding'))
+const AdminPanel = lazy(() => import('./pages/AdminPanel'))
+const PanelRegistros = lazy(() => import('./pages/PanelRegistros'))
+const Operador = lazy(() => import('./pages/Operador'))
+const PagoExito = lazy(() => import('./pages/PagoExito'))
+const PagoFallo = lazy(() => import('./pages/PagoFallo'))
+const PagoPendiente = lazy(() => import('./pages/PagoPendiente'))
 const NoEncontrado = lazy(() => import('./pages/NoEncontrado'))
 const Protegido = lazy(() => import('./components/Protegido'))
 const PanelLayout = lazy(() => import('./components/PanelLayout'))
@@ -70,14 +76,20 @@ export default function App() {
               seguridad. */}
           <Route path="/e/:eventoId" element={<EventoPublico />} />
           <Route path="/q/:token" element={<QrPublico />} />
+          <Route path="/pago/exito" element={<PagoExito />} />
+          <Route path="/pago/fallo" element={<PagoFallo />} />
+          <Route path="/pago/pendiente" element={<PagoPendiente />} />
+          <Route path="/operador/:token" element={<Operador />} />
           <Route path="/entrar" element={<Login />} />
           <Route element={<Protegido />}>
             <Route element={<PanelLayout />}>
               <Route path="/panel" element={<Panel />} />
               <Route path="/panel/eventos/nuevo" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId" element={<EventoForm />} />
+              <Route path="/panel/eventos/:eventoId/registros" element={<PanelRegistros />} />
               <Route path="/panel/branding" element={<Branding />} />
             </Route>
+            <Route path="/admin" element={<AdminPanel />} />
           </Route>
           {/* Sin esta ruta, una URL mal escrita muestra una pantalla en
               blanco, que en el móvil se lee como "la app no funciona". */}

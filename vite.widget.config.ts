@@ -40,7 +40,7 @@ export default defineConfig({
     // más frágil de lo que aporta.
     emptyOutDir: false,
     lib: {
-      entry: 'src/widget/index.ts',
+      entry: 'src/widget/index.tsx',
       name: 'EasyEventQRWidget',
       // IIFE = Immediately Invoked Function Expression: un archivo,
       // un scope global, cero imports externos.

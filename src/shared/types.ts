@@ -151,6 +151,8 @@ export interface Registro {
   nombre: string
   email: string
   telefono: string
+  dni: string
+  fechaNacimiento: string
   /**
    * El SHA-256 del token del QR, en hexadecimal.
    *

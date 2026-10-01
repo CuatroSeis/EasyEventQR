@@ -188,6 +188,11 @@ export async function actualizarEvento(eventoId: string, cambios: CambiosEvento)
     limpio.precioEntrada = cambios.precioEntrada
   }
 
+  // bannerUrl va dentro de personalizacion
+  if (typeof cambios.bannerUrl === 'string') {
+    limpio['personalizacion.bannerUrl'] = cambios.bannerUrl.trim() || null
+  }
+
   if (Object.keys(limpio).length === 0) return
 
   await updateDoc(doc(db, 'eventos', eventoId), limpio)

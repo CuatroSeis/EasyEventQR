@@ -1,0 +1,48 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "vite"
+          - "tailwindcss"
+          - "oxlint"
+      firebase:
+        patterns:
+          - "firebase*"
+          - "@firebase/*"
+      react:
+        patterns:
+          - "react*"
+          - "@vitejs/plugin-react"
+      testing:
+        patterns:
+          - "@firebase/rules-unit-testing"
+      security:
+        patterns:
+          - "jose"
+          - "zod"
+          - "qrcode"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels:
+      - "dependencies"
+      - "github-actions"

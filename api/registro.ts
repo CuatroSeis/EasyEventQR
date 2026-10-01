@@ -235,6 +235,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           nombre: alta.nombre,
           email: alta.email,
           telefono: alta.telefono,
+          dni: alta.dni,
+          fechaNacimiento: alta.fechaNacimiento,
           // El token en claro NO se guarda. Sólo su huella, que además
           // es el nombre del documento: la validación es un `getDoc` y no
           // puede haber dos documentos con la misma huella.
@@ -313,6 +315,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       evento: resultado.evento.nombre,
       estado: resultado.estado,
       pagoRequerido: resultado.pago.requerido,
+      registroId: qrHash,
     })
   } catch (error) {
     return responderConError(error, res)

@@ -24,6 +24,7 @@ export interface BorradorEvento {
   capacidadMaxima: number
   requierePago: boolean
   precioEntrada: number | null
+  bannerUrl: string | null
 }
 
 /**
@@ -81,12 +82,11 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
     reservas: 0,
     estado: 'activo',
     requierePago: borrador.requierePago,
-    // Si no requiere pago, el precio se guarda en null y no en 0. La
-    // diferencia importa al facturar: un evento gratis con precio 0 es
-    // distinto de uno sin precio, y "0" se confunde con "el precio salió
-    // mal" en cualquier reporte.
     precioEntrada: borrador.requierePago ? borrador.precioEntrada : null,
-    personalizacion: personalizacionVacia(),
+    personalizacion: {
+      ...personalizacionVacia(),
+      bannerUrl: borrador.bannerUrl?.trim() || null,
+    },
   }
 }
 
@@ -137,6 +137,18 @@ export function validarBorrador(
     const precio = borrador.precioEntrada
     if (precio === null || !Number.isFinite(precio) || precio <= 0) {
       problemas.push({ campo: 'precioEntrada', mensaje: 'Si el evento es pago, el precio tiene que ser mayor a 0.' })
+    }
+  }
+
+  if (borrador.bannerUrl && borrador.bannerUrl.trim()) {
+    const url = borrador.bannerUrl.trim()
+    try {
+      new URL(url)
+      if (!['http:', 'https:'].includes(new URL(url).protocol)) {
+        problemas.push({ campo: 'bannerUrl', mensaje: 'La URL del banner debe ser http o https.' })
+      }
+    } catch {
+      problemas.push({ campo: 'bannerUrl', mensaje: 'La URL del banner no es válida.' })
     }
   }
 

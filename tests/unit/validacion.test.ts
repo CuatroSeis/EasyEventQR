@@ -18,6 +18,8 @@ const VALIDO = {
   eventoId: 'evento-de-a',
   nombre: 'Juan Pérez',
   email: 'juan@ejemplo.com',
+  dni: '12345678',
+  fechaNacimiento: '2000-01-01',
 }
 
 describe('validarRegistro: lo que tiene que entrar', () => {
@@ -29,6 +31,8 @@ describe('validarRegistro: lo que tiene que entrar', () => {
       eventoId: 'evento-de-a',
       nombre: 'Juan Pérez',
       email: 'juan@ejemplo.com',
+      dni: '12345678',
+      fechaNacimiento: '2000-01-01',
       telefono: '+5491100000000',
       sitioWeb: '',
     })
@@ -39,6 +43,8 @@ describe('validarRegistro: lo que tiene que entrar', () => {
     assert.equal(resultado.ok, true)
     if (!resultado.ok) return
     assert.equal(resultado.datos.telefono, '')
+    assert.equal(resultado.datos.dni, '12345678')
+    assert.equal(resultado.datos.fechaNacimiento, '2000-01-01')
   })
 
   it('baja el correo a minúsculas', () => {
@@ -107,7 +113,7 @@ describe('validarRegistro: lo que tiene que entrar', () => {
     const resultado = validarRegistro({ ...VALIDO, plan: 'pro+', usado: false, Reserves: 9999 })
     assert.equal(resultado.ok, true)
     if (!resultado.ok) return
-    assert.deepEqual(Object.keys(resultado.datos).sort(), ['email', 'eventoId', 'nombre', 'sitioWeb', 'telefono'])
+    assert.deepEqual(Object.keys(resultado.datos).sort(), ['dni', 'email', 'eventoId', 'fechaNacimiento', 'nombre', 'sitioWeb', 'telefono'])
   })
 
   it('el cuerpo validado no arrastra NADA del input', () => {
@@ -140,11 +146,11 @@ describe('validarRegistro: lo que tiene que entrar', () => {
     // comparan los CAMPOS distintos y no la cantidad de issues: zod
     // puede reportar dos problemas para el mismo campo (una regla por
     // vez) y eso no es un error de esta función.
-    const resultado = validarRegistro({ eventoId: '', nombre: '', email: 'x' })
+    const resultado = validarRegistro({ eventoId: '', nombre: '', email: 'x', dni: '', fechaNacimiento: '' })
     assert.equal(resultado.ok, false)
     if (resultado.ok) return
     const campos = [...new Set(resultado.problemas.map((p) => p.campo))].sort()
-    assert.deepEqual(campos, ['email', 'eventoId', 'nombre'])
+    assert.deepEqual(campos, ['dni', 'email', 'eventoId', 'fechaNacimiento', 'nombre'])
   })
 })
 
