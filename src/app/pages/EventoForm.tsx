@@ -26,6 +26,7 @@ function borradorDesdeFecha(fecha: Date): BorradorEvento {
     capacidadMaxima: 50,
     requierePago: false,
     precioEntrada: null,
+    bannerUrl: null,
   }
 }
 
@@ -61,6 +62,7 @@ export default function EventoForm() {
           capacidadMaxima: evento.capacidadMaxima,
           requierePago: evento.requierePago,
           precioEntrada: evento.precioEntrada,
+          bannerUrl: evento.personalizacion?.bannerUrl ?? null,
         })
       })
       .catch(() => {
@@ -186,6 +188,21 @@ export default function EventoForm() {
           className="campo min-h-24"
           value={borrador.descripcion}
           onChange={(e) => cambiar('descripcion', e.target.value)}
+        />
+      </Campo>
+
+      <Campo
+        etiqueta="Banner (URL)"
+        error={mensaje('bannerUrl')}
+        ayuda="Opcional. Link a una imagen (jpg, png, webp) en Imgur, Drive, Cloudinary, etc."
+      >
+        <input
+          className="campo"
+          type="url"
+          value={borrador.bannerUrl ?? ''}
+          onChange={(e) => cambiar('bannerUrl', e.target.value || null)}
+          placeholder="https://ejemplo.com/banner.jpg"
+          autoComplete="off"
         />
       </Campo>
 

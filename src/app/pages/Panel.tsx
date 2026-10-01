@@ -104,6 +104,29 @@ function Vacio() {
 function TarjetaEvento({ evento }: { evento: EventoConId }) {
   const cerrado = evento.estado === 'cerrado'
   const pagado = evento.requierePago
+  const [copiado, setCopiado] = useState(false)
+
+  const linkPublico = typeof window !== 'undefined'
+    ? `${window.location.origin}/e/${evento.id}`
+    : ''
+
+  async function copiarLink() {
+    try {
+      await navigator.clipboard.writeText(linkPublico)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      // Fallback para navegadores viejos
+      const textarea = document.createElement('textarea')
+      textarea.value = linkPublico
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    }
+  }
 
   return (
     <Link
@@ -112,15 +135,26 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="min-w-0 text-sm font-semibold text-texto">{evento.nombre}</h2>
-        <span
-          className={
-            cerrado
-              ? 'shrink-0 rounded-full bg-borde px-2 py-0.5 text-xs text-texto-suave'
-              : 'shrink-0 rounded-full bg-primario px-2 py-0.5 text-xs text-sobre-primario'
-          }
-        >
-          {cerrado ? 'Cerrado' : 'Abierto'}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={
+              cerrado
+                ? 'shrink-0 rounded-full bg-borde px-2 py-0.5 text-xs text-texto-suave'
+                : 'shrink-0 rounded-full bg-primario px-2 py-0.5 text-xs text-sobre-primario'
+            }
+          >
+            {cerrado ? 'Cerrado' : 'Abierto'}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); copiarLink(); }}
+            className="shrink-0 rounded-lg border border-borde px-3 py-1.5 text-xs text-texto-suave hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+            disabled={copiado}
+            aria-label="Copiar link de invitación"
+          >
+            {copiado ? '✓ Copiado' : 'Copiar link'}
+          </button>
+        </div>
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">

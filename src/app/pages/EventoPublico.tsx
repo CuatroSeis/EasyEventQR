@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { aplicarTema } from '../../shared/theming'
+import { crearPreferenciaPago, abrirCheckoutMP } from '../../services/pagos'
 
 /**
  * La landing pública de un evento, en /e/:eventoId.
@@ -157,41 +158,53 @@ export default function EventoPublico() {
           problemas={problemas}
           enviando={enviando}
           errorEnvio={errorEnvio}
-          onEnviar={(datos) => {
+          onEnviar={async (datos) => {
             setEnviando(true)
             setErrorEnvio(null)
             setProblemas({})
-            fetch('/api/registro', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(datos),
-            })
-              .then(async (respuesta) => {
-                const cuerpo = await respuesta.json().catch(() => null)
-                if (respuesta.ok && cuerpo?.ok) {
-                  setReservado(true)
-                  return
-                }
-                // Los errores de validación vienen campo por campo y se
-                // muestran al lado de cada input. Los demás (evento
-                // lleno, límite de requests) son de la operación entera
-                // y van arriba.
+            try {
+              const respuesta = await fetch('/api/registro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos),
+              })
+              const cuerpo = await respuesta.json()
+              if (!respuesta.ok || !cuerpo?.ok) {
                 if (cuerpo?.problemas) {
                   const porCampo: ProblemasDelFormulario = {}
                   for (const p of cuerpo.problemas as Array<{ campo: string; mensaje: string }>) {
                     porCampo[p.campo] = p.mensaje
                   }
                   setProblemas(porCampo)
-                  setEnviando(false)
+                } else {
+                  setErrorEnvio(cuerpo?.error ?? 'No pudimos completar la reserva.')
+                }
+                setEnviando(false)
+                return
+              }
+
+              // Reserva exitosa
+              const requierePago = evento.requierePago && evento.precioEntrada
+              const registroId = cuerpo.registroId // El backend debería devolver esto
+
+              if (requierePago && registroId) {
+                // Evento con pago: crear preferencia y redirigir a checkout
+                const pref = await crearPreferenciaPago(registroId)
+                if (pref.ok && pref.init_point) {
+                  abrirCheckoutMP(pref.init_point)
                   return
                 }
-                setErrorEnvio(cuerpo?.error ?? 'No pudimos completar la reserva.')
+                setErrorEnvio('No se pudo iniciar el pago. Intentá de nuevo.')
                 setEnviando(false)
-              })
-              .catch(() => {
-                setErrorEnvio('No pudimos conectarnos. Revisá la conexión e intentá de nuevo.')
-                setEnviando(false)
-              })
+                return
+              }
+
+              // Evento gratis o sin pago: mostrar confirmación normal
+              setReservado(true)
+            } catch {
+              setErrorEnvio('No pudimos conectarnos. Revisá la conexión e intentá de nuevo.')
+              setEnviando(false)
+            }
           }}
         />
       </div>
@@ -289,6 +302,16 @@ function Encabezado({ evento }: { evento: EventoPublico }) {
   )
 }
 
+/** Devuelve la fecha máxima permitida para nacer (hoy - 18 años) en formato YYYY-MM-DD. */
+function fechaMaximaNacimiento(): string {
+  const hoy = new Date()
+  const hace18 = new Date(hoy.getFullYear() - 18, hoy.getMonth(), hoy.getDate())
+  const yyyy = hace18.getFullYear()
+  const mm = String(hace18.getMonth() + 1).padStart(2, '0')
+  const dd = String(hace18.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 function Formulario({
   evento,
   problemas,
@@ -313,6 +336,8 @@ function Formulario({
       nombre: String(datos.get('nombre') ?? ''),
       email: String(datos.get('email') ?? ''),
       telefono: String(datos.get('telefono') ?? ''),
+      dni: String(datos.get('dni') ?? ''),
+      fechaNacimiento: String(datos.get('fechaNacimiento') ?? ''),
       sitioWeb: String(datos.get('sitioWeb') ?? ''),
     })
   }
@@ -362,6 +387,33 @@ function Formulario({
           autoComplete="tel"
           inputMode="tel"
           className={claseInput(problemas.telefono)}
+        />
+      </Campo>
+
+      <Campo nombre="dni" etiqueta="Tu DNI (sin puntos ni guiones)" problemas={problemas}>
+        <input
+          id="dni"
+          name="dni"
+          type="text"
+          required
+          pattern="[0-9]{7,8}"
+          maxLength={8}
+          inputMode="numeric"
+          autoComplete="off"
+          enterKeyHint="next"
+          className={claseInput(problemas.dni)}
+          placeholder="12345678"
+        />
+      </Campo>
+
+      <Campo nombre="fechaNacimiento" etiqueta="Fecha de nacimiento" problemas={problemas}>
+        <input
+          id="fechaNacimiento"
+          name="fechaNacimiento"
+          type="date"
+          required
+          max={fechaMaximaNacimiento()}
+          className={claseInput(problemas.fechaNacimiento)}
         />
       </Campo>
 

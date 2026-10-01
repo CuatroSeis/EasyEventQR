@@ -1,0 +1,108 @@
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+
+import { verificarEstadoPago } from '../../services/pagos'
+
+/**
+ * Página de éxito de pago: /pago/exito?registroId=xxx
+ * Verifica el estado y muestra confirmación.
+ */
+export default function PagoExito() {
+  const [busca] = useSearchParams()
+  const registroId = busca.get('registroId')
+  const [estado, setEstado] = useState<'verificando' | 'aprobado' | 'pendiente' | 'error'>('verificando')
+
+  useEffect(() => {
+    if (!registroId) {
+      setEstado('error')
+      return
+    }
+
+    const verificar = async () => {
+      try {
+        const resp = await verificarEstadoPago(registroId)
+        if (resp.ok && resp.estado === 'pagado') {
+          setEstado('aprobado')
+        } else if (resp.ok && resp.estado === 'pendiente') {
+          setEstado('pendiente')
+        } else {
+          setEstado('error')
+        }
+      } catch {
+        setEstado('error')
+      }
+    }
+
+    verificar()
+
+    // Polling cada 3 segundos por si el webhook tarda
+    const interval = setInterval(verificar, 3000)
+    return () => clearInterval(interval)
+  }, [registroId])
+
+  useEffect(() => {
+    document.title = 'Pago exitoso · EasyEventQR'
+  }, [])
+
+  if (estado === 'verificando') {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 animate-pulse">
+          ⏳
+        </div>
+        <h1 className="text-xl font-bold text-texto">Verificando tu pago…</h1>
+        <p className="text-sm text-texto-suave">Esto puede tardar unos segundos.</p>
+      </main>
+    )
+  }
+
+  if (estado === 'aprobado') {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl text-green-600">
+          ✓
+        </div>
+        <h1 className="text-xl font-bold text-texto">¡Pago confirmado!</h1>
+        <p className="text-sm text-texto-suave">
+          Tu entrada está confirmada.
+        </p>
+        <p className="text-sm text-texto-suave">
+          Te enviamos el código QR por correo. Revisa tu bandeja de entrada (y spam).
+        </p>
+        <a
+          href={`/q/${registroId}`}
+          className="mt-4 rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario"
+        >
+          Ver mi entrada
+        </a>
+      </main>
+    )
+  }
+
+  if (estado === 'pendiente') {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-3xl text-yellow-600 animate-pulse">
+          ⏳
+        </div>
+        <h1 className="text-xl font-bold text-texto">Pago pendiente</h1>
+        <p className="text-sm text-texto-suave">
+          El pago está siendo procesado. Recibirás la confirmación por correo en breve.
+        </p>
+      </main>
+    )
+  }
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">
+        ✕
+      </div>
+      <h1 className="text-xl font-bold text-texto">No pudimos verificar el pago</h1>
+      <p className="text-sm text-texto-suave">
+        Si completaste el pago, revisa tu correo en unos minutos.
+        Si el problema persiste, contacta al organizador.
+      </p>
+    </main>
+  )
+}
