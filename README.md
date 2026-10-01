@@ -24,7 +24,7 @@ está en [`PLAN.md`](./PLAN.md), que es el documento de trabajo del proyecto.
 | 0 | Vite + React + Tailwind + Firebase, dos builds, deploy en Vercel | ✅ |
 | 1 | Login con Google + reglas de seguridad multi-tenant | ✅ |
 | 2 | CRUD de eventos (mobile-first) + branding del panel | ✅ |
-| 3 | Registro público + theming dinámico + QR + mail | 🟡 |
+| 3 | Registro público + theming dinámico + QR + mail | ✅ |
 | 4 | `<ticket-widget>` embebible (Shadow DOM, bundle propio) | |
 | 5 | Capa de pagos desacoplada (modo simulado) + webhook firmado | |
 | 6 | Panel de gestión de registros + CSV + reenvío de mail | |

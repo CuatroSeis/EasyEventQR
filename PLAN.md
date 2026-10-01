@@ -10,11 +10,25 @@ decisión del código no se entiende leyendo el código, se escribe acá.
 
 ## 0. Dónde quedó la última sesión
 
-Fases 0, 1 y 2 terminadas y desplegadas. **La Fase 3 está implementada de
-capa a capa** y sólo falta lo que necesita una clave de un tercero: sin
-`BREVO_API_KEY` el mail sale por consola, y con la clave sale de verdad.
+**30 Sep 2026 — Avance: Fase 3 deployada a Preview y Producción + fixes menores.**
 
-Lo que quedó hecho, y por qué en ese orden:
+**Hecho:**
+- **Soporte de emulador en Admin SDK** (`api/lib/firebase-admin.ts`): `FIRESTORE_EMULATOR_HOST` activo (librería subyacente lo lee), sin `service account` en emulador, `credencialesConfiguradas()` considera emulador.
+- **Proxy de Vite**: `server.proxy` manda `/api` a `vercel dev:3000`. El catch-all de `vercel.json` no intercepta HMR/`/src` en desarrollo (solucionó pantalla blanca en `:5173`).
+- **Tipos**: `validacion.ok === false` (narrowing explícito) para evitar fragilidad entre entornos de TypeScript.
+- **Deploy**: Preview (`easyeventqr-fxn6f68ho-cuatroseis-projects.vercel.app`) y Producción (`https://easyeventqr.vercel.app`) con Fase 3. 
+- **Verificación HTTP**: `/api/salud` 200 JSON, `/api/evento-publico?id=inexistente` 404 JSON, `/api/registro` 405 JSON, `/api/validar-qr?t=basura` 200 JSON (válido:false). Chunks `EventoPublico-CSbCVmZ5.js`, `QrPublico-08qOi4mN.js` sirven 200. SPA en `/e/*` y `/*` devuelve HTML con `#root`.
+- **Test suite**: 123 unitarios OK, 89 reglas OK. `tsc -b --force`, `oxlint`, `build` verdes.
+- **Commits**: `0452311`, `c6eb8ae` push a main.
+
+**Hallazgos anotados:**
+- `vercel curl` sin URL completa apunta a producción (no a Preview). Hay que pasar URL explícita para verificar Preview.
+- **Preview escribe en la misma base (`easyeventqr-dev`)**: `FIREBASE_SERVICE_ACCOUNT` de Preview está apuntando al proyecto real/emulado compartido. Solo se probaron lecturas/rutas de error en Preview; pruebas de escritura end-to-end quedan pendientes (se recomienda aislar base para Preview si se va a hacer registro real ahí).
+- Rules, Brevo y Service Account ya configurados en Vercel (según estado previo).
+
+**Estado Fase 3:** implementada y desplegada. Circuito end-to-end manual **no ejecutado** (decisión explícita: saltarlo y seguir con Fases 4-6). **Falta prueba de registro completo** (crear evento → POST /api/registro → recibir mail con token → `/q/:token` válido).
+
+**Siguiente:** Fase 4 (widget embebible, Shadow DOM + bundle IIFE), según recomendación aceptada.
 
 1. **Modelo y reglas primero**, antes que los endpoints. `Evento.reservas` y
    `Registro.qrHash` existen, y las reglas ya protegen el contador y la
@@ -179,7 +193,7 @@ querer: los links ya compartidos siguen funcionando.
 
 ### Fase 3 — Registro público + theming dinámico + QR + mail
 
-**Estado: implementada, pendiente de deploy y de la clave de Brevo.**
+**Estado: IMPLEMENTADA.** Código en commit `0174de9` + `c6eb8ae`. Reglas de Firestore desplegadas. `BREVO_API_KEY` y remitente configurados en Vercel (Production y Preview). Frontend (chunks `EventoPublico`, `QrPublico`) y endpoints (`/api/evento-publico`, `/api/registro`, `/api/validar-qr`, `/api/salud`) verificados en Preview y en producción. Circuito de error probado (404/405/400). **Falta probar el flujo completo end-to-end con un evento real** (crear evento → reservar → recibir mail con QR → validar `/q/:token`). Se dejó para después según decisión del usuario.
 
 La fase más grande y la que cierra el producto: hasta acá se organizan eventos,
 pero nadie podía reservar.
