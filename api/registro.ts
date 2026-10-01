@@ -101,7 +101,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 2. El cuerpo
   // -------------------------------------------------------------------
   const validacion = validarRegistro(req.body)
-  if (!validacion.ok) {
+  // `=== false` y no `!validacion.ok`: el segundo depende de que el
+  // compilador estreche la unión discriminada por el valor de una
+  // variable, y hay builds (el de Vercel) donde eso no ocurre y
+  // `problemas` deja de existir. Comparar contra el literal es el
+  // estrechamiento que no depende de la versión.
+  if (validacion.ok === false) {
     return res.status(400).json({
       ok: false,
       error: 'Revisá los datos del formulario.',
