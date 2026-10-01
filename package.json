@@ -41,7 +41,7 @@
     "@types/react-dom": "^19.2.7",
     "@vercel/node": "^16.0.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "firebase-tools": "^15.31.0",
+    "firebase-tools": "^15.32.0",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
