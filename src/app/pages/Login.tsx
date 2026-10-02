@@ -80,7 +80,14 @@ export default function Login() {
         </p>
       )}
 
-      <Link to="/" className="text-xs text-slate-500 underline">
+      {/* `min-h-11` son 44px: el texto sigue siendo de 12px, pero el
+          área que hay que tocar pasa de 16px de alto a 44px, que es lo
+          que un dedo necesita para acertar. `inline-flex` es necesario
+          porque un `<a>` inline ignora height por defecto. */}
+      <Link
+        to="/"
+        className="inline-flex min-h-11 items-center px-2 text-xs text-slate-500 underline"
+      >
         Volver al inicio
       </Link>
     </main>

@@ -61,7 +61,17 @@ export default function Home() {
         />
         <Fila
           titulo="Backend /api/salud"
-          valor={<a className="text-primario underline" href="/api/salud">probar</a>}
+          // El padding es sólo para el área táctil: sin él el link mide
+          // 43x14 en un móvil de 360px, por debajo de los 44px que
+          // recomienda WCAG 2.5.8. El texto se ve exactamente igual.
+          valor={
+            <a
+              className="-my-3 inline-flex min-h-11 items-center px-2 text-primario underline"
+              href="/api/salud"
+            >
+              probar
+            </a>
+          }
           ok={firebaseConfigurado}
         />
       </section>

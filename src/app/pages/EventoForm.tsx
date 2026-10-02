@@ -96,9 +96,9 @@ export default function EventoForm() {
 
     try {
       if (esNuevo) {
-        await crearEvento(organizador.uid, borrador)
+        await crearEvento(organizador.uid, borrador, organizador)
       } else {
-        await actualizarEvento(eventoId, borrador)
+        await actualizarEvento(eventoId, borrador, organizador)
       }
       navegar('/panel', { replace: true })
     } catch (fallo) {
@@ -113,7 +113,7 @@ export default function EventoForm() {
     try {
       const evento = await obtenerEvento(eventoId)
       const destino = evento?.estado === 'cerrado' ? 'activo' : 'cerrado'
-      await cambiarEstadoEvento(eventoId, destino)
+      await cambiarEstadoEvento(eventoId, destino, organizador)
       navegar('/panel', { replace: true })
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo cambiar el estado.')
@@ -126,7 +126,7 @@ export default function EventoForm() {
     if (!confirm('¿Borrar este evento? Se va con las reservas que tenga adentro.')) return
     setGuardando(true)
     try {
-      await eliminarEvento(eventoId)
+      await eliminarEvento(eventoId, organizador)
       navegar('/panel', { replace: true })
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo borrar el evento.')

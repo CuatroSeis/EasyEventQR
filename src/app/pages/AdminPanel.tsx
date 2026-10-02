@@ -1,192 +1,141 @@
 import { useEffect, useState } from 'react'
-
 import { useNavigate } from 'react-router-dom'
 
-import { useOrganizador } from '../ContextoOrganizador'
+import { auth } from '../../services/firebase'
+import { DashboardTab } from './admin/DashboardTab'
+import { OrganizadoresTab } from './admin/OrganizadoresTab'
+import { EventosTab } from './admin/EventosTab'
+import { RegistrosTab } from './admin/RegistrosTab'
+import { ExcepcionesTab } from './admin/ExcepcionesTab'
+import { AuditoriaTab } from './admin/AuditoriaTab'
+import { Cargando } from './admin/Cargando'
 
-const PLAN_LABELS: Record<string, string> = {
-  gratis: 'Gratis',
-  pro: 'Pro',
-  'pro+': 'Pro+',
-}
+type TabId = 'dashboard' | 'organizadores' | 'eventos' | 'registros' | 'excepciones' | 'auditoria'
 
-const PLAN_COLORS: Record<string, string> = {
-  gratis: 'bg-slate-100 text-slate-700',
-  pro: 'bg-blue-100 text-blue-700',
-  'pro+': 'bg-violet-100 text-violet-700',
-}
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'organizadores', label: 'Organizadores' },
+  { id: 'eventos', label: 'Eventos' },
+  { id: 'registros', label: 'Registros' },
+  { id: 'excepciones', label: 'Excepciones' },
+  { id: 'auditoria', label: 'Auditoría' },
+]
 
-interface OrganizadorAdmin {
-  uid: string
-  nombre: string
-  email: string
-  plan: string
-  estadoSuscripcion: string
-  fechaAlta: Date | string
-  limitesPersonalizacion: {
-    capacidadMaximaPorEvento: number
-  }
-}
-
+/**
+ * Panel del super-admin.
+ *
+ * El chequeo de permisos va contra `/api/me`, que valida el ID token de
+ * Firebase contra `SUPER_ADMIN_UID` en el servidor. Deliberadamente NO se
+ * decide acá si la persona es admin: eso sería leer una bandera del propio
+ * navegador y no protegería nada, porque el backend igual verifica cada
+ * petición.
+ *
+ * También manda el token explícitamente. `/api/me` no lo pedía antes, así
+ * que sin este `Authorization` devolvía siempre `isAdmin: false` y el panel
+ * expulsaba al super-admin en el bucle de redirección.
+ */
 export default function AdminPanel() {
   const navegar = useNavigate()
-  const organizador = useOrganizador()
-  const [organizadores, setOrganizadores] = useState<OrganizadorAdmin[] | null>(null)
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [guardando, setGuardando] = useState<Record<string, boolean>>({})
+  // El nombre sale del usuario de Firebase y NO de `useOrganizador()`.
+  // Esta ruta vive fuera de `<Protegido>` (ver App.tsx) justamente para
+  // que un super-admin suspendido pueda entrar a reactivar su cuenta; si
+  // leyera el contexto, `organizador` sería null y el header reventaría
+  // en `.nombre` al bloquearse la pantalla de suspensión.
+  const [usuario, setUsuario] = useState(auth.currentUser)
+  const [tabActiva, setTabActiva] = useState<TabId>('dashboard')
   const [esSuperAdmin, setEsSuperAdmin] = useState(false)
-  const [verificandoAdmin, setVerificandoAdmin] = useState(true)
+  const [verificando, setVerificando] = useState(true)
 
   useEffect(() => {
-    async function verificarAdmin() {
-      try {
-        const resp = await fetch('/api/me')
-        const data = await resp.json()
-        if (data.ok && data.isAdmin) {
-          setEsSuperAdmin(true)
-        } else {
+    let vigente = true
+
+    async function verificar() {
+      const actual = auth.currentUser
+      if (!actual) {
+        if (vigente) {
+          setVerificando(false)
           navegar('/panel', { replace: true })
         }
+        return
+      }
+      if (vigente) setUsuario(actual)
+
+      try {
+        const respuesta = await fetch('/api/me', {
+          headers: { Authorization: `Bearer ${await actual.getIdToken()}` },
+        })
+        const datos = await respuesta.json()
+        if (vigente) setEsSuperAdmin(datos.ok === true && datos.isAdmin === true)
       } catch {
-        navegar('/panel', { replace: true })
+        if (vigente) setEsSuperAdmin(false)
       } finally {
-        setVerificandoAdmin(false)
+        if (vigente) setVerificando(false)
       }
     }
-    verificarAdmin()
+
+    void verificar()
+    return () => {
+      vigente = false
+    }
   }, [navegar])
 
   useEffect(() => {
-    if (esSuperAdmin && !verificandoAdmin) {
-      cargarOrganizadores()
-    }
-  }, [esSuperAdmin, verificandoAdmin])
+    if (verificando || esSuperAdmin) return
+    navegar('/panel', { replace: true })
+  }, [verificando, esSuperAdmin, navegar])
 
-  async function cargarOrganizadores() {
-    setCargando(true)
-    try {
-      const resp = await fetch('/api/admin-organizadores', {
-        headers: { 'x-user-uid': organizador.uid },
-      })
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error || 'Error cargando')
-      setOrganizadores(data.organizadores)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudieron cargar')
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  async function cambiarPlan(uid: string, nuevoPlan: string) {
-    setGuardando((prev) => ({ ...prev, [uid]: true }))
-    try {
-      const resp = await fetch(`/api/admin-organizadores?uid=${encodeURIComponent(uid)}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-uid': organizador.uid,
-        },
-        body: JSON.stringify({ plan: nuevoPlan }),
-      })
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error || 'Error actualizando')
-      setOrganizadores((prev) =>
-        prev?.map((o) => (o.uid === uid ? { ...o, plan: nuevoPlan } : o)) ?? [],
-      )
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'No se pudo cambiar el plan')
-    } finally {
-      setGuardando((prev) => ({ ...prev, [uid]: false }))
-    }
-  }
-
-  function formatearFecha(fecha: Date | string): string {
-    const d = new Date(fecha)
-    if (Number.isNaN(d.getTime())) return '—'
-    return d.toLocaleDateString('es-AR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
-
-  if (verificandoAdmin) return <Cargando />
+  if (verificando) return <Cargando etiqueta="Verificando permisos…" />
   if (!esSuperAdmin) return null
-  if (cargando) return <Cargando />
 
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-lg font-bold text-texto">Super-admin · Organizadores</h1>
-
-      {error && (
-        <p role="alert" className="rounded-xl border border-borde bg-superficie p-3 text-sm text-texto">
-          {error}
-        </p>
-      )}
-
-      {organizadores?.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-borde p-6 text-center">
-          <p className="text-sm text-texto-suave">No hay organizadores registrados.</p>
+    <div className="flex min-h-full flex-col">
+      <header className="flex items-center justify-between gap-3 border-b border-borde bg-superficie px-4 py-3">
+        <div>
+          <h1 className="text-lg font-bold text-texto">Super-admin</h1>
+          <p className="text-xs text-texto-suave">
+            {usuario?.displayName ?? 'Super-admin'} · {usuario?.email ?? ''}
+          </p>
         </div>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {organizadores?.map((org) => (
-            <li key={org.uid} className="rounded-xl border border-borde bg-superficie p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-texto truncate">{org.nombre}</p>
-                  <p className="text-xs text-texto-suave truncate">{org.email}</p>
-                  <p className="text-xs text-texto-suave mt-1">UID: <code className="font-mono">{org.uid}</code></p>
-                  <p className="text-xs text-texto-suave">Alta: {formatearFecha(org.fechaAlta)}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PLAN_COLORS[org.plan] || 'bg-slate-100 text-slate-700'}`}>
-                    {PLAN_LABELS[org.plan] || org.plan}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${org.estadoSuscripcion === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {org.estadoSuscripcion}
-                  </span>
-                </div>
-              </div>
+        <button
+          type="button"
+          onClick={() => navegar('/panel')}
+          className="rounded-lg border border-borde px-3 py-1.5 text-sm text-texto hover:bg-superficie"
+        >
+          Volver al panel
+        </button>
+      </header>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(['gratis', 'pro', 'pro+'] as const).map((plan) => (
-                  <button
-                    key={plan}
-                    type="button"
-                    disabled={guardando[org.uid] || org.plan === plan}
-                    onClick={() => cambiarPlan(org.uid, plan)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                      org.plan === plan
-                        ? 'bg-primario text-sobre-primario cursor-default'
-                        : 'border border-borde text-texto hover:bg-superficie disabled:opacity-50'
-                    }`}
-                  >
-                    {PLAN_LABELS[plan]}
-                  </button>
-                ))}
-              </div>
+      <nav
+        className="flex gap-1 overflow-x-auto border-b border-borde bg-superficie px-4 py-2"
+        role="tablist"
+        aria-label="Secciones del super-admin"
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            type="button"
+            aria-selected={tabActiva === tab.id}
+            onClick={() => setTabActiva(tab.id)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              tabActiva === tab.id
+                ? 'bg-primario text-sobre-primario'
+                : 'text-texto-suave hover:bg-superficie'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-              <p className="mt-2 text-xs text-texto-suave">
-                Cupo máx/evento: <strong>{org.limitesPersonalizacion.capacidadMaximaPorEvento}</strong> entradas
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function Cargando() {
-  return (
-    <div className="flex flex-col gap-3" aria-busy="true">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-24 animate-pulse rounded-xl border border-borde" />
-      ))}
-      <span className="sr-only">Cargando organizadores…</span>
+      <main className="flex-1 p-4">
+        {tabActiva === 'dashboard' && <DashboardTab />}
+        {tabActiva === 'organizadores' && <OrganizadoresTab />}
+        {tabActiva === 'eventos' && <EventosTab />}
+        {tabActiva === 'registros' && <RegistrosTab />}
+        {tabActiva === 'excepciones' && <ExcepcionesTab />}
+        {tabActiva === 'auditoria' && <AuditoriaTab />}
+      </main>
     </div>
   )
 }

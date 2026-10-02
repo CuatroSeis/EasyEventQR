@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import { useOrganizadorEditable } from '../ContextoOrganizador'
 import { guardarBranding, type ColorElegido } from '../../services/branding'
@@ -37,7 +37,14 @@ export default function Branding() {
   const colorPermitido = limites.colorPersonalizadoPermitido
   const logoPermitido = limites.logoPermitido
 
-  async function enviar() {
+  /**
+   * OJO con el `preventDefault()`: sin él el navegador hace el submit nativo
+   * del <form> y recarga la página. Se veía "Guardando…" un instante y
+   * después la pantalla se reiniciaba sin guardar nada, porque la navegación
+   * cancelaba el `updateDoc` a medio camino. Mismo patrón que EventoForm.tsx.
+   */
+  async function enviar(e: FormEvent) {
+    e.preventDefault()
     setGuardando(true)
     setError(null)
     setGuardado(false)
