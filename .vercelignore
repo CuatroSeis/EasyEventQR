@@ -41,11 +41,11 @@ public/widget
 # Documentación de trabajo interno. No la lee ningún build, y `SPEC.md` /
 # `PLAN.md` tienen detalle de la arquitectura que no hace falta que viaje.
 # OJO: README.md NO está en la lista a propósito, es la cara del repo.
+#
+# Los docs viven bajo `docs/` (arquitectura / operacion / estado), así que
+# la regla es el directorio entero y no un archivo por nombre.
 .opencode
-CI_CD.md
-PLAN.md
-PROGRESS.md
-SPEC.md
+docs/
 firestore-debug.log
 firebase-debug.log
 ui-debug.log

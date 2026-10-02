@@ -53,6 +53,23 @@ Lo que **queda**, en este orden:
 
 Decisiones que se tomaron acá y conviene no volver a discutir:
 
+- **La documentación va en `docs/`, dividida por *para qué se lee*.**
+  Antes eran seis `.md` sueltos en la raíz, mezclando el diseño del sistema
+  con el log de lo que se hizo la semana pasada. Ahora `arquitectura/` dice
+  cómo es el sistema, `operacion/` cómo se lo usa, y `estado/` qué se hizo.
+  El motivo concreto: `SPEC.md` y `PROGRESS.md` se contradecían a la vista
+  (el primero documenta el sistema, el segundo es bitácora de sesiones) y
+  `.vercelignore` tenía que listar uno por uno los archivos de la raíz.
+  Con un directorio, la regla del `.vercelignore` es una línea.
+- **Los tests no están en el grafo de build.** `tsconfig.json` (el que
+  corre `vercel build`) referencia sólo app, node y api. `tsconfig.tests.json`
+  se typecheckea aparte, desde el script `typecheck`. No es una preferencia
+  estética: `.vercelignore` saca `tests/` del upload, y si el grafo lo
+  pidiera, `tsc -b` abortaba en producción con TS18003 sin llegar a compilar.
+- **Node 22.6+ es el piso, no una preferencia.** Los tests importan `.ts` con
+  la extensión explícita y los corre el runner con el type-stripping nativo.
+  En Node 20 no parsean, y el fallo se lee como "los tests están rotos" cuando
+  en realidad es el runtime. El CI quedó en Node 22 y `engines` dice lo mismo.
 - **Auth Anónimo se movió a la Fase 3.5.** El plan original arrancaba migrando
   a Anonymous Auth, y resultó ser la decisión equivocada: un uid anónimo es
   un string que el cliente elige, así que no prueba nada. La reserva ahora la

@@ -6,8 +6,13 @@ on:
   pull_request:
     branches: [main, develop]
 
+# Node 22.6+ es obligatorio, no una preferencia. `test:unit` y `test:rules`
+# corren los archivos `.ts` directo con `node --test`, sin paso de
+# compilación, usando el type-stripping nativo de Node. Con Node 20 el
+# runner no sabe parsear `.ts` y ambos jobs mueren con exit code 1 aunque
+# el código esté bien. `package.json#engines` dice lo mismo.
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   JAVA_VERSION: '21'
 
 # Sin esto el workflow hereda el default del repositorio, que suele ser

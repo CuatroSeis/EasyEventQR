@@ -17,7 +17,9 @@ Cada fase es un entregable que anda por sí solo. Se termina una, se muestra, y
 se pasa a la siguiente.
 
 El detalle de qué quedó hecho en cada una, cómo se comprobó, y qué falta
-está en [`PLAN.md`](./PLAN.md), que es el documento de trabajo del proyecto.
+está en [`PLAN.md`](./docs/arquitectura/PLAN.md) y [`PROGRESS.md`](./docs/estado/PROGRESS.md).
+
+La documentación completa está indexada en [`docs/README.md`](./docs/README.md).
 
 | # | Entregable | Estado |
 |---|---|---|

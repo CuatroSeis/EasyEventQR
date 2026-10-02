@@ -155,7 +155,7 @@ recibe su entrada. Es el eslabón más silencioso de la cadena.
 
 ## 🔴 Paso 7 — Correr el recorrido end-to-end
 
-Con todo lo anterior listo, seguí `ENDPOINTS.md`, sección **"Recorrido de
+Con todo lo anterior listo, seguí `../arquitectura/ENDPOINTS.md`, sección **"Recorrido de
 prueba completo"** (12 pasos).
 
 Los que importan más, porque son los que estaban rotos y los acabamos de

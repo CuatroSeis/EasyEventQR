@@ -70,7 +70,7 @@ function construirApp(): App {
     // Sin `credential` a propósito. El emulador no valida credenciales
     // y `cert()` exige una private_key real que acá no tenemos ni vamos
     // a tener: la clave se borró de la máquina y vive cifrada en Vercel
-    // (ver PLAN.md, pendientes). El projectId acá es sólo un nombre de
+    // (ver docs/arquitectura/PLAN.md, pendientes). El projectId acá es sólo un nombre de
     // namespace para el emulador, no una dirección de conexión.
     return initializeApp({
       projectId: process.env.FIREBASE_PROJECT_ID ?? 'demo-easyeventqr',

@@ -184,7 +184,7 @@ export interface LinkOperador {
  *
  * La API existía desde la Fase 7 pero ninguna pantalla la llamaba: el
  * organizador tenía una función en el server y ningún botón, así que el
- * recorrido de `ENDPOINTS.md` se trababa en el paso 11. Para probarlo
+ * recorrido de `docs/arquitectura/ENDPOINTS.md` se trababa en el paso 11. Para probarlo
  * había que abrir la consola del navegador y pegarle un `fetch` a mano.
  *
  * El link vence a las 4 horas (es lo que server-side), así que la UI lo

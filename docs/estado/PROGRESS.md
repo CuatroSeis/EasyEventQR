@@ -181,7 +181,7 @@ Settings → Git, si no los dos deploys se pisan. El workflow ya despliega la
 raíz y no `dist/`, así que Vercel corre su propio build y sube `api/`; por
 eso el job dejó de bajar el artifact, que ya no servía para nada.
 
-`ENDPOINTS.md` tiene el mapa completo: cada endpoint, la pantalla que lo
+`../arquitectura/ENDPOINTS.md` tiene el mapa completo: cada endpoint, la pantalla que lo
 dispara y cómo probarlo sin `curl`.
 
 ### UX de permisos y auditoría de diseño (2026-10-02)
@@ -235,7 +235,7 @@ un bug: la mitad del módulo está bien.
 |---|---|---|
 | **Crítico** | `src/app/pages/PanelRegistros.tsx` | Los 5 `fetch` (`listar`, `exportar`, `resend`, `recount`) no mandaban `Authorization`. Con el fallback `x-user-uid` eliminado, **el panel de registros entero devolvía 401**. El síntoma ("no puedo ver mis registros") no señalaba la causa. |
 | **Crítico** | `src/services/registros.ts`, `src/services/pagos.ts` | URLs con `import.meta.env.VITE_APP_URL || 'https://easyeventqr.vercel.app'`. El `.env.local` define `APP_URL`, **sin** el prefijo `VITE_`, así que la variable nunca existía y caía siempre al fallback: **la app de desarrollo pegaba contra la API de PRODUCCIÓN**. Ahora van relativas (`/api/...`), sin variable que olvidar. |
-| **Alto** | `api/operador/link` | El endpoint existía desde la Fase 7 sin ninguna pantalla que lo llamara. El organizador no tenía forma de generar el link de puerta, así que el paso 11 de `ENDPOINTS.md` era inejecutable sin abrir la consola del navegador. Ahora hay botón + panel con el link, la expiración y copiar. |
+| **Alto** | `api/operador/link` | El endpoint existía desde la Fase 7 sin ninguna pantalla que lo llamara. El organizador no tenía forma de generar el link de puerta, así que el paso 11 de `../arquitectura/ENDPOINTS.md` era inejecutable sin abrir la consola del navegador. Ahora hay botón + panel con el link, la expiración y copiar. |
 | **Medio** | `PanelRegistros.tsx` | `alert()` para cada resultado y un `RegistroUI` duplicado del service. Unificado: se usa el tipo del service y los avisos son `role="status"` / `role="alert"`. |
 | **Bajo** | `.env.example`, `.env.local` | `VITE_SUPER_ADMIN_UID` con prefijo `VITE_` viaja dentro del bundle. Hoy el frontend no la usa, pero dejarla a mano es una trampa para el próximo que la use. Renombrada a `SUPER_ADMIN_UID`. |
 
@@ -281,7 +281,7 @@ autoriza nada: sólo existe para que la UI pueda explicar.
 ### Pendiente antes de producción
 
 Los pasos con detalle (dónde se hace, cómo se comprueba) están en
-**`GUIA_MANUAL.md`**. Resumen:
+**`../operacion/GUIA_MANUAL.md`**. Resumen:
 
 1. 🔴 **Rotar `OPERADOR_SECRET`** — el valor hardcodeado estuvo en el repo.
    Con el valor viejo, cualquiera que lo lea puede firmar el link de operador
@@ -297,7 +297,7 @@ Los pasos con detalle (dónde se hace, cómo se comprueba) están en
 5. **Confirmar que llega el mail.** El QR viaja sólo por mail; si Brevo no
    está verificado, la inscripción "funciona" y el asistente nunca recibe su
    entrada.
-6. **Correr los 12 pasos de `ENDPOINTS.md`.** En el paso 7, si da error de
+6. **Correr los 12 pasos de `../arquitectura/ENDPOINTS.md`.** En el paso 7, si da error de
    sesión en vez de la lista, quedó algún `fetch` sin `Authorization`.
 7. **`TOPE_LECTURA = 2000`** en el listado global del panel admin: los filtros
    y el total mienten con más de 2000 registros. No bloquea el MVP.

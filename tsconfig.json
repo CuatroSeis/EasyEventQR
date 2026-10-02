@@ -1,9 +1,17 @@
 {
   "files": [],
+  // Grafo de build. NO incluir `tsconfig.tests.json` acá.
+  //
+  // `build:app` corre `tsc -b` con este archivo, y Vercel lo corre en el
+  // deploy. Pero `.vercelignore` saca la carpeta `tests/` del upload, así
+  // que en Vercel ese proyecto se queda sin ningún input y `tsc -b` aborta
+  // con TS18003 ("No inputs were found in config file ... tsconfig.tests.json").
+  //
+  // Los tests siguen typecheckeándose, pero por otro camino: el script
+  // `typecheck` los suma explícitamente con `tsc -p tsconfig.tests.json`.
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.api.json" },
-    { "path": "./tsconfig.tests.json" }
+    { "path": "./tsconfig.api.json" }
   ]
 }

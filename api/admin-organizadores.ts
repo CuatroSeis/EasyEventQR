@@ -613,8 +613,8 @@ async function rutaExcepciones(
     const snapshot = await db.collection('organizadores').get()
     const excepciones = snapshot.docs
       .map((doc: QueryDocumentSnapshot) => ({ ...(doc.data() as Organizador), uid: doc.id }))
-      .filter((org) => tieneExcepcion(org))
-      .map((org) => ({
+      .filter((org: Organizador) => tieneExcepcion(org))
+      .map((org: Organizador) => ({
         organizadorId: org.uid,
         organizadorNombre: org.nombre,
         organizadorEmail: org.email,

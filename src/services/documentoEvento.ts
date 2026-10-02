@@ -125,7 +125,12 @@ export interface ProblemaDeValidacion {
  * nombre con dos renglones es legítimo, uno con un salto de línea en medio
  * del asunto no.
  */
+// `no-control-regex` salta porque estas expresiones *buscan* caracteres de
+// control a propósito: es la regla la que las necesita para poder filtrar
+// un nombre con un `\u0000` pegado. Sacar el aviso no cambia el código.
+// eslint-disable-next-line no-control-regex
 const CONTROL_NO_IMPRIMIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/
+// eslint-disable-next-line no-control-regex
 const CONTROL_NO_IMPRIMIBLE_G = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
 const ESPACIO_EN_BLANCO = /[\t\r\n]+/g
 

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.6"
   },
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,7 @@
     "build": "npm run build:widget && npm run build:app",
     "build:app": "tsc -b && vite build",
     "build:widget": "vite build --config vite.widget.config.ts",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
     "lint": "oxlint",
     "preview": "vite preview",
     "emuladores": "node scripts/emuladores.mjs",
