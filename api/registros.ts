@@ -145,7 +145,7 @@ async function handleExportRegistros(res: VercelResponse, db: ReturnType<typeof 
     const snap = await db.collection('registros').where('eventoId', '==', eventoId).get()
     const registros = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
 
-    registros.sort((a, b) => {
+    registros.sort((a: Registro & { id: string }, b: Registro & { id: string }) => {
       const fa = (a.fechaRegistro as unknown as Timestamp)?.toMillis?.() ?? 0
       const fb = (b.fechaRegistro as unknown as Timestamp)?.toMillis?.() ?? 0
       return fb - fa
@@ -232,7 +232,7 @@ async function handleResendRegistros(req: VercelRequest, res: VercelResponse, db
 
 async function handleRecountRegistros(_req: VercelRequest, res: VercelResponse, db: ReturnType<typeof getDb>, eventoId: string) {
   try {
-    const resultado = await db.runTransaction(async (tx) => {
+    const resultado = await db.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
       const snap = await tx.get(
         db.collection('registros')
           .where('eventoId', '==', eventoId)

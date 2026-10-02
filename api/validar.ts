@@ -117,7 +117,7 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    const resultado = await db.runTransaction(async (tx) => {
+    const resultado = await db.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
       const refRegistro = db.collection('registros').doc(token)
       const snapRegistro = await tx.get(refRegistro)
 
