@@ -184,27 +184,29 @@ jobs:
       # como puerta: si el typecheck o los tests fallan, `needs: build` no
       # deja llegar acá.
 
-      # Auth por OIDC: NO se pasa `--token`. Con `id-token: write` la CLI
-      # pide el token de la Actions sola. `VERCEL_TOKEN` era un secreto
-      # estático que envejece sin avisar — cuando dejó de servir, el job
-      # moría con "User not found (404)" y el diagnóstico parecía un
-      # problema de código.
+# Auth: token estático en `VERCEL_TOKEN`.
       #
-      # Para esto la app de Vercel tiene que estar instalada en el repo
-      # (Vercel → Settings → Git).
+      # Se probó OIDC primero (sin `--token`, con `id-token: write`) y no
+      # va: la CLI responde "No existing credentials found" porque exige la
+      # app de Vercel instalada en el repo, que se fue cuando se desconectó
+      # la integración Git. Si alguna vez se reinstala, OIDC es mejor —
+      # `VERCEL_TOKEN` es una credencial de larga vida que envejece sin
+      # avisar, y cuando dejó de resolver el job murió con un 404 que se
+      # lee como si fuera un problema de código.
       #
-      # OJO: sin `--scope`. Ese flag espera el *slug* del equipo
-      # (`cuatroseis-projects`), y `VERCEL_ORG_ID` guarda el *id*
-      # (`team_...`, el mismo de `.vercel/project.json`). Con los dos
+      # Sin `--scope`: ese flag espera el *slug* del equipo
+      # ("cuatroseis-projects") y `VERCEL_ORG_ID` guarda el *id*
+      # ("team_...", el mismo de `.vercel/project.json`). Con los dos
       # juntos la CLI responde "You do not have access to the specified
-      # account". Con OIDC el equipo se resuelve solo: alcanza con
-      # `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID` por `env`.
+      # account". El proyecto ya está en `.vercel/project.json`, así que
+      # alcanza con `--project`.
       - name: Deploy to Vercel Preview
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel deploy --yes \
+            --token=${{ secrets.VERCEL_TOKEN }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             --alias=pr-${{ github.event.number }}-easyeventqr.vercel.app \
             .
@@ -236,14 +238,14 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      # Ídem: raíz del proyecto, no `dist/`. Ver el comentario del preview.
-      # Y por OIDC, sin `--token`, igual que el preview.
+      # Ídem: raíz del proyecto, no `dist/`, y mismo auth por token que el preview.
       - name: Deploy to Vercel Production
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel deploy --prod --yes \
+            --token=${{ secrets.VERCEL_TOKEN }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             .
 
