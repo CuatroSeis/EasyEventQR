@@ -168,7 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const base = resolverBasePublica(req.headers, process.env)
 
     const resultado = await db.runTransaction(
-      async (tx) => {
+      async (tx: FirebaseFirestore.Transaction) => {
         // Todas las lecturas ANTES de cualquier escritura. Firestore
         // exige ese orden, y además es lo correcto: los dos documentos
         // que se leen tienen que ser de la misma foto.

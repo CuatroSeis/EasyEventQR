@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       const snapshot = await db.collection('organizadores').orderBy('fechaAlta', 'desc').get()
-      const organizadores = snapshot.docs.map((doc) => ({
+      const organizadores = snapshot.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
         uid: doc.id,
         ...doc.data(),
       })) as (Organizador & { uid: string })[]

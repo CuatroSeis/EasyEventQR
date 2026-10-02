@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { getDb } from './lib/firebase-admin.js'
 import { FieldValue } from 'firebase-admin/firestore'
+import type { Transaction } from 'firebase-admin/firestore'
 import { esFormatoToken, hashearToken } from './lib/qr.js'
 import type { Registro } from '../src/shared/types.js'
 
@@ -117,7 +118,7 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    const resultado = await db.runTransaction(async (tx: FirebaseFirestore.Transaction) => {
+    const resultado = await db.runTransaction(async (tx: Transaction) => {
       const refRegistro = db.collection('registros').doc(token)
       const snapRegistro = await tx.get(refRegistro)
 
