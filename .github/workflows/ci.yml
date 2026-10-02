@@ -191,15 +191,20 @@ jobs:
       # problema de código.
       #
       # Para esto la app de Vercel tiene que estar instalada en el repo
-      # (Vercel → Settings → Git). `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID`
-      # van por env, que es de donde la CLI los lee.
+      # (Vercel → Settings → Git).
+      #
+      # OJO: sin `--scope`. Ese flag espera el *slug* del equipo
+      # (`cuatroseis-projects`), y `VERCEL_ORG_ID` guarda el *id*
+      # (`team_...`, el mismo de `.vercel/project.json`). Con los dos
+      # juntos la CLI responde "You do not have access to the specified
+      # account". Con OIDC el equipo se resuelve solo: alcanza con
+      # `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID` por `env`.
       - name: Deploy to Vercel Preview
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel deploy --yes \
-            --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             --alias=pr-${{ github.event.number }}-easyeventqr.vercel.app \
             .
@@ -239,7 +244,6 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel deploy --prod --yes \
-            --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             .
 
