@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from '@server/firebase-admin.js'
+import { getDb } from '../src/server/lib/firebase-admin.js'
 import { FieldValue } from 'firebase-admin/firestore'
 import {
   crearPreferenceMP,
@@ -8,7 +8,7 @@ import {
   actualizarEstadoPagoMock,
   consultarPagoMP,
   simulacionActiva,
-} from '@server/mercadopago.js'
+} from '../src/server/lib/mercadopago.js'
 import type { Registro } from '../src/shared/types.js'
 
 /**

@@ -7,7 +7,7 @@ import type {
 } from 'firebase-admin/firestore'
 import { FieldPath } from 'firebase-admin/firestore'
 
-import { getDb } from '@server/firebase-admin.js'
+import { getDb } from '../src/server/lib/firebase-admin.js'
 import {
   LIMITES_POR_PLAN,
   type EstadoSuscripcion,

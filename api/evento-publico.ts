@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { Timestamp } from 'firebase-admin/firestore'
 
-import { getDb } from '@server/firebase-admin.js'
+import { getDb } from '../src/server/lib/firebase-admin.js'
 import type { Evento, Organizador } from '../src/shared/types.js'
 
 /**
