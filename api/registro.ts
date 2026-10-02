@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { FieldValue } from 'firebase-admin/firestore'
-
 import type { Firestore } from 'firebase-admin/firestore'
 
 import { getDb } from './lib/firebase-admin.js'
