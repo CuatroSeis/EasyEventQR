@@ -30,7 +30,7 @@ async function obtenerRegistros(
   let query = db.collection('registros').where('eventoId', '==', eventoId)
 
   const snap = await query.get()
-  let registros = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
+  let registros = snap.docs.map((doc: QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
 
   // Filtros en memoria (para evitar índices complejos)
   if (search) {
