@@ -7,7 +7,7 @@ import {
   mensajeDeMotivo,
   type Configuracion,
   type Contador,
-} from '../../api/lib/cupo.ts'
+} from '../../src/server/lib/cupo.ts'
 
 /**
  * Tests del limitador.

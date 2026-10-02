@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from './lib/firebase-admin.js'
+import { getDb } from '@server/firebase-admin.js'
 import { getAuth } from 'firebase-admin/auth'
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID

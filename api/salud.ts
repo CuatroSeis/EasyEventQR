@@ -14,7 +14,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // Con la extensión TypeScript sigue apuntando al .ts (es la convención
 // de TS con moduleResolution node16/nodenext) y el .js compilado resuelve
 // contra el archivo real.
-import { credencialesConfiguradas, getDb, getProjectId } from './lib/firebase-admin.js'
+import { credencialesConfiguradas, getDb, getProjectId } from '@server/firebase-admin.js'
 
 /**
  * GET /api/salud — comprobador de la cadena completa del backend.

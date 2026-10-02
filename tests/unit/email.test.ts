@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { construirMensajeBrevo, type DatosParaElMail } from '../../api/lib/email.ts'
+import { construirMensajeBrevo, type DatosParaElMail } from '../../src/server/lib/email.ts'
 
 /**
  * Tests del armado del mail.

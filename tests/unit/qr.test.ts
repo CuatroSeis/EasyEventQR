@@ -7,7 +7,7 @@ import {
   generarToken,
   hashearToken,
   imagenQrDe,
-} from '../../api/lib/qr.ts'
+} from '../../src/server/lib/qr.ts'
 
 /**
  * Tests del token del QR.

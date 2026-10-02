@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { esTrampa, validarRegistro } from '../../api/lib/validacion.ts'
+import { esTrampa, validarRegistro } from '../../src/server/lib/validacion.ts'
 
 /**
  * Tests de la validación del alta.

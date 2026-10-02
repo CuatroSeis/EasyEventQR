@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
-import { getDb } from './lib/firebase-admin.js'
+import { getDb } from '@server/firebase-admin.js'
 import type { Organizador, Plan } from '../src/shared/types.js'
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID

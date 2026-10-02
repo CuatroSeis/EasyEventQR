@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from './lib/firebase-admin.js'
+import { getDb } from '@server/firebase-admin.js'
 import { SignJWT, jwtVerify } from 'jose'
 
 export const OPERADOR_SECRET = new TextEncoder().encode(

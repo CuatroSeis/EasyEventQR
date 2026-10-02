@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { ipDelVisitante, resolverBasePublica, urlQrDe } from '../../api/lib/url.ts'
+import { ipDelVisitante, resolverBasePublica, urlQrDe } from '../../src/server/lib/url.ts'
 
 /**
  * Tests de la URL del QR.

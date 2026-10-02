@@ -2,12 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { FieldValue } from 'firebase-admin/firestore'
 import type { Firestore, Transaction } from 'firebase-admin/firestore'
 
-import { getDb } from './lib/firebase-admin.js'
-import { evaluarCupo, mensajeDeMotivo, type Contador } from './lib/cupo.js'
-import { enviarMail } from './lib/mail.js'
-import { generarToken, hashearToken, imagenQrDe, sha256Hex } from './lib/qr.js'
-import { ipDelVisitante, resolverBasePublica, urlQrDe } from './lib/url.js'
-import { esTrampa, validarRegistro } from './lib/validacion.js'
+import { getDb } from '@server/firebase-admin.js'
+import { evaluarCupo, mensajeDeMotivo, type Contador } from '@server/cupo.js'
+import { enviarMail } from '@server/mail.js'
+import { generarToken, hashearToken, imagenQrDe, sha256Hex } from '@server/qr.js'
+import { ipDelVisitante, resolverBasePublica, urlQrDe } from '@server/url.js'
+import { esTrampa, validarRegistro } from '@server/validacion.js'
 import type { Evento, Organizador, Pago, Registro } from '../src/shared/types.js'
 
 /**

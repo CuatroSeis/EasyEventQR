@@ -22,7 +22,8 @@
        Desde TS 6 no hace falta baseUrl: las rutas son relativas a
        este mismo archivo. */
     "paths": {
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@server/*": ["./src/server/*"]
     },
 
     /* Linting */

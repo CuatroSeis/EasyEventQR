@@ -2,12 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Timestamp, type Transaction } from 'firebase-admin/firestore'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
-import { getDb } from './lib/firebase-admin.js'
-import { obtenerPagoPorReferencia } from './lib/mercadopago.js'
-import { enviarMail } from './lib/mail.js'
-import { imagenQrDe } from './lib/qr.js'
-import { urlQrDe, resolverBasePublica } from './lib/url.js'
-import { type EntradaDelMail } from './lib/email.js'
+import { getDb } from '@server/firebase-admin.js'
+import { obtenerPagoPorReferencia } from '@server/mercadopago.js'
+import { enviarMail } from '@server/mail.js'
+import { imagenQrDe } from '@server/qr.js'
+import { urlQrDe, resolverBasePublica } from '@server/url.js'
+import { type EntradaDelMail } from '@server/email.js'
 import type { Registro, Evento } from '../src/shared/types.js'
 
 type FirestoreTimestamp = Timestamp
