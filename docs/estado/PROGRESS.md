@@ -56,11 +56,18 @@ curl "https://easyeventqr.vercel.app/api/admin-organizadores?accion=listar"
 
 ### Pendiente para cerrar el MVP
 
+> El plan detallado, con el árbol de diagnóstico de `/admin` y los comandos de
+> verificación, está en **[SIGUIENTE.md](./SIGUIENTE.md)**.
+
+- [ ] **`/admin` expulsa al usuario aunque esté iniciado** — leer el campo
+      `porQue` de la respuesta de `/api/me` y seguir el árbol de
+      `SIGUIENTE.md` §1. Causa más probable: `SUPER_ADMIN_UID` no está puesta
+      en Vercel (el UID real es `c4HRa54bB7XSEyOigo2fHqgTL4h1`).
 - [ ] Recorrer los 12 pasos de [`../arquitectura/ENDPOINTS.md`](../arquitectura/ENDPOINTS.md).
-- [ ] Confirmar el custom claim `admin` del super-admin (ver §"Acceso admin").
 - [ ] **Rotar el service account**: la clave privada se imprimió en una sesión de
       chat. Crear una nueva en Google Cloud → IAM → Service Accounts → Keys,
       actualizar `FIREBASE_SERVICE_ACCOUNT` en Vercel y borrar la clave vieja.
+- [ ] `OPERADOR_SECRET`: rotar el que se pegó en el chat (32+ caracteres).
 - [ ] `MERCADOPAGO_SIMULADO=true` sólo para pruebas; apagarlo antes de compartir.
 
 ### ✅ Completado (Fases 0-8)

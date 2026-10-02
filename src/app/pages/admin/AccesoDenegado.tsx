@@ -21,7 +21,7 @@ const MOTIVOS: Record<string, { titulo: string; cuerpo: string; pasos: string[] 
   'falta-var': {
     titulo: 'El servidor no tiene configurado quién es super-admin',
     cuerpo:
-      'La variable SUPER_ADMIN_UID no está puesta en este entorno. Con esa variable ausente, el único camino es el custom claim admin en tu documento.',
+      'La variable SUPER_ADMIN_UID no está puesta en este entorno. Con esa variable ausente, el único camino es el custom claim admin.',
     pasos: [
       'Poné SUPER_ADMIN_UID con tu UID en Vercel → Settings → Environment Variables.',
       'OJO: marcá los tres ambientes (Production, Preview, Development).',

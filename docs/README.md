@@ -32,6 +32,7 @@ docs/
 | Doc | Para qué |
 |---|---|
 | [PROGRESS.md](./estado/PROGRESS.md) | Log de avance por fases, fixes aplicados y pendientes abiertos. |
+| [SIGUIENTE.md](./estado/SIGUIENTE.md) | Plan de la sesión en curso: qué falta, en qué orden y cómo verificar cada paso. Es el primer documento que hay que abrir. |
 
 ## La raíz
 
