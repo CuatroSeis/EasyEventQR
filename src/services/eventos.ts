@@ -14,7 +14,8 @@ import {
 
 import { db } from './firebase'
 import { nuevoDocumentoEvento, type BorradorEvento } from './documentoEvento'
-import type { EstadoEvento, Evento } from '../shared/types'
+import { explicarErrorFirestore } from './errores'
+import type { EstadoEvento, Evento, Organizador } from '../shared/types'
 
 /**
  * CRUD de eventos desde el navegador.
@@ -146,13 +147,28 @@ export async function obtenerEvento(eventoId: string): Promise<EventoConId | nul
  * `addDoc` y no `setDoc` con un id inventado: que el id lo genere
  * Firestore evita dos-organizadores-el-mismo-id y de paso nos da un id
  * opaco, que es lo que después viaja dentro del QR.
+ *
+ * `organizador` se pasa para poder explicar el error: sin él, un
+ * `permission-denied` (cuota del plan, cuenta suspendida) llegaría al
+ * formulario como el texto crudo de Firebase, que no dice nada.
  */
-export async function crearEvento(organizadorId: string, borrador: BorradorEvento): Promise<string> {
-  const referencia = await addDoc(
-    collection(db, 'eventos'),
-    nuevoDocumentoEvento(organizadorId, borrador) satisfies Evento,
-  )
-  return referencia.id
+export async function crearEvento(
+  organizadorId: string,
+  borrador: BorradorEvento,
+  organizador?: Organizador | null,
+): Promise<string> {
+  try {
+    const referencia = await addDoc(
+      collection(db, 'eventos'),
+      nuevoDocumentoEvento(organizadorId, borrador) satisfies Evento,
+    )
+    return referencia.id
+  } catch (error) {
+    throw explicarErrorFirestore(error, organizador ?? null, {
+      limite: organizador?.limitesPersonalizacion.capacidadMaximaPorEvento,
+      pedido: borrador.capacidadMaxima,
+    })
+  }
 }
 
 /**
@@ -168,7 +184,11 @@ export async function crearEvento(organizadorId: string, borrador: BorradorEvent
  * el dueño de un evento no se cambia, y la regla lo bloquea igual, pero
  * es mejor no mandarlo.
  */
-export async function actualizarEvento(eventoId: string, cambios: CambiosEvento): Promise<void> {
+export async function actualizarEvento(
+  eventoId: string,
+  cambios: CambiosEvento,
+  organizador?: Organizador | null,
+): Promise<void> {
   const limpio: Record<string, unknown> = {}
 
   if (typeof cambios.nombre === 'string') limpio.nombre = cambios.nombre.trim()
@@ -195,7 +215,16 @@ export async function actualizarEvento(eventoId: string, cambios: CambiosEvento)
 
   if (Object.keys(limpio).length === 0) return
 
-  await updateDoc(doc(db, 'eventos', eventoId), limpio)
+  try {
+    await updateDoc(doc(db, 'eventos', eventoId), limpio)
+  } catch (error) {
+    // Mismo criterio que en `crearEvento`: el `permission-denied` de una
+    // edición suele ser la capacidad del plan, y el número está a mano.
+    throw explicarErrorFirestore(error, organizador ?? null, {
+      limite: organizador?.limitesPersonalizacion.capacidadMaximaPorEvento,
+      pedido: typeof cambios.capacidadMaxima === 'number' ? cambios.capacidadMaxima : undefined,
+    })
+  }
 }
 
 /**
@@ -207,10 +236,22 @@ export async function actualizarEvento(eventoId: string, cambios: CambiosEvento)
  * junto con el lugar; mezclarlos en el mismo formulario es cómo un
  * evento se cierra sin querer.
  */
-export async function cambiarEstadoEvento(eventoId: string, estado: EstadoEvento): Promise<void> {
-  await updateDoc(doc(db, 'eventos', eventoId), { estado })
+export async function cambiarEstadoEvento(
+  eventoId: string,
+  estado: EstadoEvento,
+  organizador?: Organizador | null,
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'eventos', eventoId), { estado })
+  } catch (error) {
+    throw explicarErrorFirestore(error, organizador ?? null)
+  }
 }
 
-export async function eliminarEvento(eventoId: string): Promise<void> {
-  await deleteDoc(doc(db, 'eventos', eventoId))
+export async function eliminarEvento(eventoId: string, organizador?: Organizador | null): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'eventos', eventoId))
+  } catch (error) {
+    throw explicarErrorFirestore(error, organizador ?? null)
+  }
 }

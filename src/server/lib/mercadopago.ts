@@ -1,10 +1,42 @@
 /**
- * Cliente Mercado Pago simulado para MVP.
+ * Cliente Mercado Pago.
  *
- * En el MVP no usamos MP real: simulamos la creación de preference
- * y la verificación del webhook. Cuando se pase a producción,
- * se reemplaza este archivo por el SDK real de Mercado Pago.
+ * Hay dos modos, y cuál está activo lo decide `MERCADOPAGO_SIMULADO`:
+ *
+ *   - `MERCADOPAGO_SIMULADO=true`: no se toca Mercado Pago. La preferencia
+ *     es inventada y devuelve una URL a `/pago/simulado`, que es una
+ *     pantalla de checkout falsa donde se aprieba o se rechaza a mano.
+ *     Sirve para demo y para probar el circuito entero (QR, mail,
+ *     check-in) sin gastar un peso.
+ *
+ *   - Sin la variable (o `false`): los endpoints de pago se niegan a
+ *     servir. No es que "no esté configurado Mercado Pago": es que este
+ *     archivo NO tiene el SDK real, y fingir que sí lo tiene sería peor.
+ *
+ * POR QUÉ EL MODO SIMULADO ESTÁ APAGADO POR DEFECTO
+ *
+ * La pantalla simulada aprueba pagos desde el navegador. Si eso quedara
+ * prendido en producción, cualquiera que tuviera el link de una reserva
+ * podría marcarse su propia entrada como pagada con un clic. Como no hay
+ * plata real de por medio el daño es bajo, pero el ticket gratis no lo es:
+ * es el producto entero.
+ *
+ * Por eso no se decide en el código si "estamos en dev". Se decide con una
+ * variable que alguien tiene que prender a propósito, y apagada nadie
+ * puede crear preferencias ni disparar webhooks.
  */
+
+/**
+ * El modo simulado tiene que estar prendido EXPLÍCITAMENTE.
+ *
+ * Se compara contra el string exacto 'true' a propósito, y no con un
+ * `Boolean(process.env.X)`, porque `Boolean('false')` es `true`: un
+ * `MERCADOPAGO_SIMULADO=false` en el panel de Vercel prendería la
+ * simulación en vez de apagarla.
+ */
+export function simulacionActiva(): boolean {
+  return process.env.MERCADOPAGO_SIMULADO === 'true'
+}
 
 export interface PreferenceResponse {
   id: string
@@ -20,6 +52,25 @@ export interface WebhookNotification {
   type: 'payment'
 }
 
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+/**
+ * Pagos simulados en memoria.
+ *
+ * OJO con esto, porque es una trampa de serverless y no creo que quede
+ * claro al leerlo: en Vercel cada invocación puede caer en una instancia
+ * distinta de la función, y el contenedor se recicla. Un `Map` de módulo
+ * NO es un store: la preferencia que se crea en un request casi seguro no
+ * está en el map cuando llega el webhook del siguiente.
+ *
+ * Por eso el webhook NO depende de este map para decidir (usa el `status`
+ * del query, que sí viaja), y `consultarPagoMP` devuelve `null` casi
+ * siempre en producción sin romper nada.
+ *
+ * La fuente de verdad del estado de un pago es el documento del registro
+ * en Firestore, que sí persiste. Este map sirve para el desarrollo local,
+ * donde el proceso es uno solo y dura.
+ */
 const MOCK_PAYMENTS = new Map<string, {
   preferenceId: string
   status: 'pending' | 'approved' | 'rejected'
@@ -27,8 +78,17 @@ const MOCK_PAYMENTS = new Map<string, {
 }>()
 
 /**
- * Crea una preferencia de pago simulada.
- * En producción: POST a https://api.mercadopago.com/checkout/preferences
+ * Crea una preferencia de pago SIMULADA.
+ *
+ * `init_point` NO es Mercado Pago: es una URL de esta misma app que
+ * apunta a la pantalla de checkout falsa. En el SDK real esto es un
+ * `POST https://api.mercadopago.com/checkout/preferences` con el token de
+ * acceso, y lo que vuelve es una URL en `mercadopago.com`.
+ *
+ * Los parámetros `_amount`, `_description` y `_backUrls` se reciben y no
+ * se usan, y a propósito: firmarlos acá y no usarlos es lo que hace que
+ * cambiar a MP real sea SÓLO cambiar esta función, sin tocar su firma.
+ * El importe real se valida contra Firestore antes de llegar acá.
  */
 export async function crearPreferenceMP(
   externalReference: string,
@@ -59,16 +119,61 @@ export async function crearPreferenceMP(
 
 /**
  * Verifica la firma del webhook de Mercado Pago.
- * En producción: valida HMAC SHA256 con MERCADOPAGO_WEBHOOK_SECRET.
- * Aquí siempre retorna true (mock).
+ *
+ * Es el mecanismo REAL de MP, implementado con `timingSafeEqual` para no
+ * filtrar el secreto por tiempo de respuesta. Antes esta función
+ * devolvía `true` siempre, con un comentario que decía "mock": eso no es
+ * un mock, es una firma que no verifica nada, y en producción el
+ * webhook aceptaba el primer POST que llegara.
+ *
+ * El header `x-signature` de MP viene así:
+ *
+ *     ts=1700000000,v1=<hmac hex>
+ *
+ * y el HMAC es sobre el manifiesto:
+ *
+ *     id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+ *
+ * con el `MERCADOPAGO_WEBHOOK_SECRET` como clave. Los dos timestamp son
+ * los mismos del header, y `data.id` viene del cuerpo.
+ *
+ * Devuelve `false` si falta el secreto: sin secreto no se puede verificar
+ * nada, y un "verificador" que aprueba cuando no tiene con qué verificar
+ * es un agujero con nombre de función.
  */
 export function verificarFirmaMP(
-  _signature: string | undefined,
-  _requestId: string | undefined,
-  _body: string
+  signature: string | undefined,
+  requestId: string | undefined,
+  dataId: string | undefined,
 ): boolean {
-  // Mock: siempre válido
-  return true
+  const secreto = process.env.MERCADOPAGO_WEBHOOK_SECRET
+  if (!secreto) return false
+  if (!signature || !requestId || !dataId) return false
+
+  const partes = new Map(
+    signature.split(',').map((p) => {
+      const [k, ...resto] = p.split('=')
+      return [k.trim(), resto.join('=').trim()] as const
+    }),
+  )
+
+  const ts = partes.get('ts')
+  const v1 = partes.get('v1')
+  if (!ts || !v1) return false
+
+  // Ventana de 5 minutos. Sin esto, una firma capturada sirve para
+  // siempre y el "secreto" deja de ser una credencial temporaria.
+  const ahora = Math.floor(Date.now() / 1000)
+  const edad = Math.abs(ahora - Number(ts))
+  if (!Number.isFinite(edad) || edad > 300) return false
+
+  const manifiesto = `id:${dataId};request-id:${requestId};ts:${ts};`
+  const esperado = createHmac('sha256', secreto).update(manifiesto).digest('hex')
+
+  const a = Buffer.from(esperado, 'utf8')
+  const b = Buffer.from(v1, 'utf8')
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
 
 /**

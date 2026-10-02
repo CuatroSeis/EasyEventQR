@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EasyEventQR">
+  <!--
+    #2563eb es el --c-primario por defecto de src/styles/index.css. Va
+    fijo a propósito: un favicon es la única imagen que el navegador
+    pinta FUERA de la página, así que no puede heredar las variables CSS
+    del tema del organizador.
+  -->
+  <rect width="64" height="64" rx="14" fill="#2563eb"/>
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+    <rect x="17" y="17" width="30" height="30" rx="5"/>
+    <path d="M24 13v8M40 13v8M17 27h30"/>
+  </g>
+  <circle cx="32" cy="38" r="5.5" fill="#ffffff"/>
+</svg>

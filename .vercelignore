@@ -1,0 +1,56 @@
+# Lo que Vercel NO tiene que subir.
+#
+# El punto de esto es el service account: `.gitignore` lo protege del repo,
+# pero Vercel sube el proyecto entero salvo que se lo digamos. Un
+# adminsdk-*.json en el deploy es una credencial de la base de datos
+# flotando en un build, y aunque no se exponga, es una copia más que
+# alguien tiene que rotar.
+
+# Credenciales. Mismos patrones que .gitignore.
+*adminsdk*.json
+*-firebase-adminsdk-*.json
+*service-account*.json
+serviceAccount*.json
+service_account*.json
+credentials*.json
+*-service-account.json
+secret*.json
+.env
+.env.*
+!.env.example
+
+# Salidas de build: las regenera Vercel con su propio `npm run build`.
+# Subirlas sólo agrega peso al upload y una chance de que se use un
+# bundle viejo en vez del recién compilado.
+dist
+dist-ssr
+public/widget
+
+# Estado de herramientas y emuladores.
+.tools
+.emulator-data
+.firebase
+
+# Git y metadatos del editor.
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# Documentación de trabajo interno. No la lee ningún build, y `SPEC.md` /
+# `PLAN.md` tienen detalle de la arquitectura que no hace falta que viaje.
+# OJO: README.md NO está en la lista a propósito, es la cara del repo.
+.opencode
+CI_CD.md
+PLAN.md
+PROGRESS.md
+SPEC.md
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
+# Configuración de pruebas de reglas: los emuladores corren en CI, no en el
+# deploy.
+scripts/emuladores.mjs
+tests

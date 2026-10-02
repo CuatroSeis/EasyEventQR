@@ -3,9 +3,8 @@ import { Timestamp, type Transaction } from 'firebase-admin/firestore'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
 import { getDb } from '@server/firebase-admin.js'
-import { obtenerPagoPorReferencia } from '@server/mercadopago.js'
 import { enviarMail } from '@server/mail.js'
-import { imagenQrDe } from '@server/qr.js'
+import { generarToken, hashearToken, imagenQrDe } from '@server/qr.js'
 import { urlQrDe, resolverBasePublica } from '@server/url.js'
 import { type EntradaDelMail } from '@server/email.js'
 import type { Registro, Evento } from '../src/shared/types.js'
@@ -190,9 +189,35 @@ async function handleResendRegistros(req: VercelRequest, res: VercelResponse, db
         continue
       }
 
-      const token = obtenerPagoPorReferencia(registroId)?.preferenceId
-        ? `mock_token_${registroId}`
-        : registroId
+      // Reenviar implica ROTAR el token, y hay que decirlo.
+      //
+      // El token en claro no se guarda (solo su SHA-256, en `qrHash`), así
+      // que el reenvío no puede volver a armar el mismo QR: no hay de
+      // dónde sacarlo. La única forma de mandarle al asistente un código
+      // que funcione es generar uno nuevo y cambiar la huella guardada.
+      //
+      // Antes se hacía `mock_token_${registroId}`, que no era un token
+      // válido bajo ningún aspecto: no pasaba `esFormatoToken` (misma
+      // longitud que un id de Firestore, no 32 chars base64url) y
+      // aunque pasara, hashearlo daba una huella que no era el id de
+      // ningún registro. O sea: un QR con forma de QR que en la puerta
+      // decía "Ese código no existe".
+      //
+      // El costo del rotate es que el QR del mail anterior deja de
+      // validar. Es aceptable y es lo que espera quien reenvía (perdió el
+      // mail), pero tiene que quedar dicho en la respuesta para que el
+      // organizador lo sepa y no asuma que las dos copias sirven.
+      const token = generarToken()
+      const qrHashNuevo = hashearToken(token)
+
+      // Un choque de hash sobre otro registro no se pisa: se cuenta como
+      // fallido y se sigue. Son 192 bits, pero el costo de mirarlo es una
+      // lectura y el de no mirarlo es corromper el QR de otro invitado.
+      const snapChoque = await db.collection('registros').doc(qrHashNuevo).get()
+      if (snapChoque.exists && snapChoque.id !== snapReg.id) {
+        fallidos++
+        continue
+      }
 
       try {
         const urlQr = urlQrDe(token, base, eventoId)
@@ -214,17 +239,33 @@ async function handleResendRegistros(req: VercelRequest, res: VercelResponse, db
         }
 
         const resultado = await enviarMail(entrada)
-        if (resultado.enviado) {
-          enviados++
-        } else {
+        if (!resultado.enviado) {
+          // El mail NO salió, así que el QR anterior tiene que seguir
+          // sirviendo. Rotar acá dejaba al asistente sin ninguna entrada
+          // válida: la vieja muerta por el rotate y la nueva que nunca
+          // llegó. Es el peor de los dos mundos y por eso el update va
+          // después del envío, no antes.
           fallidos++
+          continue
         }
+
+        // Ahora sí: el mail está en la bandeja, se puede dar de baja el
+        // token viejo.
+        await snapReg.ref.update({
+          qrHash: qrHashNuevo,
+          tokenEmitidoEn: Timestamp.now(),
+        })
+        enviados++
       } catch {
         fallidos++
       }
     }
 
-    return res.status(200).json({ ok: true, enviados, fallidos })
+    // `rotados` va en la respuesta a propósito: el organizador tiene que
+    // saber que el QR del mail anterior dejó de validar. Si no lo sabe,
+    // va a probar con las dos copias en la puerta y la segunda va a decir
+    // "ya usado" o "no existe" sin explicación.
+    return res.status(200).json({ ok: true, enviados, fallidos, tokensRotados: enviados })
   } catch (error) {
     console.error('[registros/resend] error:', error)
     return res.status(500).json({ ok: false, error: 'Error reenviando mails' })
@@ -266,7 +307,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: 'Falta eventoId' })
   }
 
-  // Auth
+  // Auth: el uid sale del ID token verificado por Firebase, y de ningún
+  // otro lado. Antes caía a `x-user-uid` cuando no había Authorization, y
+  // eso rompía toda la autorización de abajo: con mandarle el header, el
+  // chequeo de propiedad (`evento.organizadorId !== uid`) comparaba el
+  // uid que el cliente quiso, no el de quien realmente está conectado, y
+  // daba acceso a los registros de cualquier evento.
   const authHeader = req.headers.authorization
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
@@ -275,9 +321,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const decoded = await getAuth().verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
     } catch {}
-  }
-  if (!uid) {
-    uid = req.headers['x-user-uid'] as string | undefined
   }
   if (!uid) {
     return res.status(401).json({ ok: false, error: 'No autenticado' })

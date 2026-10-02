@@ -213,3 +213,59 @@ describe('nuevoDocumentoEvento', () => {
     assert.equal(documento.fecha.getTime(), borrador.fecha.getTime())
   })
 })
+
+/**
+ * Textos libres del evento: tope de longitud y caracteres de control.
+ *
+ * El caso del `\r\n` NO es hipótetico. El `nombre` va crudo al `subject`
+ * del mail (el HTML del cuerpo sí escapa, el asunto no), así que un salto
+ * de línea en el nombre es una chance de inyectar cabeceras en un mail que
+ * va a un tercero. Se filtra en la frontera, no confiando en que el
+ * proveedor de mail sanee.
+ */
+describe('texto libre del evento', () => {
+  it('rechaza un nombre más largo que el máximo', () => {
+    const problemas = validarBorrador(borradorValido({ nombre: 'a'.repeat(81) }), 100)
+    assert.ok(
+      problemas.some((p) => p.campo === 'nombre' && p.mensaje.includes('80')),
+      `esperaba un problema de longitud en nombre, vino: ${JSON.stringify(problemas)}`,
+    )
+  })
+
+  it('acepta un nombre de exactamente el máximo', () => {
+    const problemas = validarBorrador(borradorValido({ nombre: 'a'.repeat(80) }), 100)
+    assert.equal(problemas.filter((p) => p.campo === 'nombre').length, 0)
+  })
+
+  it('rechaza caracteres de control que no se pueden mostrar', () => {
+    const problemas = validarBorrador(borradorValido({ nombre: 'Cena\u0007 de prueba' }), 100)
+    assert.ok(
+      problemas.some((p) => p.campo === 'nombre' && p.mensaje.includes('caracteres')),
+      `esperaba el rechazo de controles, vino: ${JSON.stringify(problemas)}`,
+    )
+  })
+
+  it('NO deja pasar un salto de línea al asunto del mail', () => {
+    // La validación acepta el renglón (es texto legítimo), pero el
+    // documento guardado tiene que venir limpio. Si este test falla, el
+    // `nombre` crudo está llegando al subject.
+    const conSalto = 'Cena de navidad\nBcc: victima@ejemplo.com'
+    const problemas = validarBorrador(borradorValido({ nombre: conSalto }), 100)
+    assert.equal(problemas.filter((p) => p.campo === 'nombre').length, 0)
+
+    const guardado = nuevoDocumentoEvento('org-real', borradorValido({ nombre: conSalto })).nombre
+    assert.ok(!guardado.includes('\n'), `el nombre guardado tiene salto de línea: ${JSON.stringify(guardado)}`)
+    assert.ok(!guardado.includes('\r'), `el nombre guardado tiene CR: ${JSON.stringify(guardado)}`)
+  })
+
+  it('aplica el mismo criterio a lugar y descripcion', () => {
+    assert.ok(
+      validarBorrador(borradorValido({ lugar: 'b'.repeat(121) }), 100).some((p) => p.campo === 'lugar'),
+      'lugar debería tener tope de 120',
+    )
+    assert.ok(
+      validarBorrador(borradorValido({ descripcion: 'c'.repeat(1001) }), 100).some((p) => p.campo === 'descripcion'),
+      'descripcion debería tener tope de 1000',
+    )
+  })
+})

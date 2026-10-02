@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 
 import { aplicarTema } from '../../shared/theming'
 import { useOrganizador } from '../ContextoOrganizador'
+import { salir } from '../../services/auth'
 
 /**
  * Cáscara común de todas las pantallas del panel.
@@ -27,6 +28,34 @@ import { useOrganizador } from '../ContextoOrganizador'
 
 export default function PanelLayout() {
   const organizador = useOrganizador()
+  const navegar = useNavigate()
+  const [saliendo, setSaliendo] = useState(false)
+
+  /**
+   * Logout.
+   *
+   * No es un detalle de la UI: es la única forma de que un cambio de
+   * custom claims se vea. Los claims van horneados en el ID token cuando
+   * Firebase lo emite, y ese token se cachea una hora. Si a un
+   * super-admin le ponen `admin: true` y recarga con F5, sigue entrando
+   * con el token viejo y el panel lo expulsa igual. Lo único que renueva el
+   * token de verdad es volver a autenticarse, así que sin este botón el
+   * síntoma es "puse el claim y no cambió nada" y no hay salida.
+   *
+   * `replace` en el navigate para que el login no quede en el historial:
+   * apretar "atrás" después de salir no debe devolver a una sesión que ya
+   * no existe.
+   */
+  async function handleSalir() {
+    if (saliendo) return
+    setSaliendo(true)
+    try {
+      await salir()
+      navegar('/entrar', { replace: true })
+    } finally {
+      setSaliendo(false)
+    }
+  }
 
   useEffect(() => {
     // `document.documentElement` y no un div contenedor: las variables
@@ -59,6 +88,14 @@ export default function PanelLayout() {
           >
             Marca
           </Link>
+          <button
+            type="button"
+            onClick={handleSalir}
+            disabled={saliendo}
+            className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto-suave hover:bg-superficie hover:text-texto disabled:opacity-60"
+          >
+            {saliendo ? 'Saliendo…' : 'Salir'}
+          </button>
         </div>
       </header>
 

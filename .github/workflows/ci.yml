@@ -10,6 +10,21 @@ env:
   NODE_VERSION: '20'
   JAVA_VERSION: '21'
 
+# Sin esto el workflow hereda el default del repositorio, que suele ser
+# `write-all` o `contents: write` según dónde se armó. El token que
+# corre tests de un PR no necesita escribir nada en el repo, y menos
+# todavía en `pull_request`, donde el código es del que propone el PR.
+#
+# Lo que sí hace falta:
+#   - `contents: read` para clonar.
+#   - `id-token: write` en el job de deploy, porque la CLI de Vercel
+#     autenticando con OIDC pide un token de la Actions.
+#
+# OJO: el permiso se acota al job, no al workflow. Si se deja arriba
+# aplica también a los jobs de test, que es justo lo que se quiere evitar.
+permissions:
+  contents: read
+
 jobs:
   typecheck:
     name: TypeCheck
@@ -86,7 +101,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
-          cache: 'gradle'
+          # SIN `cache: 'gradle'`: el emulador de Firestore se baja un JAR,
+          # no hay ningún wrapper ni build.gradle en el repo, y el cache de
+          # Gradle aborta el job con "No file matched to [**/*.gradle*]".
+          # Eso tumbaba `test-rules` y, como `build` depende de él, el
+          # deploy entero se caía aunque los testsaran en verde.
 
       - name: Install dependencies
         run: npm ci
@@ -134,26 +153,38 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
+    # La CLI de Vercel con OIDC pide un token de la Actions. Este es el
+    # único job que lo necesita; el default del workflow sigue siendo
+    # `contents: read`.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      # Se despliega la RAÍZ (`.`), no `dist/`.
+      #
+      # `vercel deploy dist/` sube SÓLO la carpeta de build: el sitio
+      # subía y cada /api/* daba 404, porque las funciones de `api/` nunca
+      # viajaban. Con la raíz, Vercel corre su propio `npm run build`
+      # (está en vercel.json) y sube `api/` junto.
+      #
+      # Por eso YA NO se baja el artifact `dist` del job de build: acá Vercel
+      # recompila, y un bundle local sólo agregaría la tentación de
+      # volver a pasar `dist/` por error. El job de build sigue existiendo
+      # como puerta: si el typecheck o los tests fallan, `needs: build` no
+      # deja llegar acá.
       - name: Deploy to Vercel Preview
         run: |
           vercel deploy --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             --alias=pr-${{ github.event.number }}-easyeventqr.vercel.app \
-            dist/
+            .
 
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
@@ -172,25 +203,23 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      # Ídem: raíz del proyecto, no `dist/`. Ver el comentario del preview.
       - name: Deploy to Vercel Production
         run: |
           vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} \
             --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
-            dist/
+            .
 
       - name: Notify deployment
         if: always()

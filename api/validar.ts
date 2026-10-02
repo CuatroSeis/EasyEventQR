@@ -115,11 +115,27 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: 'Faltan token o eventoId' })
   }
 
+  // Mismo filtro que el GET: no tiene que ver si el token EXISTE, solo que
+  // tenga la forma que `generarToken()` produce. Sin esto, un token con la
+  // forma de un id de Firestore hacía 32 bytes de SHA-256 para terminar
+  // siempre en el mismo 404.
+  if (!esFormatoToken(token)) {
+    return res.status(404).json({ ok: false, error: 'Código no válido' })
+  }
+
   try {
     const db = getDb()
 
     const resultado = await db.runTransaction(async (tx: Transaction) => {
-      const refRegistro = db.collection('registros').doc(token)
+      // El doc se llama por el SHA-256 del token, NO por el token.
+      //
+      // Antes se usaba `doc(token)` y eso rompía el escáner de la puerta
+      // siempre: el token es aleatorio de 192 bits y lo que se guarda es su
+      // huella, así que buscar por el token en claro no encontraba nunca
+      // nada y toda entrada daba "Código no válido". El GET de más arriba
+      // ya hasheaba; ahora los dos caminos hashean y hay una sola manera
+      // de encontrar un registro.
+      const refRegistro = db.collection('registros').doc(hashearToken(token))
       const snapRegistro = await tx.get(refRegistro)
 
       if (!snapRegistro.exists) {

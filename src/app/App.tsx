@@ -39,6 +39,7 @@ const Branding = lazy(() => import('./pages/Branding'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const PanelRegistros = lazy(() => import('./pages/PanelRegistros'))
 const Operador = lazy(() => import('./pages/Operador'))
+const PagoSimulado = lazy(() => import('./pages/PagoSimulado'))
 const PagoExito = lazy(() => import('./pages/PagoExito'))
 const PagoFallo = lazy(() => import('./pages/PagoFallo'))
 const PagoPendiente = lazy(() => import('./pages/PagoPendiente'))
@@ -76,6 +77,7 @@ export default function App() {
               seguridad. */}
           <Route path="/e/:eventoId" element={<EventoPublico />} />
           <Route path="/q/:token" element={<QrPublico />} />
+          <Route path="/pago/simulado" element={<PagoSimulado />} />
           <Route path="/pago/exito" element={<PagoExito />} />
           <Route path="/pago/fallo" element={<PagoFallo />} />
           <Route path="/pago/pendiente" element={<PagoPendiente />} />
@@ -89,8 +91,17 @@ export default function App() {
               <Route path="/panel/eventos/:eventoId/registros" element={<PanelRegistros />} />
               <Route path="/panel/branding" element={<Branding />} />
             </Route>
-            <Route path="/admin" element={<AdminPanel />} />
           </Route>
+          {/*
+            `/admin` va FUERA de `<Protegido>` a propósito. `<Protegido>`
+            exige que el organizador esté activo, y el super-admin es la
+            única persona que puede reactivar cuentas suspendidas: si su
+            propia cuenta se suspendiera, anidarlo acá lo encerraría en
+            una pantalla que dice "pedí que te reactiven" sin darle el
+            panel donde pedirlo. El panel se autoriza solo contra
+            `/api/me`, así que no pierde nada de seguridad.
+          */}
+          <Route path="/admin" element={<AdminPanel />} />
           {/* Sin esta ruta, una URL mal escrita muestra una pantalla en
               blanco, que en el móvil se lee como "la app no funciona". */}
           <Route path="*" element={<NoEncontrado />} />

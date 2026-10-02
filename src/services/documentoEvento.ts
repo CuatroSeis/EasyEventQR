@@ -74,10 +74,10 @@ function personalizacionVacia(): PersonalizacionEvento {
 export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEvento): Evento {
   return {
     organizadorId,
-    nombre: borrador.nombre.trim(),
+    nombre: limpiarTexto(borrador.nombre),
     fecha: borrador.fecha,
-    lugar: borrador.lugar.trim(),
-    descripcion: borrador.descripcion.trim(),
+    lugar: limpiarTexto(borrador.lugar),
+    descripcion: limpiarTexto(borrador.descripcion),
     capacidadMaxima: borrador.capacidadMaxima,
     reservas: 0,
     estado: 'activo',
@@ -105,6 +105,62 @@ export interface ProblemaDeValidacion {
  * El límite llega por parámetro en vez de leerse del documento del
  * organizador acá, para que esta función siga siendo pura y testeable.
  */
+/**
+ * Tope de longitud y caracteres de control en un texto libre del evento.
+ *
+ * Dos motivos, y el segundo es el que importa:
+ *
+ * 1. Un `nombre` de 50.000 caracteres se guarda, se manda por mail y
+ *    aparece en el asunto y en la landing. No es una vulnerabilidad, es
+ *    basura que después nadie sabe cómo limpiar.
+ *
+ * 2. El `nombre` va CRUDO al `subject` del mail (el HTML sí escapa, el
+ *    asunto no). Con un `\r\n` en el medio, un organizador puede meter
+ *    cabeceras propias en un mail que se envía a un tercero. Que Brevo
+ *    sanee el subject o no depende de la versión, y no voy a betting
+ *    contra eso: el dato se filtra en la frontera.
+ *
+ * Se rechazan los controles ASCII (0x00-0x1F y 0x7F). El tab, el salto de
+ * línea y el carriage return se permiten y se normalizan a espacio: un
+ * nombre con dos renglones es legítimo, uno con un salto de línea en medio
+ * del asunto no.
+ */
+const CONTROL_NO_IMPRIMIBLE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/
+const CONTROL_NO_IMPRIMIBLE_G = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
+const ESPACIO_EN_BLANCO = /[\t\r\n]+/g
+
+function revisarTexto(
+  campo: keyof BorradorEvento,
+  valor: string,
+  maximo: number,
+): ProblemaDeValidacion[] {
+  const problemas: ProblemaDeValidacion[] = []
+  const limpio = limpiarTexto(valor)
+
+  if (limpio.length > maximo) {
+    problemas.push({ campo, mensaje: `Este campo admite hasta ${maximo} caracteres (van ${limpio.length}).` })
+  }
+
+  if (CONTROL_NO_IMPRIMIBLE.test(valor)) {
+    problemas.push({ campo, mensaje: 'Este campo tiene caracteres que no se pueden mostrar.' })
+  }
+
+  return problemas
+}
+
+/**
+ * Deja el texto listo para persistir: sin tabs ni saltos de línea y sin
+ * caracteres de control.
+ *
+ * Validar sin normalizar no alcanza. `revisarTexto` acepta un nombre con
+ * dos renglones porque es legítimo, y `nuevoDocumentoEvento` tiene que
+ * guardarlo de forma que el `subject` del mail no reciba el `\r\n` crudo.
+ * Si sólo validáramos, el dato sucio igual llegaría al mail.
+ */
+function limpiarTexto(valor: string): string {
+  return valor.replace(CONTROL_NO_IMPRIMIBLE_G, '').replace(ESPACIO_EN_BLANCO, ' ').trim()
+}
+
 export function validarBorrador(
   borrador: BorradorEvento,
   capacidadMaximaPermitida: number,
@@ -113,6 +169,16 @@ export function validarBorrador(
 
   if (!borrador.nombre.trim()) {
     problemas.push({ campo: 'nombre', mensaje: 'Poné un nombre para el evento.' })
+  } else {
+    problemas.push(...revisarTexto('nombre', borrador.nombre, 80))
+  }
+
+  if (borrador.lugar.trim()) {
+    problemas.push(...revisarTexto('lugar', borrador.lugar, 120))
+  }
+
+  if (borrador.descripcion.trim()) {
+    problemas.push(...revisarTexto('descripcion', borrador.descripcion, 1000))
   }
 
   if (Number.isNaN(borrador.fecha.getTime())) {

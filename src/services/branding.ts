@@ -2,6 +2,7 @@ import { doc, updateDoc } from 'firebase/firestore'
 
 import { db } from './firebase'
 import { esColorValido } from '../shared/theming'
+import { explicarErrorFirestore } from './errores'
 import type { Organizador } from '../shared/types'
 
 /**
@@ -28,18 +29,6 @@ export interface CambiosBranding {
   nombre?: string
   colorPrimario?: ColorElegido
   colorSecundario?: ColorElegido
-}
-
-/** Traduce un error de permiso de Firestore a algo que se pueda mostrar. */
-function explicarError(error: unknown): Error {
-  const codigo = (error as { code?: string } | null)?.code ?? ''
-  if (codigo === 'permission-denied') {
-    return new Error('Tu plan no permite ese cambio. Si debería, es un tema de permisos de la cuenta.')
-  }
-  if (codigo === 'unavailable') {
-    return new Error('No pudimos guardar. Revisá la conexión y probá de nuevo.')
-  }
-  return new Error('No se pudo guardar el cambio.')
 }
 
 /**
@@ -97,7 +86,7 @@ export async function guardarBranding(
   try {
     await updateDoc(doc(db, 'organizadores', organizador.uid), limpio)
   } catch (error) {
-    throw explicarError(error)
+    throw explicarErrorFirestore(error, organizador)
   }
 
   // Devuelvo el documento con los cambios ya aplicados, para que la UI

@@ -3,7 +3,6 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "rewrites": [
-    { "source": "/api/:ruta*", "destination": "/api/:ruta*" },
     { "source": "/:ruta*", "destination": "/index.html" }
   ]
 }

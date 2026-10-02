@@ -1,48 +1,45 @@
+# Dependabot: que los PRs de actualización los haga una máquina, no una
+# persona que se acuerde.
+#
+# `github-actions` estaba ausente y es el ecosistema que más duele cuando
+# falta: una action pineada por tag flotante que resuelve a un commit
+# distinto entre dos builds es un supply chain esperando. Ver
+# `.github/workflows/ci.yml`, donde las versiones están pineadas a SHA.
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "npm"
-    commit-message:
-      prefix: "chore(deps)"
+      interval: weekly
+    open-pull-requests-limit: 5
     groups:
-      dev-dependencies:
-        patterns:
-          - "@types/*"
-          - "typescript"
-          - "vite"
-          - "tailwindcss"
-          - "oxlint"
+      # Firebase/Admin SDK y friends salen juntos casi siempre. Agrupados
+      # es un PR y una revisión en vez de cuatro.
       firebase:
         patterns:
-          - "firebase*"
-          - "@firebase/*"
-      react:
-        patterns:
-          - "react*"
-          - "@vitejs/plugin-react"
+          - 'firebase*'
+          - '@firebase/*'
       testing:
         patterns:
-          - "@firebase/rules-unit-testing"
-      security:
-        patterns:
-          - "jose"
-          - "zod"
-          - "qrcode"
+          - 'vitest'
+          - 'firebase-tools'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    labels:
-      - "dependencies"
-      - "github-actions"
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+      day: 1
+      time: "07:00"
+    open-pull-requests-limit: 3
+    allow:
+      # Dependabot no abre PRs de major sin que uno los pida: un major de
+      # Vite o de Vitest rompe el build y no es algo que se quiera
+      # descubrir de un lunes a la mañana.
+      update-type: "minor"
+      update-type: "patch"

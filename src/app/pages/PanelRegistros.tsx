@@ -2,30 +2,18 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
+import {
+  obtenerRegistros,
+  exportarRegistros,
+  reenviarMails,
+  recountRegistros,
+  crearLinkOperador,
+  type RegistroUI,
+} from '../../services/registros'
 
-type EstadoRegistro = 'pendiente' | 'aprobado' | 'rechazado'
-type EstadoPago = 'no_aplica' | 'pendiente' | 'pagado' | 'rechazado'
-
-interface RegistroUI {
-  id: string
-  nombre: string
-  email: string
-  dni: string
-  fechaNacimiento: string
-  telefono: string
-  estado: EstadoRegistro
-  pago: {
-    requerido: boolean
-    estado: EstadoPago
-    montoPagado: number | null
-    medioPago: string | null
-    idTransaccion: string | null
-    fechaPago: Date | null
-  }
-  usado: boolean
-  fechaRegistro: Date
-  fechaUso: Date | null
-}
+/** Los dos salen del tipo del service, para no mantener la lista dos veces. */
+type EstadoRegistro = RegistroUI['estado']
+type EstadoPago = RegistroUI['pago']['estado']
 
 const ESTADO_LABELS: Record<EstadoRegistro, string> = {
   pendiente: 'Pendiente',
@@ -68,6 +56,41 @@ export default function PanelRegistros() {
   const [porPagina] = useState(20)
   const [acciones, setAcciones] = useState<Record<string, 'enviando' | 'reintentando' | undefined>>({})
   const [recontando, setRecontando] = useState(false)
+  const [aviso, setAviso] = useState<{ texto: string; advertencia: boolean } | null>(null)
+  const [linkOperador, setLinkOperador] = useState<{ url: string; expiraEn: string } | null>(null)
+  const [generandoLink, setGenerandoLink] = useState(false)
+  const [copiado, setCopiado] = useState(false)
+
+  /** Atajo para no repetir el objeto en cadallamada. */
+  function avisar(texto: string, advertencia = false) {
+    setAviso({ texto, advertencia })
+  }
+
+  async function handleGenerarLinkOperador() {
+    setGenerandoLink(true)
+    setError(null)
+    try {
+      setLinkOperador(await crearLinkOperador(eventoId!))
+      setCopiado(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo generar el link de operador')
+    } finally {
+      setGenerandoLink(false)
+    }
+  }
+
+  async function handleCopiarLink() {
+    if (!linkOperador) return
+    try {
+      await navigator.clipboard.writeText(linkOperador.url)
+      setCopiado(true)
+    } catch {
+      // clipboard.writeText falla sin HTTPS o sin permiso. El link queda a
+      // la vista igual, asi que solo se avisa que el boton no sirvio y se
+      // deja que lo copien a mano.
+      avisar('No se pudo copiar automático. Copiá el link seleccionándolo.', true)
+    }
+  }
 
   const LIMITE = organizador.limitesPersonalizacion.capacidadMaximaPorEvento
 
@@ -75,13 +98,16 @@ export default function PanelRegistros() {
     setCargando(true)
     setError(null)
     try {
-      const resp = await fetch(
-        `/api/registros?eventoId=${eventoId}&search=${encodeURIComponent(search)}&estado=${estadoFiltro}&pagoEstado=${pagoFiltro}&limite=${porPagina}&offset=${(pagina - 1) * porPagina}`
-      )
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error || 'Error cargando')
-      setRegistros(data.registros)
-      setTotal(data.total)
+      const { registros: lista, total:cuantos } = await obtenerRegistros({
+        eventoId: eventoId!,
+        search,
+        estado: estadoFiltro,
+        pagoEstado: pagoFiltro,
+        limite: porPagina,
+        offset: (pagina - 1) * porPagina,
+      })
+      setRegistros(lista)
+      setTotal(cuantos)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando registros')
     } finally {
@@ -96,16 +122,14 @@ export default function PanelRegistros() {
   async function handleReenviar(registroId: string) {
     setAcciones((prev) => ({ ...prev, [registroId]: 'enviando' }))
     try {
-      const resp = await fetch(`/api/registros/resend?eventoId=${eventoId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registroIds: [registroId] }),
-      })
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error)
-      alert(`Reenviado: ${data.enviados} OK, ${data.fallidos} fallidos`)
+      const r = await reenviarMails(eventoId!, [registroId])
+      avisar(
+        `Reenviado a ${r.enviados}. Ojo: el QR anterior dejó de servir, el mail lleva uno nuevo.`,
+        r.tokensRotados > 0,
+      )
+      cargar()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error reenviando')
+      setError(e instanceof Error ? e.message : 'Error reenviando')
     } finally {
       setAcciones((prev) => ({ ...prev, [registroId]: undefined }))
     }
@@ -113,8 +137,19 @@ export default function PanelRegistros() {
 
   async function handleReenviarTodos() {
     const ids = registros.filter((r) => r.pago.requerido && r.pago.estado === 'pagado').map((r) => r.id)
-    if (ids.length === 0) return alert('No hay reservas pagadas para reenviar')
-    if (!confirm(`Reenviar mail a ${ids.length} asistentes?`)) return
+    if (ids.length === 0) {
+      setError('No hay reservas pagadas para reenviar.')
+      return
+    }
+    if (
+      !confirm(
+        `Reenviar el mail a ${ids.length} asistentes?\n\n` +
+          'OJO: reenviar rota el token de cada QR. Los códigos de los mails anteriores ' +
+          'dejan de validar y los nuevos son los que sirven.',
+      )
+    ) {
+      return
+    }
 
     setAcciones((prev) => {
       const n = { ...prev }
@@ -122,16 +157,15 @@ export default function PanelRegistros() {
       return n
     })
     try {
-      const resp = await fetch(`/api/registros/resend?eventoId=${eventoId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ registroIds: ids }),
-      })
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error)
-      alert(`Reenviados: ${data.enviados} OK, ${data.fallidos} fallidos`)
+      const r = await reenviarMails(eventoId!, ids)
+      avisar(
+        `Reenviados ${r.enviados} de ${ids.length}. Los QR anteriores dejaron de servir: ` +
+          `los mails llevan tokens nuevos.`,
+        r.tokensRotados > 0,
+      )
+      cargar()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error reenviando')
+      setError(e instanceof Error ? e.message : 'Error reenviando')
     } finally {
       setAcciones((prev) => {
         const n = { ...prev }
@@ -143,17 +177,15 @@ export default function PanelRegistros() {
 
   async function handleExport() {
     try {
-      const resp = await fetch(`/api/registros/export?eventoId=${eventoId}`)
-      if (!resp.ok) throw new Error('Error exportando')
-      const blob = await resp.blob()
+      const blob = await exportarRegistros(eventoId!)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = resp.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'registros.csv'
+      a.download = `registros-${eventoId}.csv`
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error exportando CSV')
+      setError(e instanceof Error ? e.message : 'Error exportando CSV')
     }
   }
 
@@ -161,13 +193,11 @@ export default function PanelRegistros() {
     if (!confirm('Recalcular cupo real desde las reservas? Esto actualiza el contador del evento.')) return
     setRecontando(true)
     try {
-      const resp = await fetch(`/api/registros/recount?eventoId=${eventoId}`, { method: 'POST' })
-      const data = await resp.json()
-      if (!resp.ok || !data.ok) throw new Error(data.error)
-      alert(`Reconteo completado: ${data.reservas} reservas reales`)
+      const reservas = await recountRegistros(eventoId!)
+      avisar(`Reconteo hecho: ${reservas} reservas reales.`, false)
       cargar()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error en reconteo')
+      setError(e instanceof Error ? e.message : 'Error en reconteo')
     } finally {
       setRecontando(false)
     }
@@ -187,6 +217,13 @@ export default function PanelRegistros() {
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg font-bold text-texto">Registros</h1>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleGenerarLinkOperador}
+            disabled={generandoLink}
+            className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie disabled:opacity-60"
+          >
+            {generandoLink ? 'Generando…' : 'Link de operador'}
+          </button>
           <button onClick={handleExport} className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie">
             Exportar CSV
           </button>
@@ -206,8 +243,54 @@ export default function PanelRegistros() {
         <span>Disponibles: <strong>{LIMITE - reservados}</strong></span>
       </div>
 
+      {linkOperador && (
+        <section
+          aria-label="Link del operador de puerta"
+          className="rounded-xl border-2 border-primario bg-superficie p-4"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-texto">Link del operador de puerta</h2>
+            <span className="text-xs text-texto-suave">Vence en {linkOperador.expiraEn}</span>
+          </div>
+          <p className="mt-1 text-xs text-texto-suave">
+            Pasáselo a quien atiende la puerta. Le deja escanear los QR de este evento
+            y marcar cada entrada como usada. Sirve para un solo evento.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-superficie-2 p-2 text-xs">
+              {linkOperador.url}
+            </code>
+            <button
+              onClick={handleCopiarLink}
+              className="rounded-lg bg-primario px-3 py-2 text-xs font-semibold text-sobre-primario"
+            >
+              {copiado ? 'Copiado' : 'Copiar'}
+            </button>
+            <button
+              onClick={() => setLinkOperador(null)}
+              className="rounded-lg border border-borde px-3 py-2 text-xs text-texto"
+            >
+              Cerrar
+            </button>
+          </div>
+        </section>
+      )}
+
+      {aviso && (
+        <p
+          role="status"
+          className={`rounded-xl border p-3 text-sm ${
+            aviso.advertencia
+              ? 'border-yellow-300 bg-yellow-50 text-yellow-900'
+              : 'border-borde bg-superficie text-texto'
+          }`}
+        >
+          {aviso.texto}
+        </p>
+      )}
+
       {error && (
-        <p role="alert" className="rounded-xl border border-borde bg-superficie p-3 text-sm text-texto">
+        <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">
           {error}
         </p>
       )}

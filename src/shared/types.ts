@@ -167,6 +167,15 @@ export interface Registro {
    * por construcción: los IDs de Firestore son únicos.
    */
   qrHash: string
+  /**
+   * Cuándo se emitió el token que hay en claro.
+   *
+   * Solo se escribe al reenviar: el alta lo emite una vez y acá queda la
+   * marca. Sirve para que el organizador vea que un reenvío ROTÓ el token
+   * (y por lo tanto dejó muerto el QR del mail anterior) en vez de haber
+   * reenviado el mismo. `null` significa "el del alta, nunca reenviado".
+   */
+  tokenEmitidoEn?: Date | null
   estado: EstadoRegistro
   pago: Pago
   usado: boolean

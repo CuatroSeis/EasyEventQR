@@ -74,6 +74,59 @@ export default function Protegido() {
 
   if (!valor) return null
 
+  // --------------------------------------------------------------------
+  //  Cuenta suspendida
+  // --------------------------------------------------------------------
+  //
+  // `organizacionActiva()` en firestore.rules exige
+  // `estadoSuscripcion == 'activo'`. Con la cuenta suspendida, TODO lo que
+  // escribe el panel rebota con `permission-denied`: no se pueden crear
+  // eventos, ni editar, ni cambiar el branding.
+  //
+  // Antes de este corte, el usuario entraba al panel con normalidad, veía
+  // los formularios, y se enteraba del problema recién al guardar, con el
+  // texto crudo de Firebase. La app ya SABÍA el motivo: lo tenía en la
+  // variable de al lado. Mostrar el muro con la explicación es más honesto
+  // que dejar que lo descubra tarde y sin contexto.
+  //
+  // Se corta acá y no en cada pantalla porque la causa es una sola y el
+  // remedio es uno: reactivar la cuenta.
+  if (organizador && organizador.estadoSuscripcion === 'suspendido') {
+    return (
+      <main className="flex min-h-dvh items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-xl border border-borde bg-superficie p-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl" aria-hidden="true">
+            ⏸
+          </div>
+          <h1 className="mt-4 text-lg font-bold text-texto">Tu cuenta está suspendida</h1>
+          <p className="mt-2 text-sm text-texto-suave">
+            Por eso no podés crear ni editar eventos ni cambiar tu marca. Tu cuenta y tus eventos
+            siguen guardados: sólo falta que alguien la reactive.
+          </p>
+          <p className="mt-4 rounded-lg bg-superficie p-3 text-xs text-texto-suave">
+            Si creés que esto es un error, pedile a un administrador que reactive la cuenta desde
+            el panel de administración.
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <a
+              href="/"
+              className="rounded-lg border border-borde px-4 py-2 text-sm font-medium text-texto"
+            >
+              Ir al inicio
+            </a>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-lg px-4 py-2 text-sm text-texto-suave underline"
+            >
+              Recargar y volver a intentar
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <ProveedorOrganizador valor={valor}>
       <Outlet />

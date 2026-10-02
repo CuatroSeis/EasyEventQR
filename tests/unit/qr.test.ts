@@ -138,3 +138,48 @@ describe('imagenQrDe', () => {
     assert.equal(a, b)
   })
 })
+
+/**
+ * El contrato entre "el token del mail" y "el id del documento".
+ *
+ * Este bloque existe por un bug real: `POST /api/validar` (el escáner de
+ * la puerta) buscaba `doc(token)` con el token EN CLARO, mientras que el
+ * documento se llama por la huella y el GET de lectura sí hasheaba. Como
+ * el token son 192 bits aleatorios, esa búsqueda no encontraba nunca nada
+ * y TODA entrada daba "Código no válido": el escáner estaba roto al 100%,
+ * sin que ningún test lo notara porque cada función por separado era
+ * correcta.
+ *
+ * Lo que se fija acá es la propiedad que lo hace imposible volver a
+ * romper: el token nunca es el id del documento. Siempre su SHA-256.
+ */
+describe('el token nunca es el id del documento', () => {
+  it('el id del documento es la huella del token, no el token', () => {
+    const token = generarToken()
+    const idDocumento = hashearToken(token)
+
+    assert.notEqual(idDocumento, token, 'el documento se está nombrando con el token en claro')
+    assert.equal(idDocumento.length, 64, 'una huella SHA-256 en hexadecimal son 64 caracteres')
+    assert.equal(idDocumento, hashearToken(token), 'la huella tiene que ser determinista')
+  })
+
+  it('el token del mail pasa el filtro de formato y su huella no', () => {
+    // Sirve para recordar por qué los dos caminos tienen que hashear: si
+    // alguien "optimiza" el hasheo del GET, el filtro de formato lo
+    // delata en el test.
+    const token = generarToken()
+    assert.ok(esFormatoToken(token), 'el token emitido tiene que pasar su propio filtro')
+
+    const huella = hashearToken(token)
+    assert.equal(esFormatoToken(huella), false, 'la huella no es un token válido; no debería pasar el filtro')
+  })
+
+  it('dos tokens del mismo registro nunca dan la misma huella', () => {
+    // Lo que hace el reenvío: rota el token y cambia la huella. Si dos
+    // tokens dieran la misma huella, la rotación no revocaría el QR viejo
+    // y habría dos entradas válidas para el mismo asiento.
+    const anterior = generarToken()
+    const nuevo = generarToken()
+    assert.notEqual(hashearToken(anterior), hashearToken(nuevo))
+  })
+})

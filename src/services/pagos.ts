@@ -1,7 +1,17 @@
 /**
  * Servicios de pagos para el frontend.
+ *
+ * Las URLs van RELATIVAS a propósito. Antes se armaban con
+ * `import.meta.env.VITE_APP_URL || 'https://easyeventqr.vercel.app'`, que
+ * tenía dos problemas: en local, `VITE_APP_URL` no está definida (el
+ * `.env.local` define `APP_URL`, sin el prefijo `VITE_`, que es el que sí
+ * lee Vite), así que la app de desarrollo pegaba contra la API de
+ * PRODUCCIÓN; y en producción la variable era redundante, porque la app y
+ * las funciones ya viven en el mismo dominio.
+ *
+ * Con `/api/...` no hay variable que olvidar ni que pueda apuntar al lugar
+ * equivocado: el frontend llama a su propio origen, y listo.
  */
-const APP_URL = import.meta.env.VITE_APP_URL || 'https://easyeventqr.vercel.app'
 
 export interface PreferenceResponse {
   ok: boolean
@@ -15,7 +25,7 @@ export interface PreferenceResponse {
  */
 export async function crearPreferenciaPago(registroId: string): Promise<PreferenceResponse> {
   try {
-    const resp = await fetch(`${APP_URL}/api/pagos`, {
+    const resp = await fetch('/api/pagos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ registroId }),
@@ -53,7 +63,7 @@ export function abrirCheckoutMP(initPoint: string): Window | null {
  */
 export async function verificarEstadoPago(registroId: string): Promise<{ ok: boolean; estado?: string; error?: string }> {
   try {
-    const resp = await fetch(`${APP_URL}/api/registros/${registroId}`)
+    const resp = await fetch(`/api/pagos/estado?registroId=${encodeURIComponent(registroId)}`)
     const data = await resp.json()
 
     if (!resp.ok || !data.ok) {

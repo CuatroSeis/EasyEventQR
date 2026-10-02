@@ -9,6 +9,7 @@ import { RegistrosTab } from './admin/RegistrosTab'
 import { ExcepcionesTab } from './admin/ExcepcionesTab'
 import { AuditoriaTab } from './admin/AuditoriaTab'
 import { Cargando } from './admin/Cargando'
+import AccesoDenegado from './admin/AccesoDenegado'
 
 type TabId = 'dashboard' | 'organizadores' | 'eventos' | 'registros' | 'excepciones' | 'auditoria'
 
@@ -44,6 +45,7 @@ export default function AdminPanel() {
   const [usuario, setUsuario] = useState(auth.currentUser)
   const [tabActiva, setTabActiva] = useState<TabId>('dashboard')
   const [esSuperAdmin, setEsSuperAdmin] = useState(false)
+  const [motivo, setMotivo] = useState<string | null>(null)
   const [verificando, setVerificando] = useState(true)
 
   useEffect(() => {
@@ -65,9 +67,16 @@ export default function AdminPanel() {
           headers: { Authorization: `Bearer ${await actual.getIdToken()}` },
         })
         const datos = await respuesta.json()
-        if (vigente) setEsSuperAdmin(datos.ok === true && datos.isAdmin === true)
+        if (vigente) {
+          const admin = datos.ok === true && datos.isAdmin === true
+          setEsSuperAdmin(admin)
+          setMotivo(admin ? null : (datos.porQue ?? 'desconocido'))
+        }
       } catch {
-        if (vigente) setEsSuperAdmin(false)
+        if (vigente) {
+          setEsSuperAdmin(false)
+          setMotivo('error-red')
+        }
       } finally {
         if (vigente) setVerificando(false)
       }
@@ -79,13 +88,8 @@ export default function AdminPanel() {
     }
   }, [navegar])
 
-  useEffect(() => {
-    if (verificando || esSuperAdmin) return
-    navegar('/panel', { replace: true })
-  }, [verificando, esSuperAdmin, navegar])
-
   if (verificando) return <Cargando etiqueta="Verificando permisos…" />
-  if (!esSuperAdmin) return null
+  if (!esSuperAdmin) return <AccesoDenegado motivo={motivo} onSalir={() => navegar('/entrar', { replace: true })} />
 
   return (
     <div className="flex min-h-full flex-col">
