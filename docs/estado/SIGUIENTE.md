@@ -3,6 +3,11 @@
 Estado al cierre del **2 Oct 2026**. Todo lo de acá está verificado contra
 `https://easyeventqr.vercel.app` o contra el código; nada es supuesto.
 
+> **`/admin` ya abre.** Era un bug, no configuración: dos causes encadenadas
+> (orden de llamadas + `jose@6` ESM-only) que están resueltas y deployadas.
+> Los pasos 1 y 2 de abajo quedaron como referencia si algún día vuelve a
+> pasar. Ya podés ir directo a la [sección 3](#3-cerrar-el-mvp).
+
 ---
 
 ## 0. Dónde quedó todo
@@ -14,118 +19,115 @@ responden con el código HTTP correcto:
 | Endpoint | HTTP | Lectura |
 |---|---|---|
 | `salud` | 200 | `{"ok":true,"proyecto":"easyeventqr-dev","organizadores":1}` |
-| `me` | 200 | `{"ok":true,"uid":null,...}` sin token, 200 con token |
+| `me` | 200 | sin token `sin-sesion`; **con token → `isAdmin: true`** |
 | `evento-publico` | 404 | id inexistente → 404, correcto |
 | `registros` | 400 | sin token → 400, correcto |
-| `admin-organizadores` | 401 | sin token → 401, correcto |
+| `admin-organizadores` | 401 sin token, **200 con token** | dashboard con KPIs reales |
 | `operador` / `registro` / `pagos` | 405 | método incorrecto → 405, correcto |
 
-**Único bloqueante abierto:** el panel `/admin` expulsa al usuario aunque esté
-iniciado como `ivanrufinocontac@gmail.com`.
+Verificado con un ID token **real**, minteado con el service account e
+intercambiado por el endpoint de Firebase Auth — no con un token inventado ni
+leyendo variables de entorno.
 
 ---
 
-## 1. El bloqueante: por qué `/admin` expulsa
+## 1. El bug de `/admin` (resuelto, queda de referencia)
 
-`AdminPanel.tsx` ya manda el token correctamente:
+Eran **dos bugs encadenados**, y el primero tapaba al segundo. Los dos eran
+reales; sin arreglar el primero, el segundo seguía invisible.
 
-```tsx
-fetch('/api/me', { headers: { Authorization: `Bearer ${await actual.getIdToken()}` } })
-```
+### 1A. `getAuth()` antes de que exista el app `[DEFAULT]`
 
-El frontend no es el problema. La respuesta de `/api/me` trae un campo
-`porQue` que dice **exactamente** por qué se rechaza, y `AccesoDenegado` lo
-traduce. Ese campo es la única cosa que hay que mirar.
+La inicialización del app de Firebase Admin es perezosa: ocurre cuando algo
+pide `getDb()`. `getAuth()` sin argumentos usa el app `[DEFAULT]`, así que si
+se llama antes del primer `getDb()` tira `app/no-app`.
 
-### Paso 1 — leer el motivo (30 segundos, sin tocar nada)
+Los handlers verifican el token dentro de un `try { … } catch {}`, y ese catch
+traducía un error de inicialización a "no tenés sesión":
 
-1. Abrir `https://easyeventqr.vercel.app/admin` con la sesión iniciada.
-2. DevTools → Network → buscar `me`.
-3. Mirar el cuerpo de la respuesta. Viene uno de estos cinco:
-
-| `porQue` | Significa | Qué hacer |
+| Endpoint | Decía | Era |
 |---|---|---|
-| `falta-var` | `SUPER_ADMIN_UID` no está en las variables de Vercel | → Paso 2A |
-| `sin-claim` | La variable está, pero tu UID no es el de esa variable | → Paso 2B |
-| `sin-sesion` | No llegó un token válido | → Paso 2C |
-| `error-red` | `/api/me` no respondió | → Paso 2D |
-| `desconocido` | El backend no envió un motivo | → Paso 2E |
+| `/api/me` | `porQue: "sin-sesion"` | el app no existía |
+| `/api/admin-organizadores` | 401 "Token inválido o expirado." | el app no existía |
+| `/api/operador` | 401 "No autenticado" | el app no existía |
 
-**Este paso no es opcional.** Sin el `porQue` hay tres hipótesis Vivo y
-probablemente se implementa la que no es.
+`api/registros.ts` zafaba de casualidad: ahí sí pasaba por `getDb()` antes.
 
-### Paso 2 — actuar según el motivo
+**Fix:** `getAdminAuth()` en `src/server/lib/firebase-admin.ts`, que inicializa
+antes de devolver el Auth y concentra el `import()` dinámico. Con eso el orden
+deja de importar y la clase de bug desaparece en vez de cambiar de lugar.
 
-#### 2A. Si es `falta-var` (lo más probable)
+### 1B. `jose@6` es ESM-only
 
-Nunca se confirmó que `SUPER_ADMIN_UID` esté puesta en Vercel. En la sesión
-pasada el usuario putsó `FIREBASE_SERVICE_ACCOUNT` y nada más.
+Arreglado 1A, la verificación seguía muriendo. La cadena es
+`firebase-admin` → `jwks-rsa` (CommonJS) → `jose`. `jwks-rsa@4` pide
+`jose@^6`, que es ESM puro, y Vercel empaqueta las functions de `api/` como
+CommonJS:
 
-- Tu UID real es **`c4HRa54bB7XSEyOigo2fHqgTL4h1`** (está en `.env.local`).
-- Vercel → Settings → Environment Variables → `SUPER_ADMIN_UID` = ese valor.
-- **Marcar los tres ambientes**: Production, Preview y Development. Marcando
-  sólo Production, el deploy de `main` funciona pero los previews no, y eso
-  confunde la próxima vez.
-- Redeploy. La variable se lee **en runtime**, no al compilar: con guardar la
-  variable alcanza, pero un redeploy deja el cache del serverless sin dudas.
-- Volver a abrir `/admin`.
-
-#### 2B. Si es `sin-claim`
-
-La variable está puesta pero con otro UID, o la puesta no es la de esta
-cuenta. Dos salidas, y conviene aplicar **las dos**:
-
-1. Corregir `SUPER_ADMIN_UID` en Vercel al UID correcto.
-2. Asignar el custom claim, que es la vía que no depende de ninguna variable:
-
-```bash
-cd /home/rufino/Desktop/IA/QR
-FIREBASE_SERVICE_ACCOUNT="$(cat easyeventqr-dev-firebase-adminsdk-fbsvc-4a908f6d1c.json | jq -c .)" \
-  npm run auth:admin -- ivanrufinocontac@gmail.com
+```
+ERR_REQUIRE_ESM — require() of ES Module node_modules/jose/dist/webapi/index.js
+from node_modules/jwks-rsa/src/utils.js not supported
 ```
 
-El service account necesita permiso **Authentication Admin** en IAM; sin eso el
-script responde `auth/invalid-credential`.
+Esto explica el patrón que venían mostrando los chequeos: **`salud` andaba y
+todo lo demás no**, porque Firestore no necesita JWKS y la verificación de
+firma sí.
 
-> **Después de asignar el claim hay que cerrar sesión y volver a entrar.** No es
-> un detalle: el claim viaja dentro del ID token, que Firebase ya había
-> emitido. El token viejo sigue sin `admin` hasta que se emite uno nuevo.
+**Fix:** `overrides: { "jose": "^5.10.0" }` en `package.json`. La última major
+con build CommonJS; `jwks-rsa` sólo usa `importJWK` y `exportSPKI`, que
+existen en v5.
 
-#### 2C. Si es `sin-sesion`
+### 1C. Cómo se encontró
 
-`/api/me` no recibió un `Authorization: Bearer` válido. En Network, revisar que
-el request a `me` tenga el header. Causas probables:
+Agregar el `console.error` con el `code` y el `message` de firebase-admin en el
+`catch` de `me.ts` fue lo que lo destapó. Antes se comía la excepción; con el
+log, `vercel logs` mostró el `ERR_REQUIRE_ESM` en una línea. **Un `catch {}`
+mudo no es estilo: es lo que convierte un error de infraestructura en un
+diagnóstico falso.**
 
-- La sesión de Firebase venció. Entrar de nuevo.
-- El navegador y la pestaña quedó con un token viejo en memoria: recargar duro.
+### 1D. Si vuelve a pasar
 
-#### 2D. Si es `error-red`
+Los cuatro handlers ahora loguean el motivo, así que `vercel logs` lo muestra
+directo. Y `/api/me` sigue devolviendo `porQue`:
 
-`/api/me` no llegó a responder. Verificar el backend con:
-
-```bash
-curl -s https://easyeventqr.vercel.app/api/salud
-```
-
-Si `salud` devuelve `ok:true` y `me` no, es específico de `me`; si ambos
-caen, revisar `FIREBASE_SERVICE_ACCOUNT` en Vercel.
-
-#### 2E. Si es `desconocido`
-
-El backend respondió sin `porQue`. Verificar que el deploy de `/api/me` sea el
-de `b323245` en adelante. Con el commit viejo el campo no existía.
+| `porQue` | Significa |
+|---|---|
+| `sin-sesion` | No llegó un token válido. Recargá duro y volvé a entrar. |
+| `falta-var` | `SUPER_ADMIN_UID` no está en el ambiente donde estás. |
+| `sin-claim` | La variable existe pero con otro UID. |
+| `desconocido` | El backend no mandó motivo: es un bug, mirar el log. |
 
 ---
 
-## 2. Pendiente de seguridad — rotar el service account
+## 2. Variables de Vercel — qué está y qué falta
 
-**Es lo más importante que quedó sin hacer.** La clave privada del service
-account `easyeventqr-dev` se imprimió en el historial del chat, dos veces.
+Estado real, verificado con `vercel env ls`:
+
+| Variable | Ambientes | Nota |
+|---|---|---|
+| `SUPER_ADMIN_UID` | Production | `c4HRa54bB7XSEyOigo2fHqgTL4h1` — anda |
+| `FIREBASE_SERVICE_ACCOUNT` | Preview, Production | **Development falta** |
+| `OPERADOR_SECRET` | Production | rotar (filtrado en el chat) |
+| `MERCADOPAGO_SIMULADO` | Production | para E2E hace falta `true` |
+| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | Production | confirmar remitente |
+| `APP_URL` | Production | |
+| `VITE_FIREBASE_*` | Production, Preview | |
+
+**`FIREBASE_PROJECT_ID` no está puesta y no hace falta**: sale del
+`project_id` del JSON del service account, y `/api/salud` lo reporta bien.
+
+Si querés que los **previews** funcionen, hay que marcar Preview y Development
+en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `BREVO_*`,
+`MERCADOPAGO_SIMULADO` y `FIREBASE_SERVICE_ACCOUNT`.
+
+### 2.1 Rotar el service account (lo más importante que queda)
+
+**La clave privada se imprimió en el historial del chat, dos veces.**
 
 1. Google Cloud Console → IAM & Admin → Service Accounts.
 2. El service account `firebase-adminsdk-fbsvc@easyeventqr-dev.iam.gserviceaccount.com`
    → Keys → **Create new key** (JSON).
-3. Vercel → Settings → Environment Variables → `FIREBASE_SERVICE_ACCOUNT` →
+3. Vercel → Environment Variables → `FIREBASE_SERVICE_ACCOUNT` →
    reemplazar por el JSON nuevo **minificado en una línea**.
 4. Google Cloud → Keys → **Delete** la clave vieja (`4a908f6d...`).
 5. Borrar el JSON local: `rm easyeventqr-dev-firebase-adminsdk-fbsvc-4a908f6d1c.json`
@@ -138,24 +140,32 @@ jq -c . easyeventqr-dev-firebase-adminsdk-*.json > /tmp/sa.json && cat /tmp/sa.j
 
 > Recordar: **JSON crudo, no base64**. El backend hace `JSON.parse(raw)`.
 
+### 2.2 Rotar `OPERADOR_SECRET`
+
+El valor anterior estaba hardcodeado en el repo. Con ese valor, cualquiera que
+lo lea puede fabricar el link de operador de cualquier evento y marcar entradas
+como usadas.
+
+```bash
+openssl rand -base64 48
+```
+
+Ponerlo en Vercel reemplazando el actual.
+
 ---
 
 ## 3. Cerrar el MVP
 
-Una vez que `/admin` abra, en este orden:
+En este orden:
 
 1. **Recorrer los 12 pasos** de [`../arquitectura/ENDPOINTS.md`](../arquitectura/ENDPOINTS.md).
    Es la lista de verificación del MVP y nunca se corrió completa.
 2. **Mail real**: `BREVO_API_KEY` + remitente verificado. Sin esto el flujo
    anda entero pero el mail sale por consola, y el QR es lo único que separa
    "tener entrada" de "no tenerla".
-3. **`OPERADOR_SECRET`**: rotar el que se pegó en el chat y verificar que
-   tenga 32+ caracteres.
+3. **`OPERADOR_SECRET`**: rotar el que se pegó en el chat (32+ caracteres).
 4. **`MERCADOPAGO_SIMULADO`**: queda en `true` sólo para pruebas. Apagarlo
    antes de compartir la URL. Mercado Pago real no está integrado.
-5. **`FIREBASE_PROJECT_ID`**: es `easyeventqr-dev`. Si esto va a producción
-   con datos reales, decidir si el nombre del proyecto es sólo eso o si hay
-   que separar las bases.
 
 ---
 
@@ -168,13 +178,16 @@ Ninguno bloquea el MVP. Todo verificado y anotado para no perderlo:
   es derivar el valor durante el render en vez de setearlo en el effect.
 - **`TOPE_LECTURA = 2000`** en el panel admin. Con más de 2000 registros la
   lista se trunca y no lo dice.
+- **`/api/registros/resend` existe pero ningún botón la llama.** Probable que
+  haya que cablearla en el panel de registros.
 - **Dependabot duplicado** en `.github/dependabot.yml` (entradas npm
   repetidas) y actions sin pinnear por SHA.
 - **Actions apuntando a Node 20 y `setup-java@v4`**, ambos deprecados por los
   runners. Son warnings, no fallos, pero hay que migrarlos.
 - **OIDC sin usar**: `VERCEL_TOKEN` es un token estático que ya tuvo que
-  renovarse una vez. OIDC es mejor y no se puede usar mientras Git esté
-  desconectado (la CLI exige la app de Vercel instalada en el repo).
+  renovarse una vez.
+- **Deploy doble**: con Vercel conectado a GitHub y GitHub Actions desplegando,
+  cada push a `main` construye dos veces.
 
 ---
 
@@ -184,7 +197,7 @@ Ninguno bloquea el MVP. Todo verificado y anotado para no perderlo:
 cd /home/rufino/Desktop/IA/QR
 npm run typecheck     # tsc -b && tsc -p tsconfig.tests.json
 npm run lint          # 14 warnings, exit 0
-npm run test:unit     # 163 tests
+npm run test:unit     # 173 tests
 npm run test:rules    # 89 tests (necesita el JRE de .tools/)
 npm run build
 ```
@@ -197,3 +210,18 @@ pkill -f cloud-firestore-emulator; sleep 3
 
 **Node 22.6+ es obligatorio.** Los tests importan `.ts` con la extensión
 explícita y los corre el type-stripping nativo. En Node 20 no parsean.
+
+### 5.1 Verificar auth contra producción
+
+Los tests unitarios no cubren el empaquetado de Vercel, y dos bugs seguidos
+justamente vivieron ahí. Para comprobar que la verificación de tokens funciona
+de verdad en producción:
+
+```bash
+# Con FIREBASE_SERVICE_ACCOUNT local y VITE_FIREBASE_API_KEY en .env.local
+vercel logs easyeventqr.vercel.app --since 5m
+```
+
+y mirar que **no** aparezca `verifyIdToken falló`. Ese log es la señal de
+alerta: si el `catch` se dispara, la verificación de tokens está rota aunque
+todo lo demás dé verde.

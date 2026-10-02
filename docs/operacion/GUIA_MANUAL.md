@@ -42,21 +42,23 @@ OPERADOR_SECRET"*.
 
 ---
 
-## 🔴 Paso 2 — Apagar la integración Git de Vercel
+## Paso 2 — Integración Git de Vercel
 
-**Por qué:** vos pediste que el deploy lo haga **sólo GitHub Actions**. Si Vercel
-también tiene el repo conectado, cada push a `main` dispara dos builds que se
-pisan, y el que gana es el que termina. En el mejor caso perdés tiempo; en el
-peor, desplegás un build a medio construir.
+**Decisión tomada: se deja conectada.** Antes este paso pedía desconectarla
+para que el deploy fuera sólo de GitHub Actions.
 
-**Dónde:**
+Ahora están los dos caminos activos:
 
-1. Vercel → tu proyecto → **Settings** → **Git**
-2. Buscá el repositorio conectado y pulsá **Disconnect** / **Desconectar**
-3. Confirmá
+- **Vercel con GitHub**: cada push a `main` dispara un build.
+- **GitHub Actions**: corre los checks y después `vercel deploy --prod`.
 
-**Comprobar que quedó:** en esa misma pantalla tiene que decir que no hay
-repositorio conectado.
+Con los dos connected, cada push produce dos builds. No rompió nada —los dos
+despliegan el mismo commit y el último que termina gana—, pero se wastea tiempo
+y es una fuente confusa de "no sé cuál deployé".
+
+Si querés dejar **sólo GitHub Actions** como dueña del deploy, hay que
+desconectar la integración de Vercel y dejar el workflow con `VERCEL_TOKEN`.
+Es un clic: Vercel → Settings → Git → **Disconnect**.
 
 ---
 
@@ -66,26 +68,52 @@ repositorio conectado.
 o el UID en `SUPER_ADMIN_UID`. Si no lo tenés, entrás a `/admin` y te expulsa de
 inmediato — lo vas a leer como "la app está rota".
 
+> **Ya está hecho.** El backend responde `isAdmin: true` para
+> `ivanrufinocontac@gmail.com` (verificado en producción con un ID token real).
+> Andá directo al [Paso 7](#paso-7--correr-el-recorrido-end-to-end). Este paso
+> queda documentado por si hay que repetirlo con otra cuenta.
+
 **Opción A — por custom claim (recomendada).** Es el mecanismo que comparten
 el backend y las reglas de Firestore.
 
-1. Firebase Console → **Authentication** → **Users**
-2. Copiá el UID de `ivanrufinocontac@gmail.com`
-3. Firebase Console → **Firestore** → creá/abrí el documento
-   `organizadores/<ese UID>`
-4. Agregá el campo:
+El claim vive en **Firebase Authentication**, no en Firestore. No se puede
+agregar a mano desde la consola: la consola de Firebase no tiene editor de
+custom claims, y aunque `organizadores/<uid>` tenga un campo `admin: true`, eso
+**no** autoriza nada — el backend nunca lee ese campo, y las reglas tampoco.
 
-   ```
-   admin: true
-   ```
+Se asigna con el script del repo:
 
-5. Guardá. **Cerrá sesión y volvé a entrar**: los tokens se cachean una hora.
+```bash
+cd /home/rufino/Desktop/IA/QR
+FIREBASE_SERVICE_ACCOUNT="$(cat easyeventqr-dev-firebase-adminsdk-fbsvc-*.json | jq -c .)" \
+  npm run auth:admin -- ivanrufinocontac@gmail.com
+```
 
-**Opción B — por variable.** Si preferís no tocar Firestore, dejá
-`SUPER_ADMIN_UID` con ese UID en Vercel y recargá con logout/login.
+El service account necesita permiso **Authentication Admin** en IAM; sin eso el
+script responde `auth/invalid-credential`.
 
-**Comprobar:** abrí `/admin`. Si ves el panel con pestañas, quedó. Si te
-expulsa al `/panel`, el claim no está.
+**Opción B — por variable.** No tocar nada del usuario y poner el UID en Vercel:
+
+1. Vercel → Settings → Environment Variables → `SUPER_ADMIN_UID` = el UID.
+2. Redeploy.
+
+Ya está puesta (`c4HRa54bB7XSEyOigo2fHqgTL4h1`, en Production).
+
+> **Después de cambiar el claim hay que cerrar sesión y volver a entrar.** No es
+> un detalle: el claim viaja dentro del ID token, que Firebase ya había emitido.
+> El token viejo sigue sin `admin` hasta que se emite uno nuevo.
+
+**Comprobar:** abrí `/admin`. Si ves el panel con pestañas, quedó.
+
+**Si igual te expulsa**, el motivo ya no lo inventamos: la respuesta de
+`/api/me` trae un campo `porQue`. En DevTools → Network → `me`:
+
+| `porQue` | Significa |
+|---|---|
+| `sin-sesion` | No llegó un token válido. Recargá duro y volvé a entrar. |
+| `falta-var` | `SUPER_ADMIN_UID` no está en el ambiente donde estás. |
+| `sin-claim` | La variable existe pero con otro UID. |
+| `desconocido` | El backend no envió motivo: es un bug, hay que mirar el log. |
 
 ---
 
@@ -116,14 +144,22 @@ En Vercel, confirmá que estén estas, con estos nombres exactos:
 | Variable | Estado esperado |
 |---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | JSON del service account, **en una sola línea**, sin comillas |
-| `FIREBASE_PROJECT_ID` | El proyecto real (no `easyeventqr-dev`) |
-| `SUPER_ADMIN_UID` | Paso 3 |
+| `SUPER_ADMIN_UID` | Paso 3 — ya está en Production |
 | `BREVO_API_KEY` | `xkeysib-…` |
 | `BREVO_SENDER_EMAIL` | remitente **verificado** en Brevo |
 | `BREVO_SENDER_NAME` | `EasyEventQR` |
 | `OPERADOR_SECRET` | Paso 1 |
 | `APP_URL` | `https://easyeventqr.vercel.app` |
 | `MERCADOPAGO_SIMULADO` | Paso 4 |
+
+`FIREBASE_PROJECT_ID` **no hace falta**: sale del `project_id` del JSON del
+service account, y `/api/salud` lo reporta como `easyeventqr-dev`.
+
+**Sobre marcar los tres ambientes:** hoy casi todas están en **Production
+solamente**. Si querés que los previews funcionen, hay que marcar Preview y
+Development en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `BREVO_*` y
+`MERCADOPAGO_SIMULADO`. `FIREBASE_SERVICE_ACCOUNT` ya está en Preview y
+Production.
 
 **El detalle que más se escapa:** `FIREBASE_SERVICE_ACCOUNT` tiene que ser el
 JSON entero en **una línea**. Si tiene saltos de línea, Vercel lo guarda pero
@@ -195,13 +231,16 @@ repo no tiene Gradle y ese cache abortaba el job.
 ## Resumen para marcar
 
 ```
-[ ] 1. Rotar OPERADOR_SECRET          (los 3 ambientes)
-[ ] 2. Apagar integración Git de Vercel
-[ ] 3. Claim admin en tu cuenta  ivanrufinocontac@gmail.com
-[ ] 4. MERCADOPAGO_SIMULADO=true
+[x] 3. Claim admin en tu cuenta  ivanrufinocontac@gmail.com   ← ya andaba
+[ ] 1. Rotar OPERADOR_SECRET
+[ ] 2. MERCADOPAGO_SIMULADO=true
 [ ] 5. Revisar variables de Vercel
 [ ] 6. Confirmar que llega el mail
 [ ] 7. Correr los 12 pasos de ENDPOINTS.md
-[ ] 8. Commit + push + deploy
+[ ] —  Rotar el service account (clave filtrada en el chat)
 [ ] —  Apagar la simulación antes de compartir la app
 ```
+
+El paso 2 de la versión anterior ("apagar la integración Git de Vercel") ya no
+aplica: se reconectó Vercel con GitHub a propósito, para que los pushes a
+`main` despleguen.

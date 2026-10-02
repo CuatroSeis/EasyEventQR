@@ -1,6 +1,72 @@
 # EasyEventQR - Progress Report
 
-## Estado Actual: ✅ Deploy a producción funcionando
+## Estado Actual: ✅ Deploy funcionando, `/admin` abre
+
+### Sesión del 2 Oct 2026 (2ª parte) — dos bugs, el segundo tapaba al primero
+
+`/admin` seguía expulsando al super-admin con la sesión puesta. **No era
+configuración**: `SUPER_ADMIN_UID` estaba puesto y el UID era el correcto.
+Había dos bugs encadenados, y el primero escondía al segundo.
+
+**1. Orden de llamadas: `getAuth()` antes de que exista el app.**
+
+`getAuth()` sin argumentos usa el app `[DEFAULT]`, que en una lambda no existe
+hasta que alguien pide `getDb()`. La inicialización es perezosa. Los handlers
+verifican el token dentro de un `try { … } catch {}`, así que `app/no-app`
+—un error de configuración— salía como otra cosa:
+
+| Endpoint | Respuesta |
+|---|---|
+| `/api/me` | 200 con `porQue: "sin-sesion"` |
+| `/api/admin-organizadores` | 401 "Token inválido o expirado." |
+| `/api/operador` | 401 "No autenticado" |
+
+Un `catch {}` mudo convierte un error del backend en "no tenés sesión", que es
+el peor diagnóstico posible: manda a revisar el login cuando el login está bien.
+
+**2. `jose@6` es ESM-only (este era el que de verdad importaba).**
+
+Arreglado lo anterior, la verificación de tokens seguía muriendo. La cadena es
+`firebase-admin` → `jwks-rsa` (CommonJS) → `jose`. `jwks-rsa@4` declara
+`jose@^6`, que es ESM puro: `"type": "module"` y sin condición `require` en sus
+exports. Vercel empaqueta las functions de `api/` como **CommonJS**, así que el
+require no puede funcionar:
+
+```
+ERR_REQUIRE_ESM — require() of ES Module node_modules/jose/dist/webapi/index.js
+from node_modules/jwks-rsa/src/utils.js not supported
+```
+
+Esto explica el patrón que venían mostrando los chequeos: **`/api/salud` andaba**
+(Firestore no necesita JWKS) y todo lo que verificaba tokens no. El error se
+encontró recién cuando `me.ts` empezó a loguear el motivo en vez de tragárselo.
+
+Fix: `overrides: { "jose": "^5.10.0" }` — la última major que todavía publica
+build CommonJS. `jwks-rsa` sólo usa `importJWK` y `exportSPKI`, que existen en
+v5. De paso `jose` pasó a ser dependencia declarada: `api/operador.ts` la usaba
+sin declararla, como dependencia transitiva hoisteada.
+
+**Estado verificado en producción** (con un ID token real, minteado):
+
+```bash
+curl https://easyeventqr.vercel.app/api/salud
+# {"ok":true,"proyecto":"easyeventqr-dev","organizadores":1,"entorno":"production"}
+
+GET /api/me  (con Bearer)
+# {"ok":true,"uid":"c4HRa54bB7XSEyOigo2fHqgTL4h1","isAdmin":true,"porQue":null, ...}
+
+GET /api/admin-organizadores?accion=dashboard  (con Bearer)
+# 200 {"ok":true,"stats":{"totalOrganizadores":1,"totalEventos":2,"totalRegistros":3, ...}}
+```
+
+**+10 tests** (173 unit, 89 rules). Los nuevos son de regresión:
+`tests/unit/app-inicializada.test.ts` comprueba que `getAuth()` directo tira
+`app/no-app` —el fallo que se evita— y prohíbe que algún handler vuelva a
+llamarlo a secas. `tests/unit/dependencias.test.ts` mira el `node_modules`
+instalado para que un `npm install` que deshaga el override se note en CI y no
+en producción.
+
+---
 
 ### Sesión del 2 Oct 2026 — el deploy pasó verde
 
@@ -39,36 +105,26 @@ no lo empaqueta Vercel. El mapeo de los 9 endpoints lo dejó obvio:
 | `operador` | 405 | ya usaba import dinámico |
 
 Los dos que fallaban eran exactamente los dos con import estático. Ahora los
-cuatro que usan `getAuth` lo hacen con `await import()`.
-
-**Estado verificado en producción:**
-
-```bash
-curl https://easyeventqr.vercel.app/api/salud
-# {"ok":true,"proyecto":"easyeventqr-dev","organizadores":1,"entorno":"production"}
-
-curl https://easyeventqr.vercel.app/api/me
-# {"ok":true,"uid":null,"isAdmin":false,"porQue":"sin-sesion","organizador":null}
-
-curl "https://easyeventqr.vercel.app/api/admin-organizadores?accion=listar"
-# {"ok":false,"error":"Falta el token de sesión."}   ← 401, ya no 500
-```
+cuatro que usan `getAuth` pasan por `getAdminAuth()`.
 
 ### Pendiente para cerrar el MVP
 
-> El plan detallado, con el árbol de diagnóstico de `/admin` y los comandos de
-> verificación, está en **[SIGUIENTE.md](./SIGUIENTE.md)**.
+> El plan detallado está en **[SIGUIENTE.md](./SIGUIENTE.md)**.
 
-- [ ] **`/admin` expulsa al usuario aunque esté iniciado** — leer el campo
-      `porQue` de la respuesta de `/api/me` y seguir el árbol de
-      `SIGUIENTE.md` §1. Causa más probable: `SUPER_ADMIN_UID` no está puesta
-      en Vercel (el UID real es `c4HRa54bB7XSEyOigo2fHqgTL4h1`).
+- [ ] **Confirmar `/admin` en el navegador** con la sesión real de
+      `ivanrufinocontac@gmail.com`. El backend ya responde `isAdmin: true` con un
+      token válido (verificado con un ID token minteado), así que esto debería
+      estar listo. Si igual expulsa, el problema pasa a ser del lado del
+      navegador y no del backend.
 - [ ] Recorrer los 12 pasos de [`../arquitectura/ENDPOINTS.md`](../arquitectura/ENDPOINTS.md).
 - [ ] **Rotar el service account**: la clave privada se imprimió en una sesión de
       chat. Crear una nueva en Google Cloud → IAM → Service Accounts → Keys,
       actualizar `FIREBASE_SERVICE_ACCOUNT` en Vercel y borrar la clave vieja.
 - [ ] `OPERADOR_SECRET`: rotar el que se pegó en el chat (32+ caracteres).
 - [ ] `MERCADOPAGO_SIMULADO=true` sólo para pruebas; apagarlo antes de compartir.
+- [ ] **Variables de Vercel que faltan**: `FIREBASE_PROJECT_ID` no está puesta y
+      `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` no se han podido confirmar. Ver
+      SIGUIENTE §2.
 
 ### ✅ Completado (Fases 0-8)
 
@@ -94,7 +150,7 @@ curl "https://easyeventqr.vercel.app/api/admin-organizadores?accion=listar"
 ```bash
 npm run typecheck  # ✅ TypeScript strict, 0 errores
 npm run lint       # ✅ Solo warnings preexistentes (set-state-in-effect)
-npm run test       # ✅ 252 tests (163 unit + 89 reglas)
+npm run test       # ✅ 262 tests (173 unit + 89 reglas)
 npm run build      # ✅ Compila app + widget
 ```
 
