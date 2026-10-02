@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from '../src/server/lib/firebase-admin.js'
+import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 import { SignJWT, jwtVerify } from 'jose'
 
 /**
@@ -55,8 +55,11 @@ async function handleLink(req: VercelRequest, res: VercelResponse) {
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      const { getAuth } = await import('firebase-admin/auth')
-      const decoded = await getAuth().verifyIdToken(authHeader.slice(7))
+      // `getAdminAuth()` y no `getAuth()`: sin app inicializado el
+      // `verifyIdToken` tira `app/no-app`, y el `catch {}` lo convierte en
+      // "No autenticado" (401) aunque el token sea perfecto. Ver
+      // `getAdminAuth()` en src/server/lib/firebase-admin.ts.
+      const decoded = await (await getAdminAuth()).verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
     } catch {}
   }

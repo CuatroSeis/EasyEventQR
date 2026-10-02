@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Timestamp, type Transaction } from 'firebase-admin/firestore'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
-import { getDb } from '../src/server/lib/firebase-admin.js'
+import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 import { enviarMail } from '../src/server/lib/mail.js'
 import { generarToken, hashearToken, imagenQrDe } from '../src/server/lib/qr.js'
 import { urlQrDe, resolverBasePublica } from '../src/server/lib/url.js'
@@ -317,8 +317,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      const { getAuth } = await import('firebase-admin/auth')
-      const decoded = await getAuth().verifyIdToken(authHeader.slice(7))
+      // `getAdminAuth()` y no `getAuth()`: acá el `catch {}` convertía un
+      // `app/no-app` en "No autenticado" (401). Hoy zafa de milagro porque
+      // `getDb()` corrió en la línea 303, pero esa es una promesa que otro
+      // puede romper sin querer. Ver `getAdminAuth()`.
+      const decoded = await (await getAdminAuth()).verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
     } catch {}
   }

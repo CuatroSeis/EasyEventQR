@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from '../src/server/lib/firebase-admin.js'
+import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID
 
@@ -32,15 +32,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      // `firebase-admin/auth` entra por `await import()` y no como import
-      // estático arriba. Con el estático, Vercel no logra empaquetar la
-      // subruta y la función moría al importar: 500 FUNCTION_INVOCATION_FAILED
-      // sin llegar al handler. Se comprobó contra producción: los únicos
-      // endpoints que fallaban eran los dos con import estático
-      // (`me` y `admin-organizadores`); `operador` y `registros`, que ya
-      // usan import dinámico, responden bien.
-      const { getAuth } = await import('firebase-admin/auth')
-      const decoded = await getAuth().verifyIdToken(authHeader.slice(7))
+      // `getAdminAuth()` y no `getAuth()` a secas: `getAuth()` sin argumentos
+      // usa el app `[DEFAULT]`, que en una lambda no existe hasta que alguien
+      // pide `getDb()` — y acá el primer `getDb()` está en la línea 87, con
+      // la respuesta ya armada. Con `getAuth()` el `verifyIdToken` moría con
+      // `app/no-app`, el `catch` de abajo lo comía, y respondía
+      // `porQue: 'sin-sesion'` con la sesión perfectamente vigente. O sea: el
+      // panel expulsaba al super-admin y el diagnóstico era una mentira.
+      // El import de `firebase-admin/auth` sigue siendo dinámico adentro del
+      // helper; ver el comentario de `getAdminAuth()` para por qué.
+      const decoded = await (await getAdminAuth()).verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
       // Cuando el claim no existe, `decodificado.admin` no es `undefined`:
       // es una excepción al acceder, y la excepción se come el try y
