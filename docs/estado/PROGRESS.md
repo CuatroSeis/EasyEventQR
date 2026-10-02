@@ -1,6 +1,67 @@
 # EasyEventQR - Progress Report
 
-## Estado Actual: ✅ Fase 8 implementada y verificada localmente
+## Estado Actual: ✅ Deploy a producción funcionando
+
+### Sesión del 2 Oct 2026 — el deploy pasó verde
+
+El objetivo era que `https://easyeventqr.vercel.app` sirviera el backend, y no lo
+hacía: **las 9 functions devolvían 500**. Eran tres causas encadenadas, y cada
+una tapaba a la siguiente.
+
+**1. `tsconfig.tests.json` estaba en el grafo de build** (`TS18003`).
+`.vercelignore` saca `tests/` del upload, y `tsconfig.json` —el que corre
+`vercel build`— lo referenciaba. Al no subir la carpeta, ese proyecto se queda
+sin inputs y `tsc -b` abortaba antes de compilar. Los tests ahora se typecheckean
+por el script `typecheck`, fuera del camino de producción.
+
+**2. CI corría en Node 20** y los tests necesitan **Node 22.6+**: importan `.ts`
+con la extensión explícita y los ejecuta el type-stripping nativo. En Node 20 no
+parsean y los jobs `Unit Tests` y `Firestore Rules Tests` morían con exit 1
+aunque el código estuviera bien. Era el fallo más engañoso de los tres: se leía
+como "los tests están rotos" cuando era el runtime.
+
+**3. Las functions usaban el alias `@server/*`** (`FUNCTION_INVOCATION_FAILED`).
+El alias está en `compilerOptions.paths` de `tsconfig.api.json`, que TypeScript y
+Vite resuelven — local todo andaba. Vercel empaqueta las functions con su propio
+builder, que no lee ese archivo, así que el import moría al resolver:
+`FUNCTION_INVOCATION_FAILED`, un 500 opaco sin stack. Pasaron a imports relativos.
+
+Y un cuarto, encimado al anterior: **`firebase-admin/auth` como import estático**
+no lo empaqueta Vercel. El mapeo de los 9 endpoints lo dejó obvio:
+
+| Endpoint | Antes | Causa |
+|---|---|---|
+| `salud` | 200 | — |
+| `me` | **500** | import estático de `/auth` |
+| `evento-publico` | 404 | — |
+| `registros` | 400 | ya usaba import dinámico |
+| `admin-organizadores` | **500** | import estático de `/auth` |
+| `operador` | 405 | ya usaba import dinámico |
+
+Los dos que fallaban eran exactamente los dos con import estático. Ahora los
+cuatro que usan `getAuth` lo hacen con `await import()`.
+
+**Estado verificado en producción:**
+
+```bash
+curl https://easyeventqr.vercel.app/api/salud
+# {"ok":true,"proyecto":"easyeventqr-dev","organizadores":1,"entorno":"production"}
+
+curl https://easyeventqr.vercel.app/api/me
+# {"ok":true,"uid":null,"isAdmin":false,"porQue":"sin-sesion","organizador":null}
+
+curl "https://easyeventqr.vercel.app/api/admin-organizadores?accion=listar"
+# {"ok":false,"error":"Falta el token de sesión."}   ← 401, ya no 500
+```
+
+### Pendiente para cerrar el MVP
+
+- [ ] Recorrer los 12 pasos de [`../arquitectura/ENDPOINTS.md`](../arquitectura/ENDPOINTS.md).
+- [ ] Confirmar el custom claim `admin` del super-admin (ver §"Acceso admin").
+- [ ] **Rotar el service account**: la clave privada se imprimió en una sesión de
+      chat. Crear una nueva en Google Cloud → IAM → Service Accounts → Keys,
+      actualizar `FIREBASE_SERVICE_ACCOUNT` en Vercel y borrar la clave vieja.
+- [ ] `MERCADOPAGO_SIMULADO=true` sólo para pruebas; apagarlo antes de compartir.
 
 ### ✅ Completado (Fases 0-8)
 
