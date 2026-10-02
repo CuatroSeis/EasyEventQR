@@ -15,7 +15,7 @@ export interface PreferenceResponse {
  */
 export async function crearPreferenciaPago(registroId: string): Promise<PreferenceResponse> {
   try {
-    const resp = await fetch(`${APP_URL}/api/pagos/preference`, {
+    const resp = await fetch(`${APP_URL}/api/pagos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ registroId }),

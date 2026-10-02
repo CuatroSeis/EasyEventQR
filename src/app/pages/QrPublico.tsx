@@ -15,7 +15,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
  *      tiene un `robots.txt` propio.
  *
  *   2. Nunca pide sesión ni habla con Firebase. Igual que la landing: va
- *      a /api/validar-qr, que es de sólo lectura.
+ *      a /api/validar, que es de sólo lectura.
  *
  *   3. No muestra el token en ningún lado. La URL lo tiene, y con
  *      copiar la dirección de la barra ya se comparte. Si la pantalla
@@ -61,7 +61,7 @@ export default function QrPublico() {
     const eventoId = busca.get('eventoId')
     if (eventoId) params.set('eventoId', eventoId)
 
-    fetch(`/api/validar-qr?${params.toString()}`)
+    fetch(`/api/validar?${params.toString()}`)
       .then(async (respuesta) => {
         const cuerpo = await respuesta.json().catch(() => null)
         if (!vigente) return

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getDb } from '../lib/firebase-admin.js'
+import { getDb } from './lib/firebase-admin.js'
 import { SignJWT, jwtVerify } from 'jose'
 
 export const OPERADOR_SECRET = new TextEncoder().encode(
@@ -25,14 +25,7 @@ interface OperadorPayload {
  * Body: { eventoId: string }
  * Response: { ok: true, url: string, expiraEn: string }
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Cache-Control', 'no-store, max-age=0')
-
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST')
-    return res.status(405).json({ ok: false, error: 'Solo se acepta POST' })
-  }
-
+async function handleLink(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
@@ -90,6 +83,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
+ * GET /api/operador/verificar?token=xxx
+ *
+ * Verifica un token de operador y devuelve el payload si es válido.
+ * No requiere autenticación adicional (el token mismo es la credencial).
+ */
+async function handleVerificar(req: VercelRequest, res: VercelResponse) {
+  const { token } = req.query as { token?: string }
+
+  if (!token) {
+    return res.status(400).json({ ok: false, error: 'Falta token' })
+  }
+
+  try {
+    // Verificar JWT
+    const { payload } = await import('jose').then(({ jwtVerify }) =>
+      jwtVerify(token, OPERADOR_SECRET)
+    )
+
+    return res.status(200).json({ ok: true, payload })
+  } catch {
+    return res.status(401).json({ ok: false, error: 'Token inválido o expirado' })
+  }
+}
+
+/**
  * Verifica un token de operador y devuelve el payload si es válido.
  * Lanza error si expiración o firma inválida.
  */
@@ -100,4 +118,26 @@ export async function verificarTokenOperador(token: string): Promise<OperadorPay
   } catch {
     throw new Error('Token inválido o expirado')
   }
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store, max-age=0')
+
+  // Router por path: /api/operador/link vs /api/operador/verificar
+  const path = req.url?.split('?')[0] || ''
+
+  if (path.endsWith('/verificar')) {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET')
+      return res.status(405).json({ ok: false, error: 'Solo se acepta GET' })
+    }
+    return handleVerificar(req, res)
+  }
+
+  // Default: /api/operador/link
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST')
+    return res.status(405).json({ ok: false, error: 'Solo se acepta POST' })
+  }
+  return handleLink(req, res)
 }

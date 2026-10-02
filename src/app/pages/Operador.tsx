@@ -76,7 +76,7 @@ export default function Operador() {
       }
 
       // Llamar API para marcar como usado
-      const resp = await fetch('/api/validar-uso', {
+      const resp = await fetch('/api/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: tokenQR, eventoId: eventoIdQR }),
