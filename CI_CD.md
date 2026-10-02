@@ -56,7 +56,7 @@ funcione: alcanza con `VERCEL_TOKEN`, `VERCEL_ORG_ID` y
 Vercel corre su propio `npm run build` (definido en `vercel.json`) y sube
 las funciones junto.
 
-Por eso el job **no** baja el artifact `dist`: acá Vercel recompila. El job
+Por eso el job **no** baja el artifact `dist`: acá Vercel recompila. 
 de build sigue en el pipeline como puerta, para que si falla el typecheck o
 los tests, `needs: build` no deje llegar al deploy.
 

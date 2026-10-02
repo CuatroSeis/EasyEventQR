@@ -24,6 +24,7 @@ openssl rand -base64 48
 
 Te imprime algo así: `kQ7x...==` (64 caracteres).
 
+
 **Dónde ponerlo:**
 
 1. Vercel → tu proyecto → **Settings** → **Environment Variables**
@@ -83,35 +84,8 @@ el backend y las reglas de Firestore.
 **Opción B — por variable.** Si preferís no tocar Firestore, dejá
 `SUPER_ADMIN_UID` con ese UID en Vercel y recargá con logout/login.
 
-**Comprobar:** abrí `/admin`. Si ves el panel con pestañas, quedó.
-
-**Si te echa, la pantalla te dice por qué.** Hay tres motivos distintos y
-antes no se distinguían (te expulsaba en silencio a `/panel`, sin texto):
-
-| Qué dice | Qué significa |
-|---|---|
-| *"El servidor no tiene configurado quién es super-admin"* | Falta `SUPER_ADMIN_UID` en ese entorno. Ponela y **volvé a desplegar** (se lee en runtime) |
-| *"Tu cuenta todavía no es super-admin"* | El servidor está bien, pero tu UID no es el del admin y no tenés el claim |
-| *"No se pudo verificar tu sesión"* | Falló `/api/me`. Mirá los logs de Vercel; el suspecto #1 es un `FIREBASE_SERVICE_ACCOUNT` mal pegado |
-
-### Sub-paso 3b — Refrescar el token (obligatorio)
-
-**Este es el paso que casi todo el mundo se saltea, y por eso parece que el
-claim "no funciona".**
-
-Los custom claims van **horneados dentro del token** que emite Firebase, y ese
-token se cachea **una hora**. Si ponés `admin: true` y recargás con F5, seguís
-mandando el token viejo y el panel te echa igual.
-
-1. En el panel, botón **Salir** (arriba a la derecha, junto a "Marca")
-2. Volvé a entrar con `ivanrufinocontac@gmail.com`
-3. Abrí `/admin`
-
-En `Login` el botón dice "Continuar con Google" y **no** te autologuea al
-recargar, así que repetir el login fuerza el token nuevo de verdad.
-
-Si todavía no tenés deployed esta versión, podés hacer lo mismo desde el
-perfil de Google: salí de Google y volvé a entrar con esa cuenta.
+**Comprobar:** abrí `/admin`. Si ves el panel con pestañas, quedó. Si te
+expulsa al `/panel`, el claim no está.
 
 ---
 
@@ -223,8 +197,7 @@ repo no tiene Gradle y ese cache abortaba el job.
 ```
 [ ] 1. Rotar OPERADOR_SECRET          (los 3 ambientes)
 [ ] 2. Apagar integración Git de Vercel
-[ ] 3. Claim admin en tu cuenta ivanrufinocontac@gmail.com
-[ ] 3b. Logout + login para refrescar el token (obligatorio)
+[ ] 3. Claim admin en tu cuenta  ivanrufinocontac@gmail.com
 [ ] 4. MERCADOPAGO_SIMULADO=true
 [ ] 5. Revisar variables de Vercel
 [ ] 6. Confirmar que llega el mail
