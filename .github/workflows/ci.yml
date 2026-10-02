@@ -183,9 +183,22 @@ jobs:
       # volver a pasar `dist/` por error. El job de build sigue existiendo
       # como puerta: si el typecheck o los tests fallan, `needs: build` no
       # deja llegar acá.
+
+      # Auth por OIDC: NO se pasa `--token`. Con `id-token: write` la CLI
+      # pide el token de la Actions sola. `VERCEL_TOKEN` era un secreto
+      # estático que envejece sin avisar — cuando dejó de servir, el job
+      # moría con "User not found (404)" y el diagnóstico parecía un
+      # problema de código.
+      #
+      # Para esto la app de Vercel tiene que estar instalada en el repo
+      # (Vercel → Settings → Git). `VERCEL_ORG_ID` y `VERCEL_PROJECT_ID`
+      # van por env, que es de donde la CLI los lee.
       - name: Deploy to Vercel Preview
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          vercel deploy --token=${{ secrets.VERCEL_TOKEN }} \
+          vercel deploy --yes \
             --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             --alias=pr-${{ github.event.number }}-easyeventqr.vercel.app \
@@ -219,9 +232,13 @@ jobs:
         run: npm install -g vercel@latest
 
       # Ídem: raíz del proyecto, no `dist/`. Ver el comentario del preview.
+      # Y por OIDC, sin `--token`, igual que el preview.
       - name: Deploy to Vercel Production
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} \
+          vercel deploy --prod --yes \
             --scope=${{ secrets.VERCEL_ORG_ID }} \
             --project=${{ secrets.VERCEL_PROJECT_ID }} \
             .
