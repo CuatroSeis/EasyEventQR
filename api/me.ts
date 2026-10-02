@@ -47,7 +47,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // es una excepción al acceder, y la excepción se come el try y
       // termina pareciendo un token inválido. Se lee con el guard.
       esAdminPorClaim = decoded.admin === true
-    } catch {
+    } catch (error) {
+      // Un `catch {}` mudo es lo que volvió este bug invisible: `app/no-app`
+      // —un error de inicialización— salía como `sin-sesion`, que es un
+      // diagnóstico sobre el login. Distinguir "el token vino mal" de "el
+      // backend no pudo verificarlo" es lo primero que hay que poder ver, así
+      // que se registra. El código y el mensaje de firebase-admin no llevan
+      // secretos: el token no se imprime, sólo el motivo del rechazo.
+      const codigo = (error as { code?: string }).code ?? 'sin-codigo'
+      console.error(`[me] verifyIdToken falló: ${codigo} — ${(error as Error).message}`)
       // Token inválido o expirado: cae en el "no hay sesión" de abajo.
     }
   }
