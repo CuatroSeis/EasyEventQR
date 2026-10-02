@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getAuth } from 'firebase-admin/auth'
 import type {
   DocumentReference,
   Firestore,
@@ -112,6 +111,11 @@ async function autenticar(req: VercelRequest, res: VercelResponse): Promise<Admi
   }
 
   try {
+    // `firebase-admin/auth` por import dinámico, no estático arriba: con el
+    // estático Vercel no logra empaquetar la subruta y la función moría al
+    // importar (500 FUNCTION_INVOCATION_FAILED). Es lo mismo que ya hacen
+    // `api/operador.ts` y `api/registros.ts`.
+    const { getAuth } = await import('firebase-admin/auth')
     const decodificado = await getAuth().verifyIdToken(cabecera.slice(7))
 
     // El claim manda, y el UID por variable es el break-glass. Ojo con
@@ -341,6 +345,7 @@ async function rutasOrganizadores(
     // falló, el usuario conserva acceso a Firebase sin ningún dato, que
     // es una sesión viva sin dueño.
     try {
+      const { getAuth } = await import('firebase-admin/auth')
       await getAuth().deleteUser(uid)
     } catch (error) {
       console.error('[admin] no se pudo borrar la cuenta de Auth:', error)
