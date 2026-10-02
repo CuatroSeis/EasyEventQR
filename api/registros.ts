@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Timestamp, type Transaction } from 'firebase-admin/firestore'
-import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
 import { getDb } from './lib/firebase-admin.js'
 import { obtenerPagoPorReferencia } from './lib/mercadopago.js'
@@ -144,7 +143,7 @@ async function handleListRegistros(req: VercelRequest, res: VercelResponse, db: 
 async function handleExportRegistros(res: VercelResponse, db: ReturnType<typeof getDb>, eventoId: string, evento: Evento) {
   try {
     const snap = await db.collection('registros').where('eventoId', '==', eventoId).get()
-    const registros = snap.docs.map((doc: { id: string; data: () => Registro }) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
+    const registros = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
 
     registros.sort((a: Registro & { id: string }, b: Registro & { id: string }) => {
       const fa = (a.fechaRegistro as unknown as Timestamp)?.toMillis?.() ?? 0

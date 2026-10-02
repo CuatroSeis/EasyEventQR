@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { FieldValue } from 'firebase-admin/firestore'
-import type { Firestore } from 'firebase-admin/firestore'
+import type { Firestore, Transaction } from 'firebase-admin/firestore'
 
 import { getDb } from './lib/firebase-admin.js'
 import { evaluarCupo, mensajeDeMotivo, type Contador } from './lib/cupo.js'
