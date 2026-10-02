@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
 import { getDb } from './lib/firebase-admin.js'
 import type { Organizador, Plan } from '../src/shared/types.js'
@@ -37,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       const snapshot = await db.collection('organizadores').orderBy('fechaAlta', 'desc').get()
-      const organizadores = snapshot.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
+      const organizadores = snapshot.docs.map((doc: QueryDocumentSnapshot) => ({
         uid: doc.id,
         ...doc.data(),
       })) as (Organizador & { uid: string })[]
