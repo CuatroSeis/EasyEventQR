@@ -1,133 +1,169 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
-// Importamos de config.ts, NO de firebase.ts: esta pantalla lee dos
-// variables de entorno y no debería arrastrar el SDK de Firebase entero
-// (~400 kB) para eso. Compará los dos builds: el bundle inicial baja
-// de 728 kB a menos de 200 kB.
-import { firebaseConfigurado } from '../../services/config'
-import { aplicarTema } from '../../shared/theming'
-
-const COLORES = [
-  { hex: '#2563eb', nombre: 'Azul' },
-  { hex: '#dc2626', nombre: 'Rojo' },
-  { hex: '#0d9488', nombre: 'Verde' },
-  { hex: '#7c3aed', nombre: 'Violeta' },
-  { hex: '#f59e0b', nombre: 'Ámbar' },
-]
-
-/**
- * Pantalla mínima de la Fase 0.
- *
- * No es un placeholder: es el comprobador de que los tres engranajes de
- * esta fase funcionan. Si esto anda, el andamiaje está bien.
- *
- *  1. Vite + React + Tailwind compilan y se ven.
- *  2. Firebase está inicializado y Connected al proyecto real.
- *  3. El patrón de theming cambia la pantalla en vivo.
- */
 export default function Home() {
-  // Estado del selector de color. En la Fase 3 estos valores van a
-  // venir de un documento de Firestore, no de un click.
-  const [color, setColor] = useState(COLORES[0].hex)
+  const [query, setQuery] = useState('')
+  const [buscando, setBuscando] = useState(false)
+  const [resultados, setResultados] = useState<EventoResultado[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-  // Esta es TODA la personalización: una llamada que escribe variables CSS.
-  // Después de esto, bg-primario/ text-sobre-primario/ border-primario
-  // en cualquier componente de la app ya usan el color elegido.
-  aplicarTema({ colorPrimario: color, colorSecundario: '#0f172a' }, document.documentElement)
+  function normalizarParaBusqueda(texto: string): string {
+    return texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    const q = normalizarParaBusqueda(query)
+    if (!q) return
+
+    setBuscando(true)
+    setError(null)
+    setResultados([])
+
+    try {
+      const resp = await fetch(`/api/eventos/buscar?q=${encodeURIComponent(q)}`)
+      const data = await resp.json()
+      if (!resp.ok || !data.ok) {
+        setError(data.error || 'Error buscando el evento')
+        return
+      }
+      if (data.eventos && data.eventos.length > 0) {
+        setResultados(data.eventos)
+      } else {
+        setError('Evento no encontrado. Verificá el código o el nombre.')
+      }
+    } catch {
+      setError('No pudimos buscar. Revisá la conexión.')
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  // Si hay un solo resultado exacto por código, redirigir directo
+  // (el backend ya filtra, pero por UX podemos redirigir si es 1 y coincide exacto)
+  // Por ahora mostramos la lista y el usuario elige.
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 p-4 pb-12">
-      <header className="flex items-center gap-3 pt-4">
-        <div className="bg-primario grid size-11 place-items-center rounded-xl text-xl text-sobre-primario">
-          ⬛
-        </div>
-        <div>
-          <h1 className="text-xl font-bold">EasyEventQR</h1>
-          <p className="text-texto-suave text-sm">Fase 0 · andamiaje</p>
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-8 p-4 pb-12">
+      <header className="pt-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-texto">EasyEventQR</h1>
+          <p className="mt-2 text-texto-suave text-lg">
+            La forma simple de gestionar entradas para tus eventos
+          </p>
         </div>
       </header>
 
-      <section className="border-borde divide-y divide-[var(--c-borde)] overflow-hidden rounded-2xl border bg-superficie">
-        <Fila titulo="React + Vite + Tailwind" valor="ok" />
-        <Fila
-          titulo="Config de Firebase"
-          valor={firebaseConfigurado ? 'ok' : 'falta .env'}
-          ok={firebaseConfigurado}
-        />
-        <Fila
-          titulo="Proyecto"
-          valor={import.meta.env.VITE_FIREBASE_PROJECT_ID || '—'}
-          ok={firebaseConfigurado}
-        />
-        <Fila
-          titulo="Backend /api/salud"
-          // El padding es sólo para el área táctil: sin él el link mide
-          // 43x14 en un móvil de 360px, por debajo de los 44px que
-          // recomienda WCAG 2.5.8. El texto se ve exactamente igual.
-          valor={
-            <a
-              className="-my-3 inline-flex min-h-11 items-center px-2 text-primario underline"
-              href="/api/salud"
-            >
-              probar
-            </a>
-          }
-          ok={firebaseConfigurado}
-        />
+      <section aria-labelledby="organizador-heading" className="space-y-4">
+        <h2 id="organizador-heading" className="text-xl font-bold text-texto text-center">
+          ¿Sos organizador?
+        </h2>
+        <p className="text-center text-texto-suave">
+          Creá tu evento, vendé entradas y gestioná asistentes en minutos.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link
+            to="/entrar"
+            className="flex-1 min-h-[56px] inline-flex items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario hover:opacity-90 transition"
+          >
+            Iniciar sesión
+          </Link>
+          <Link
+            to="/entrar"
+            className="flex-1 min-h-[56px] inline-flex items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario hover:bg-primario/5 transition"
+          >
+            Crear cuenta
+          </Link>
+        </div>
       </section>
 
-      <section className="border-borde rounded-2xl border bg-superficie p-5">
-        <h2 className="font-semibold">El patrón de theming</h2>
-        <p className="text-texto-suave mt-1 text-sm">
-          Mismo componente, mismos estilos, aspecto distinto. Lo único que cambia es el valor de
-          una variable CSS.
+      <section aria-labelledby="invitado-heading" className="space-y-4">
+        <h2 id="invitado-heading" className="text-xl font-bold text-texto text-center">
+          ¿Sos invitado?
+        </h2>
+        <p className="text-center text-texto-suave">
+          Encontrá tu evento con el código o el nombre.
         </p>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {COLORES.map((c) => (
-            <button
-              key={c.hex}
-              type="button"
-              onClick={() => setColor(c.hex)}
-              aria-pressed={color === c.hex}
-              className="min-h-11 rounded-full border-2 px-4 text-sm font-medium transition"
-              style={{
-                borderColor: color === c.hex ? c.hex : 'var(--c-borde)',
-                backgroundColor: color === c.hex ? c.hex : 'transparent',
-                color: color === c.hex ? '#fff' : 'inherit',
-              }}
-            >
-              {c.nombre}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 flex items-center gap-3">
-          <button className="bg-primario text-sobre-primario min-h-11 flex-1 rounded-xl px-5 font-semibold">
-            Confirmar asistencia
+        <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto" noValidate>
+          <label htmlFor="buscar" className="sr-only">
+            Buscar evento por código o nombre
+          </label>
+          <div className="relative">
+            <input
+              id="buscar"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Código (FEST-8K2P) o nombre del evento"
+              className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
+              disabled={buscando}
+              autoComplete="off"
+              autoFocus
+            />
+            {buscando && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
+                ⏳
+              </span>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={buscando || !query.trim()}
+            className="w-full min-h-[56px] rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {buscando ? 'Buscando…' : 'Buscar evento'}
           </button>
-          <span className="text-texto-suave text-center font-mono text-xs">{color}</span>
-        </div>
-        <p className="text-texto-suave mt-3 text-xs">
-          Fijate en el texto del botón: el blanco o el oscuro se calculan solos a partir del color
-          del cliente (<code>colorDeTextoSobre</code> en <code>shared/theming.ts</code>).
+        </form>
+
+        {error && (
+          <p role="alert" className="text-center text-sm text-red-600">
+            {error}
+          </p>
+        )}
+
+        {resultados.length > 0 && (
+          <ul role="list" className="space-y-2 max-w-md mx-auto">
+            {resultados.map((evt) => (
+              <li key={evt.codigoCorto}>
+                <Link
+                  to={`/e/${evt.codigoCorto}`}
+                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-texto">{evt.nombre}</h3>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
+                    </div>
+                    <span className="shrink-0 font-mono text-sm text-primario bg-primario/10 px-2 py-1 rounded">
+                      {evt.codigoCorto}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="text-center text-xs text-texto-suave">
+          El código es algo como <code className="font-mono">FEST-8K2P</code>.
         </p>
       </section>
 
-      <p className="text-texto-suave mt-auto text-center text-xs">
-        Próximas fases: auth con Google y reglas multi-tenant (1) · CRUD de eventos (2)
-      </p>
+      <footer className="mt-auto text-center text-xs text-texto-suave">
+        <p>EasyEventQR · La forma simple de gestionar entradas</p>
+      </footer>
     </main>
   )
 }
 
-function Fila({ titulo, valor, ok }: { titulo: string; valor: string | ReactNode; ok?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-5 py-4">
-      <span className="text-sm">{titulo}</span>
-      <span className="font-mono text-xs">
-        {ok === false ? <span className="text-amber-600">{valor}</span> : valor}
-      </span>
-    </div>
-  )
+interface EventoResultado {
+  codigoCorto: string
+  nombre: string
+  fecha: string
+  lugar: string
 }

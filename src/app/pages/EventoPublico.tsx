@@ -65,6 +65,7 @@ interface ProblemasDelFormulario {
 
 export default function EventoPublico() {
   const { eventoId } = useParams<{ eventoId: string }>()
+  const identificador = eventoId?.toUpperCase()
 
   // Un solo estado para la carga, con el id adentro. El "cargando" se
   // DERIVA de que el id de la carga sea el id que se está mirando, en
@@ -73,6 +74,7 @@ export default function EventoPublico() {
   // dispara un render de más en cada cambio de ruta y, peor, deja el
   // evento anterior en pantalla hasta que termina el setState.
   const [carga, setCarga] = useState<Carga>(null)
+  const currentId = identificador ?? ''
   const [problemas, setProblemas] = useState<ProblemasDelFormulario>({})
   const [enviando, setEnviando] = useState(false)
   const [reservado, setReservado] = useState(false)
@@ -82,15 +84,15 @@ export default function EventoPublico() {
   // efectos lo leen, y los hooks no se pueden poner después de un return
   // temprano.
   const evento =
-    carga !== null && carga.id === eventoId && carga.estado === 'listo' ? carga.evento : null
-  const fallo = carga !== null && carga.id === eventoId && carga.estado === 'error'
+    carga !== null && carga.id === currentId && carga.estado === 'listo' ? carga.evento : null
+  const fallo = carga !== null && carga.id === currentId && carga.estado === 'error'
 
   useEffect(() => {
-    if (!eventoId) return
+    if (!identificador) return
 
     let vigente = true
 
-    fetch(`/api/evento-publico?id=${encodeURIComponent(eventoId)}`)
+    fetch(`/api/evento-publico?id=${encodeURIComponent(identificador)}`)
       .then(async (respuesta) => {
         const cuerpo = await respuesta.json().catch(() => null)
         // El flag `vigente`: si mientras se escuchaba la respuesta el
@@ -99,19 +101,19 @@ export default function EventoPublico() {
         // el historial muestra el evento del que se fue.
         if (!vigente) return
         if (!respuesta.ok || !cuerpo?.ok) {
-          setCarga({ id: eventoId, estado: 'error' })
+          setCarga({ id: currentId, estado: 'error' })
           return
         }
-        setCarga({ id: eventoId, estado: 'listo', evento: cuerpo.evento as EventoPublico })
+        setCarga({ id: currentId, estado: 'listo', evento: cuerpo.evento as EventoPublico })
       })
       .catch(() => {
-        if (vigente) setCarga({ id: eventoId, estado: 'error' })
+        if (vigente) setCarga({ id: currentId, estado: 'error' })
       })
 
     return () => {
       vigente = false
     }
-  }, [eventoId])
+  }, [currentId])
 
   // El tema del evento, y su limpieza. Ver la nota de arriba.
   useEffect(() => {
