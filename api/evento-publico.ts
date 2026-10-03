@@ -108,7 +108,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    const snapEvento = await db.collection('eventos').doc(eventoId).get()
+    // 1. El caso común: el id de la URL es el id del documento (alta por
+    // POST /api/eventos usa el código corto como id).
+    let snapEvento = await db.collection('eventos').doc(eventoId).get()
+
+    // 2. Fallbacks para eventos legacy o backfilleados, donde el código y
+    // el slug viven en campos y el id es un auto-id. Sin esto, todo link
+    // compartido de un evento viejo da "no existe".
+    if (!snapEvento.exists) {
+      const porCodigo = await db
+        .collection('eventos')
+        .where('codigoCorto', '==', eventoId.toUpperCase())
+        .limit(1)
+        .get()
+      if (!porCodigo.empty) {
+        snapEvento = porCodigo.docs[0]
+      }
+    }
+    if (!snapEvento.exists) {
+      const porSlug = await db.collection('eventos').where('slug', '==', eventoId).limit(1).get()
+      if (!porSlug.empty) {
+        snapEvento = porSlug.docs[0]
+      }
+    }
     if (!snapEvento.exists) return noEncontrado(res)
 
     const evento = snapEvento.data() as Evento
@@ -141,8 +163,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // consola, la landing igual no lo muestra. El segundo piso, que son
     // cuatro ternarios, es el que hace que la restricción sea una regla y
     // no una sugerencia.
+    // El `eventoId` que vuelve es el ID REAL del documento, no lo que
+    // vino en la URL: el formulario lo manda a /api/registro, que lo usa
+    // como `doc(eventoId)`. Si volviera el código de un evento legacy, el
+    // alta buscaría un documento que no existe y diría "no existe".
     const eventoPublico: EventoPublico = {
-      eventoId,
+      eventoId: snapEvento.id,
       nombre: evento.nombre,
       fecha: aIso(evento.fecha),
       lugar: evento.lugar,

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
-import { actualizarEvento, cambiarEstadoEvento, crearEvento, eliminarEvento, obtenerEvento } from '../../services/eventos'
+import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, eliminarEvento, obtenerEvento } from '../../services/eventos'
 import { validarBorrador, type BorradorEvento, type ProblemaDeValidacion } from '../../services/documentoEvento'
 
 /**
@@ -98,11 +98,17 @@ export default function EventoForm() {
 
     try {
       if (esNuevo) {
-        await crearEvento(organizador.uid, borrador, organizador)
+        // El alta va por el backend: genera código corto y slug en
+        // transacción y usa el código como id, así el link y el buscador
+        // resuelven sin fallback. El alta directa quedó como legacy.
+        // Se vuelve al listado, donde la tarjeta del evento nuevo ya
+        // muestra el código con los botones para compartirlo.
+        await crearEventoBackend(borrador)
+        navegar('/panel', { replace: true })
       } else {
         await actualizarEvento(eventoId, borrador, organizador)
+        navegar('/panel', { replace: true })
       }
-      navegar('/panel', { replace: true })
     } catch (fallo) {
       setError(fallo instanceof Error ? fallo.message : 'No se pudo guardar el evento.')
       setGuardando(false)

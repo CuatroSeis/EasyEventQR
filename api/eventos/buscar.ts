@@ -38,17 +38,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }> = []
 
     if (pareceCodigo) {
-      // Búsqueda exacta por codigoCorto (que es el doc ID en nuestra implementación)
-      const snap = await db.collection('eventos').doc(q.toUpperCase()).get()
-      if (snap.exists) {
-        const data = snap.data()
-        if (data && data.visibilidad === 'publico' && data.estado === 'activo') {
-          eventos = [{
-            codigoCorto: q.toUpperCase(),
-            nombre: data.nombre,
-            fecha: data.fecha?.toDate?.()?.toISOString?.() ?? data.fecha,
-            lugar: data.lugar ?? '',
-          }]
+      // 1. Doc cuyo id ES el código (alta por POST /api/eventos).
+      const porId = await db.collection('eventos').doc(q.toUpperCase()).get()
+      const candidatos: QueryDocumentSnapshot[] = porId.exists ? [porId as QueryDocumentSnapshot] : []
+
+      // 2. Fallback: eventos legacy o backfilleados, donde el código vive
+      // en el campo `codigoCorto` y el id es un auto-id. Sin esto, todo
+      // evento creado antes del código-como-id es invisible al buscador.
+      if (candidatos.length === 0) {
+        const porCampo = await db
+          .collection('eventos')
+          .where('codigoCorto', '==', q.toUpperCase())
+          .limit(1)
+          .get()
+        candidatos.push(...porCampo.docs)
+      }
+
+      // El código y el link abren el evento sea público o privado: lo
+      // privado es no salir en la búsqueda POR NOMBRE, no esconderlo a
+      // quien tiene el código. Solo se exige que esté activo.
+      for (const docSnap of candidatos) {
+        const data = docSnap.data()
+        if (data && data.estado === 'activo') {
+          eventos = [
+            {
+              codigoCorto: data.codigoCorto ?? docSnap.id,
+              nombre: data.nombre,
+              fecha: data.fecha?.toDate?.()?.toISOString?.() ?? data.fecha,
+              lugar: data.lugar ?? '',
+            },
+          ]
+          break
         }
       }
     } else {
@@ -64,7 +84,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       eventos = snap.docs.map((doc: QueryDocumentSnapshot) => {
         const data = doc.data()
         return {
-          codigoCorto: data.codigoCorto,
+          // Si el evento todavía no pasó por el backfill, el código que
+          // se muestra es el id: feo pero funcional hasta migrar.
+          codigoCorto: data.codigoCorto ?? doc.id,
           nombre: data.nombre,
           fecha: data.fecha?.toDate?.()?.toISOString?.() ?? data.fecha,
           lugar: data.lugar ?? '',

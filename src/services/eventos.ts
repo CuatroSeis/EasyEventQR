@@ -159,6 +159,10 @@ export async function obtenerEvento(eventoId: string): Promise<EventoConId | nul
  * `organizador` se pasa para poder explicar el error: sin él, un
  * `permission-denied` (cuota del plan, cuenta suspendida) llegaría al
  * formulario como el texto crudo de Firebase, que no dice nada.
+ *
+ * LEGACY: el camino vigente es `crearEventoBackend` (POST /api/eventos),
+ * que genera el código corto en transacción. Esta función queda para
+ * compatibilidad y tests.
  */
 export async function crearEvento(
   organizadorId: string,
@@ -177,6 +181,55 @@ export async function crearEvento(
       pedido: borrador.capacidadMaxima,
     })
   }
+}
+
+/**
+ * Crea el evento por el backend (POST /api/eventos).
+ *
+ * Es el camino vigente: el servidor genera `codigoCorto` y `slug` en
+ * transacción y usa el código como id del documento, así el link
+ * `/e/<codigo>` y el buscador resuelven sin fallback. Devuelve el código
+ * para mostrarlo/compartirlo en el momento, sin una lectura extra.
+ */
+export interface EventoCreado {
+  codigoCorto: string
+  slug: string
+  eventoId: string
+}
+
+export async function crearEventoBackend(borrador: BorradorEvento): Promise<EventoCreado> {
+  const { auth } = await import('./firebase')
+  const usuario = auth.currentUser
+  if (!usuario) {
+    throw new Error('Tu sesión no está activa. Volvé a iniciar sesión.')
+  }
+  const resp = await fetch('/api/eventos', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${await usuario.getIdToken()}`,
+    },
+    body: JSON.stringify({
+      nombre: borrador.nombre,
+      fecha: borrador.fecha instanceof Date ? borrador.fecha.toISOString() : borrador.fecha,
+      lugar: borrador.lugar,
+      descripcion: borrador.descripcion,
+      capacidadMaxima: borrador.capacidadMaxima,
+      requierePago: borrador.requierePago,
+      precioEntrada: borrador.precioEntrada,
+      visibilidad: borrador.visibilidad,
+    }),
+  })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok || !data?.ok) {
+    // El mensaje viene legible del backend (cupo del plan, cuenta
+    // suspendida, fecha inválida): se muestra tal cual en vez de pasarlo
+    // por explicarErrorFirestore, que lo taparía con un genérico.
+    throw new Error(
+      typeof data?.error === 'string' && data.error ? data.error : 'No se pudo crear el evento.',
+    )
+  }
+  return { codigoCorto: data.codigoCorto, slug: data.slug, eventoId: data.eventoId }
 }
 
 /**

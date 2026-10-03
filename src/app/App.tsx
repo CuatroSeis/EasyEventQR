@@ -34,6 +34,7 @@ const EventoPublico = lazy(() => import('./pages/EventoPublico'))
 const QrPublico = lazy(() => import('./pages/QrPublico'))
 const Login = lazy(() => import('./pages/Login'))
 const Panel = lazy(() => import('./pages/Panel'))
+const Cuenta = lazy(() => import('./pages/Cuenta'))
 const EventoForm = lazy(() => import('./pages/EventoForm'))
 const Branding = lazy(() => import('./pages/Branding'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
@@ -86,6 +87,7 @@ export default function App() {
           <Route element={<Protegido />}>
             <Route element={<PanelLayout />}>
               <Route path="/panel" element={<Panel />} />
+              <Route path="/panel/cuenta" element={<Cuenta />} />
               <Route path="/panel/eventos/nuevo" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId/registros" element={<PanelRegistros />} />
