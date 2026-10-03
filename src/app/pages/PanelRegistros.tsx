@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
@@ -8,6 +8,8 @@ import {
   reenviarMails,
   recountRegistros,
   crearLinkOperador,
+  actualizarRegistro,
+  eliminarRegistro,
   type RegistroUI,
 } from '../../services/registros'
 
@@ -60,6 +62,9 @@ export default function PanelRegistros() {
   const [linkOperador, setLinkOperador] = useState<{ url: string; expiraEn: string } | null>(null)
   const [generandoLink, setGenerandoLink] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [borradorEdicion, setBorradorEdicion] = useState({ estado: 'pendiente', nombre: '', email: '', telefono: '' })
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false)
 
   /** Atajo para no repetir el objeto en cadallamada. */
   function avisar(texto: string, advertencia = false) {
@@ -175,8 +180,7 @@ export default function PanelRegistros() {
     }
   }
 
-  async function handleExport() {
-    try {
+  async function handleExport() {    try {
       const blob = await exportarRegistros(eventoId!)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -203,6 +207,44 @@ export default function PanelRegistros() {
     }
   }
 
+  function empezarEdicion(r: RegistroUI) {
+    setEditandoId(r.id)
+    setError(null)
+    setBorradorEdicion({ estado: r.estado, nombre: r.nombre, email: r.email, telefono: r.telefono || '' })
+  }
+
+  async function guardarEdicion() {
+    if (!editandoId) return
+    setGuardandoEdicion(true)
+    setError(null)
+    try {
+      await actualizarRegistro(eventoId!, editandoId, {
+        estado: borradorEdicion.estado as 'pendiente' | 'aprobado' | 'rechazado',
+        nombre: borradorEdicion.nombre,
+        email: borradorEdicion.email,
+        telefono: borradorEdicion.telefono,
+      })
+      setEditandoId(null)
+      avisar('Reserva actualizada.', false)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo guardar')
+    } finally {
+      setGuardandoEdicion(false)
+    }
+  }
+
+  async function handleEliminar(r: RegistroUI) {
+    if (!confirm(`¿Borrar la reserva de ${r.nombre}? No se puede deshacer.`)) return
+    setError(null)
+    try {
+      await eliminarRegistro(eventoId!, r.id)
+      avisar('Reserva borrada. Si el cupo quedó mentiroso, usá "Recalcular cupo".', false)
+      cargar()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo borrar')
+    }
+  }
   function formatearFecha(fecha: Date | string): string {
     const d = new Date(fecha)
     if (isNaN(d.getTime())) return '—'
@@ -323,7 +365,8 @@ export default function PanelRegistros() {
               </thead>
               <tbody className="divide-y divide-borde">
                 {registros.map((r) => (
-                  <tr key={r.id} className="hover:bg-superficie/50">
+                  <Fragment key={r.id}>
+                    <tr className="hover:bg-superficie/50">
                     <td className="px-3 py-2">
                       <div className="font-medium text-texto">{r.nombre}</div>
                       <div className="text-xs text-texto-suave">{r.telefono || '—'}</div>
@@ -358,6 +401,22 @@ export default function PanelRegistros() {
                             {acciones[r.id] === 'enviando' ? '⏳' : '📧'}
                           </button>
                         )}
+                        <button
+                          onClick={() => (editandoId === r.id ? setEditandoId(null) : empezarEdicion(r))}
+                          className="px-2 py-1 rounded text-xs text-texto hover:bg-superficie"
+                          title="Editar reserva"
+                          aria-label={`Editar reserva de ${r.nombre}`}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(r)}
+                          className="px-2 py-1 rounded text-xs text-red-600 hover:bg-red-50"
+                          title="Borrar reserva"
+                          aria-label={`Borrar reserva de ${r.nombre}`}
+                        >
+                          🗑️
+                        </button>
                         <a
                           href={`/q/${r.id}`}
                           target="_blank"
@@ -370,6 +429,79 @@ export default function PanelRegistros() {
                       </div>
                     </td>
                   </tr>
+                  {editandoId === r.id && (
+                    <tr key={`${r.id}-edicion`} className="bg-superficie/50">
+                      <td colSpan={8} className="px-3 py-3">
+                        <form
+                          className="flex flex-col gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            void guardarEdicion()
+                          }}
+                        >
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <label className="flex flex-col gap-1 text-xs text-texto-suave">
+                              Estado
+                              <select
+                                value={borradorEdicion.estado}
+                                onChange={(e) => setBorradorEdicion((p) => ({ ...p, estado: e.target.value }))}
+                                className="campo py-1.5 text-sm"
+                              >
+                                <option value="pendiente">Pendiente</option>
+                                <option value="aprobado">Aprobado</option>
+                                <option value="rechazado">Rechazado</option>
+                              </select>
+                            </label>
+                            <label className="flex flex-col gap-1 text-xs text-texto-suave">
+                              Nombre
+                              <input
+                                value={borradorEdicion.nombre}
+                                onChange={(e) => setBorradorEdicion((p) => ({ ...p, nombre: e.target.value }))}
+                                className="campo py-1.5 text-sm"
+                                maxLength={80}
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1 text-xs text-texto-suave">
+                              Email
+                              <input
+                                type="email"
+                                value={borradorEdicion.email}
+                                onChange={(e) => setBorradorEdicion((p) => ({ ...p, email: e.target.value }))}
+                                className="campo py-1.5 text-sm"
+                                maxLength={254}
+                              />
+                            </label>
+                            <label className="flex flex-col gap-1 text-xs text-texto-suave">
+                              Teléfono
+                              <input
+                                value={borradorEdicion.telefono}
+                                onChange={(e) => setBorradorEdicion((p) => ({ ...p, telefono: e.target.value }))}
+                                className="campo py-1.5 text-sm"
+                                maxLength={32}
+                              />
+                            </label>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={guardandoEdicion}
+                              className="min-h-11 rounded-lg bg-primario px-4 text-xs font-semibold text-sobre-primario disabled:opacity-50"
+                            >
+                              {guardandoEdicion ? 'Guardando…' : 'Guardar'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditandoId(null)}
+                              className="min-h-11 rounded-lg border border-borde px-4 text-xs text-texto"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

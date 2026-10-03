@@ -76,6 +76,14 @@ export interface Organizador {
   fechaAlta: Date
   plan: Plan
   estadoSuscripcion: EstadoSuscripcion
+  telefono?: string
+  descripcion?: string
+  redesSociales?: {
+    instagram?: string
+    twitter?: string
+    linkedin?: string
+    web?: string
+  }
   brandingPanel: {
     logoUrl: string | null
     colorPrimario: string | null
@@ -127,6 +135,14 @@ export interface Evento {
   requierePago: boolean
   precioEntrada: number | null
   personalizacion: PersonalizacionEvento
+  /** Código corto y único del evento (ej. "FEST-8K2P"). Generado por el backend. */
+  codigoCorto: string
+  /** Nombre normalizado para búsqueda por prefijo. */
+  nombreNormalizado: string
+  /** Slug legible para URL pública (ej. "festival-rock-2026"). Generado por el backend. */
+  slug: string
+  /** Si es 'publico', aparece en búsqueda por nombre. Si es 'privado', solo por link directo. */
+  visibilidad: 'publico' | 'privado'
 }
 
 export type EstadoRegistro = 'pendiente' | 'aprobado' | 'rechazado'

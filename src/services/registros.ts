@@ -174,6 +174,37 @@ export async function recountRegistros(eventoId: string): Promise<number> {
   if (!resp.ok || !data.ok) throw new Error(data.error)
   return data.reservas
 }
+
+/** Los campos que el organizador puede editar de una reserva. */
+export interface CambiosRegistro {
+  estado?: 'pendiente' | 'aprobado' | 'rechazado'
+  nombre?: string
+  email?: string
+  telefono?: string
+}
+
+export async function actualizarRegistro(
+  eventoId: string,
+  registroId: string,
+  cambios: CambiosRegistro,
+): Promise<void> {
+  const resp = await fetch(`/api/registros/${registroId}?eventoId=${eventoId}`, {
+    method: 'PATCH',
+    headers: await cabecerasAuth({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(cambios),
+  })
+  const data = await resp.json()
+  if (!resp.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar')
+}
+
+export async function eliminarRegistro(eventoId: string, registroId: string): Promise<void> {
+  const resp = await fetch(`/api/registros/${registroId}?eventoId=${eventoId}`, {
+    method: 'DELETE',
+    headers: await cabecerasAuth(),
+  })
+  const data = await resp.json()
+  if (!resp.ok || !data.ok) throw new Error(data.error || 'No se pudo borrar')
+}
 export interface LinkOperador {
   url: string
   expiraEn: string

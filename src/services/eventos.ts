@@ -15,6 +15,7 @@ import {
 import { db } from './firebase'
 import { nuevoDocumentoEvento, type BorradorEvento } from './documentoEvento'
 import { explicarErrorFirestore } from './errores'
+import { normalizarTexto } from '../shared/utils'
 import type { EstadoEvento, Evento, Organizador } from '../shared/types'
 
 /**
@@ -108,6 +109,13 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
         ? datos.personalizacion
         : {}),
     },
+    // Documentos viejos (pre-código-corto) no tienen estos campos: el
+    // default evita el undefined sin inventar datos. El código de un
+    // evento viejo se muestra como su id hasta el backfill.
+    codigoCorto: String(datos.codigoCorto ?? id),
+    nombreNormalizado: String(datos.nombreNormalizado ?? ''),
+    slug: String(datos.slug ?? ''),
+    visibilidad: datos.visibilidad === 'publico' ? 'publico' : 'privado',
   }
 }
 
@@ -191,7 +199,12 @@ export async function actualizarEvento(
 ): Promise<void> {
   const limpio: Record<string, unknown> = {}
 
-  if (typeof cambios.nombre === 'string') limpio.nombre = cambios.nombre.trim()
+  if (typeof cambios.nombre === 'string') {
+    limpio.nombre = cambios.nombre.trim()
+    // El nombre normalizado viaja con el nombre: si no, la búsqueda por
+    // nombre queda apuntando al nombre viejo y el evento "desaparece".
+    limpio.nombreNormalizado = normalizarTexto(cambios.nombre.trim())
+  }
   if (cambios.fecha instanceof Date) limpio.fecha = cambios.fecha
   if (typeof cambios.lugar === 'string') limpio.lugar = cambios.lugar.trim()
   if (typeof cambios.descripcion === 'string') limpio.descripcion = cambios.descripcion.trim()
@@ -211,6 +224,13 @@ export async function actualizarEvento(
   // bannerUrl va dentro de personalizacion
   if (typeof cambios.bannerUrl === 'string') {
     limpio['personalizacion.bannerUrl'] = cambios.bannerUrl.trim() || null
+  }
+
+  // La visibilidad es un dato operativo (como `estado`), no un dato del
+  // formulario de contenido: se edita desde el mismo EventoForm pero viaja
+  // como campo propio para que la regla no tenga que adivinarlo.
+  if (cambios.visibilidad === 'publico' || cambios.visibilidad === 'privado') {
+    limpio.visibilidad = cambios.visibilidad
   }
 
   if (Object.keys(limpio).length === 0) return

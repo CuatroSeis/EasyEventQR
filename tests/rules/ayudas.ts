@@ -111,6 +111,7 @@ export function datosEvento(
       requierePago: false,
       precioEntrada: null,
       bannerUrl: null,
+      visibilidad: 'privado',
     }),
     ...extra,
   }

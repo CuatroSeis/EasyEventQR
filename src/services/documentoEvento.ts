@@ -3,6 +3,7 @@
 // el type-stripping nativo de Node y resuelven en modo "nodenext", donde
 // un import sin extensión no compila.
 import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
+import { generarCodigoCorto, generarSlug, normalizarTexto } from '../shared/utils.ts'
 
 /**
  * La forma del formulario, y el único lugar donde nace un evento.
@@ -25,6 +26,7 @@ export interface BorradorEvento {
   requierePago: boolean
   precioEntrada: number | null
   bannerUrl: string | null
+  visibilidad: 'publico' | 'privado'
 }
 
 /**
@@ -72,9 +74,10 @@ function personalizacionVacia(): PersonalizacionEvento {
  * que lo incrementa.
  */
 export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEvento): Evento {
+  const nombre = limpiarTexto(borrador.nombre)
   return {
     organizadorId,
-    nombre: limpiarTexto(borrador.nombre),
+    nombre,
     fecha: borrador.fecha,
     lugar: limpiarTexto(borrador.lugar),
     descripcion: limpiarTexto(borrador.descripcion),
@@ -87,6 +90,15 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
       ...personalizacionVacia(),
       bannerUrl: borrador.bannerUrl?.trim() || null,
     },
+    // El código corto nace acá con formato válido, pero la UNICIDAD real
+    // la garantiza el backend (POST /api/eventos) con transacción: dos
+    // clientes pueden generar el mismo código al mismo tiempo y las
+    // reglas no pueden contar colisiones. El camino por API es el que
+    // vale; este constructor mantiene vivo el alta directa legacy.
+    codigoCorto: generarCodigoCorto(),
+    nombreNormalizado: normalizarTexto(nombre),
+    slug: generarSlug(nombre),
+    visibilidad: borrador.visibilidad,
   }
 }
 

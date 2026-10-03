@@ -27,6 +27,7 @@ function borradorDesdeFecha(fecha: Date): BorradorEvento {
     requierePago: false,
     precioEntrada: null,
     bannerUrl: null,
+    visibilidad: 'privado',
   }
 }
 
@@ -63,6 +64,7 @@ export default function EventoForm() {
           requierePago: evento.requierePago,
           precioEntrada: evento.precioEntrada,
           bannerUrl: evento.personalizacion?.bannerUrl ?? null,
+          visibilidad: evento.visibilidad,
         })
       })
       .catch(() => {
@@ -221,6 +223,40 @@ export default function EventoForm() {
           onChange={(e) => cambiar('capacidadMaxima', Number.parseInt(e.target.value || '0', 10))}
         />
       </Campo>
+
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
+        <legend className="px-1 text-sm font-medium text-texto">Quién lo puede encontrar</legend>
+        <label className="flex items-start gap-3 text-sm text-texto">
+          <input
+            type="radio"
+            name="visibilidad"
+            className="mt-1 h-5 w-5 accent-[var(--c-primario)]"
+            checked={borrador.visibilidad === 'privado'}
+            onChange={() => cambiar('visibilidad', 'privado')}
+          />
+          <span>
+            <span className="font-medium">Privado</span>
+            <span className="block text-xs text-texto-suave">
+              Solo entra quien tenga el link o el código. No aparece en el buscador.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-sm text-texto">
+          <input
+            type="radio"
+            name="visibilidad"
+            className="mt-1 h-5 w-5 accent-[var(--c-primario)]"
+            checked={borrador.visibilidad === 'publico'}
+            onChange={() => cambiar('visibilidad', 'publico')}
+          />
+          <span>
+            <span className="font-medium">Público</span>
+            <span className="block text-xs text-texto-suave">
+              Aparece cuando alguien lo busca por nombre en el inicio.
+            </span>
+          </span>
+        </label>
+      </fieldset>
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
         <label className="flex items-center gap-3 text-sm text-texto">

@@ -63,6 +63,8 @@ export default function Panel() {
 
       {!error && eventos === null ? <Cargando /> : null}
 
+      {!error && eventos !== null ? <Resumen eventos={eventos} /> : null}
+
       {!error && eventos?.length === 0 ? <Vacio /> : null}
 
       {eventos && eventos.length > 0 ? (
@@ -89,6 +91,31 @@ function Cargando() {
   )
 }
 
+function Resumen({ eventos }: { eventos: EventoConId[] }) {
+  // Suma de `reservas` (emitidas) de los eventos propios. No es un conteo
+  // en vivo de la base: es lo que ya trajo `listarEventos`, sin queries
+  // extra. Si un evento se llena mientras se mira esta pantalla, el número
+  // se actualiza al volver a entrar.
+  const inscriptos = eventos.reduce((total, e) => total + (Number(e.reservas) || 0), 0)
+  const abiertos = eventos.filter((e) => e.estado === 'activo').length
+  return (
+    <dl className="grid grid-cols-3 gap-2">
+      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
+        <dt className="text-xs text-texto-suave">Eventos</dt>
+        <dd className="text-xl font-bold text-texto">{eventos.length}</dd>
+      </div>
+      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
+        <dt className="text-xs text-texto-suave">Abiertos</dt>
+        <dd className="text-xl font-bold text-texto">{abiertos}</dd>
+      </div>
+      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
+        <dt className="text-xs text-texto-suave">Inscriptos</dt>
+        <dd className="text-xl font-bold text-texto">{inscriptos}</dd>
+      </div>
+    </dl>
+  )
+}
+
 function Vacio() {
   return (
     <div className="rounded-xl border border-dashed border-borde p-6 text-center">
@@ -104,28 +131,28 @@ function Vacio() {
 function TarjetaEvento({ evento }: { evento: EventoConId }) {
   const cerrado = evento.estado === 'cerrado'
   const pagado = evento.requierePago
-  const [copiado, setCopiado] = useState(false)
+  const [copiado, setCopiado] = useState<'link' | 'codigo' | null>(null)
 
+  // El link público usa el código corto, no el id interno: es lo que el
+  // invitado escribe en el buscador y lo que se comparte por WhatsApp.
   const linkPublico = typeof window !== 'undefined'
-    ? `${window.location.origin}/e/${evento.id}`
+    ? `${window.location.origin}/e/${evento.codigoCorto}`
     : ''
 
-  async function copiarLink() {
+  async function copiar(texto: string, cual: 'link' | 'codigo') {
     try {
-      await navigator.clipboard.writeText(linkPublico)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2000)
+      await navigator.clipboard.writeText(texto)
     } catch {
       // Fallback para navegadores viejos
       const textarea = document.createElement('textarea')
-      textarea.value = linkPublico
+      textarea.value = texto
       document.body.appendChild(textarea)
       textarea.select()
       document.execCommand('copy')
       document.body.removeChild(textarea)
-      setCopiado(true)
-      setTimeout(() => setCopiado(false), 2000)
     }
+    setCopiado(cual)
+    setTimeout(() => setCopiado(null), 2000)
   }
 
   return (
@@ -134,7 +161,12 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
       className="block rounded-xl border border-borde bg-superficie p-4 active:bg-superficie/60"
     >
       <div className="flex items-start justify-between gap-3">
-        <h2 className="min-w-0 text-sm font-semibold text-texto">{evento.nombre}</h2>
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-texto">{evento.nombre}</h2>
+          <p className="mt-0.5 font-mono text-xs text-texto-suave" aria-label={`Código del evento: ${evento.codigoCorto}`}>
+            {evento.codigoCorto}
+          </p>
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           <span
             className={
@@ -145,16 +177,34 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
           >
             {cerrado ? 'Cerrado' : 'Abierto'}
           </span>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); copiarLink(); }}
-            className="shrink-0 rounded-lg border border-borde px-3 py-1.5 text-xs text-texto-suave hover:bg-superficie active:bg-borde transition disabled:opacity-50"
-            disabled={copiado}
-            aria-label="Copiar link de invitación"
+          <span
+            className="shrink-0 rounded-full border border-borde px-2 py-0.5 text-xs text-texto-suave"
+            title={evento.visibilidad === 'publico' ? 'Aparece en el buscador' : 'Solo entra quien tenga el link o el código'}
           >
-            {copiado ? '✓ Copiado' : 'Copiar link'}
-          </button>
+            {evento.visibilidad === 'publico' ? 'Público' : 'Privado'}
+          </span>
         </div>
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(linkPublico, 'link'); }}
+          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          disabled={copiado !== null}
+          aria-label="Copiar link de invitación"
+        >
+          {copiado === 'link' ? '✓ Copiado' : 'Copiar link'}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(evento.codigoCorto, 'codigo'); }}
+          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 font-mono text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          disabled={copiado !== null}
+          aria-label="Copiar código del evento"
+        >
+          {copiado === 'codigo' ? '✓ Copiado' : 'Copiar código'}
+        </button>
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">

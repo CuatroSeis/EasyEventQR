@@ -430,16 +430,57 @@ service cloud.firestore {
           && (lim.logoPermitido || alta.get('logoUrl', null) == null);
       }
 
+      // ==================================================================
+      //  Código corto, slug y visibilidad: nacen con el evento
+      // ==================================================================
+      //
+      //  `codigoCorto` es el id público del evento (lo que se comparte y
+      //  lo que entiende el buscador). Viaja como campo ADEMÁS de ser el
+      //  id del documento en el alta por API, para que la UI no tenga que
+      //  distinguir "evento nuevo" de "evento viejo": lee el campo.
+      //
+      //  La unicidad NO se puede validar en reglas (no hay count ni
+      //  consultas de existencia sobre otro documento): la impone el
+      //  backend con transacción (POST /api/eventos). Acá sólo se exige
+      //  forma: string no vacío y visibilidad en el vocabulario.
+      //
+      //  Una vez puesto, el código y el slug NO cambian: un QR impreso o
+      //  un link compartido apuntan a ese valor. El `nombreNormalizado`
+      //  SÍ viaja con el nombre (lo mantiene `actualizarEvento`), porque
+      //  si no el evento renombrado desaparece del buscador.
+      function identidadAltaValida() {
+        return request.resource.data.codigoCorto is string
+          && request.resource.data.codigoCorto.size() > 0
+          && request.resource.data.nombreNormalizado is string
+          && request.resource.data.slug is string
+          && request.resource.data.slug.size() > 0
+          && (request.resource.data.visibilidad == 'publico'
+              || request.resource.data.visibilidad == 'privado');
+      }
+
+      // "No cambia una vez puesto, pero se puede poner si falta": los
+      // eventos creados antes del código corto no tienen el campo, y sin
+      // esta rama quedarían ineditables (mismo patrón que `noCambiaReservas`
+      // con su default).
+      function noCambiaIdentidad() {
+        return (resource.data.get('codigoCorto', null) == null
+                || request.resource.data.get('codigoCorto', null) == resource.data.get('codigoCorto', null))
+          && (resource.data.get('slug', null) == null
+              || request.resource.data.get('slug', null) == resource.data.get('slug', null));
+      }
+
       allow create: if esSuperAdmin()
                     || (organizacionActiva() && loCreoComoMio()
                         && request.resource.data.estado == 'activo'
                         && request.resource.data.get('reservas', 0) == 0
                         && capacidadDentroDelPlan()
-                        && personalizacionAltaValida());
+                        && personalizacionAltaValida()
+                        && identidadAltaValida());
 
       allow update: if esSuperAdmin()
                     || (esMio() && noCambiaDueno()
                         && noCambiaReservas()
+                        && noCambiaIdentidad()
                         && subirCapacidadRespetaElPlan()
                         && respetaLimitesDePersonalizacion());
       allow delete: if esSuperAdmin() || esMio();

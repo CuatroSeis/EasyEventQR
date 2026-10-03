@@ -297,6 +297,104 @@ async function handleRecountRegistros(_req: VercelRequest, res: VercelResponse, 
   }
 }
 
+/**
+ * PATCH /api/registros/<registroId>?eventoId=... — edita una reserva.
+ *
+ * Solo `estado`, `nombre`, `email` y `telefono`: el mismo vocabulario que
+ * `soloCamposDelOrganizador()` en las reglas. `usado`, `fechaUso`,
+ * `qrHash`, `pago` y `eventoId` no se tocan por acá: el QR lo rota el
+ * reenvío y el uso lo marca la puerta.
+ */
+async function handleActualizarRegistro(
+  req: VercelRequest,
+  res: VercelResponse,
+  db: ReturnType<typeof getDb>,
+  eventoId: string,
+  registroId: string,
+) {
+  const cuerpo = (req.body ?? {}) as {
+    estado?: unknown
+    nombre?: unknown
+    email?: unknown
+    telefono?: unknown
+  }
+  const cambios: Record<string, unknown> = {}
+
+  if (cuerpo.estado !== undefined) {
+    if (cuerpo.estado !== 'pendiente' && cuerpo.estado !== 'aprobado' && cuerpo.estado !== 'rechazado') {
+      return res.status(400).json({ ok: false, error: 'Estado inválido.' })
+    }
+    cambios.estado = cuerpo.estado
+  }
+  if (cuerpo.nombre !== undefined) {
+    const nombre = String(cuerpo.nombre).trim()
+    if (nombre.length < 2 || nombre.length > 80) {
+      return res.status(400).json({ ok: false, error: 'El nombre tiene que tener entre 2 y 80 caracteres.' })
+    }
+    cambios.nombre = nombre
+  }
+  if (cuerpo.email !== undefined) {
+    const email = String(cuerpo.email).trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return res.status(400).json({ ok: false, error: 'El correo no es válido.' })
+    }
+    cambios.email = email
+  }
+  if (cuerpo.telefono !== undefined) {
+    const telefono = String(cuerpo.telefono).trim().slice(0, 32)
+    cambios.telefono = telefono
+  }
+
+  if (Object.keys(cambios).length === 0) {
+    return res.status(400).json({ ok: false, error: 'No pediste ningún cambio.' })
+  }
+
+  try {
+    const ref = db.collection('registros').doc(registroId)
+    const snap = await ref.get()
+    if (!snap.exists) {
+      return res.status(404).json({ ok: false, error: 'Esa reserva no existe.' })
+    }
+    if ((snap.data() as Registro).eventoId !== eventoId) {
+      return res.status(403).json({ ok: false, error: 'No autorizado.' })
+    }
+    await ref.update(cambios)
+    return res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('[registros/actualizar] error:', error)
+    return res.status(500).json({ ok: false, error: 'No se pudo guardar.' })
+  }
+}
+
+/**
+ * DELETE /api/registros/<registroId>?eventoId=... — borra una reserva.
+ *
+ * No toca el contador `reservas` del evento (cuenta emitidas, no vivas):
+ * si el cupo quedó mentiroso, el botón "Recalcular cupo" lo recompone.
+ */
+async function handleEliminarRegistro(
+  res: VercelResponse,
+  db: ReturnType<typeof getDb>,
+  eventoId: string,
+  registroId: string,
+) {
+  try {
+    const ref = db.collection('registros').doc(registroId)
+    const snap = await ref.get()
+    if (!snap.exists) {
+      return res.status(404).json({ ok: false, error: 'Esa reserva no existe.' })
+    }
+    if ((snap.data() as Registro).eventoId !== eventoId) {
+      return res.status(403).json({ ok: false, error: 'No autorizado.' })
+    }
+    await ref.delete()
+    return res.status(200).json({ ok: true })
+  } catch (error) {
+    console.error('[registros/eliminar] error:', error)
+    return res.status(500).json({ ok: false, error: 'No se pudo borrar.' })
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, max-age=0')
 
@@ -341,6 +439,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Router por path
   const path = req.url?.split('?')[0] || ''
+
+  // /api/registros/<registroId>?eventoId=... — editar o borrar una
+  // reserva puntual. La propiedad ya quedó verificada arriba contra el
+  // evento, y acá se verifica que el registro sea DE ese evento: sin ese
+  // segundo chequeo, un organizador podría editar reservas ajenas pasando
+  // su propio eventoId con el id de otro registro.
+  const partes = path.split('/').filter(Boolean)
+  const registroId = partes.length > 2 ? partes[partes.length - 1] : null
+  if (registroId && !['export', 'recount', 'resend'].includes(registroId)) {
+    if (req.method === 'PATCH') {
+      return handleActualizarRegistro(req, res, db, eventoId, registroId)
+    }
+    if (req.method === 'DELETE') {
+      return handleEliminarRegistro(res, db, eventoId, registroId)
+    }
+    res.setHeader('Allow', 'PATCH, DELETE')
+    return res.status(405).json({ ok: false, error: 'Método no permitido' })
+  }
 
   if (path.endsWith('/export')) {
     if (req.method !== 'GET') {

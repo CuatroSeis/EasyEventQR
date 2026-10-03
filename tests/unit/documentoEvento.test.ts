@@ -34,6 +34,7 @@ function borradorValido(extra: Partial<BorradorEvento> = {}): BorradorEvento {
     requierePago: false,
     precioEntrada: null,
     bannerUrl: null,
+    visibilidad: 'privado',
     ...extra,
   }
 }
@@ -211,6 +212,17 @@ describe('nuevoDocumentoEvento', () => {
     const borrador = borradorValido()
     const documento = nuevoDocumentoEvento('org-real', borrador)
     assert.equal(documento.fecha.getTime(), borrador.fecha.getTime())
+  })
+
+  it('nace con codigo, slug, nombre normalizado y visibilidad del borrador', () => {
+    // El alta por API genera estos mismos valores del lado del servidor;
+    // el constructor los trae para que el alta directa legacy siga
+    // teniendo la forma completa que exigen las reglas.
+    const documento = nuevoDocumentoEvento('org-real', borradorValido({ visibilidad: 'publico' }))
+    assert.match(documento.codigoCorto, /^[A-Z0-9]{6}(-[A-Z0-9]{4,6})?$/)
+    assert.equal(documento.nombreNormalizado, 'cena-de-prueba')
+    assert.match(documento.slug, /^cena-de-prueba-[a-z0-9]{4}$/)
+    assert.equal(documento.visibilidad, 'publico')
   })
 })
 
