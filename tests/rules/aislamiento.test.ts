@@ -265,6 +265,13 @@ describe('organizadores: el plan es intocable desde el cliente', () => {
     await assertFails(deleteDoc(doc(comoB().firestore(), 'organizadores', ORG_A)))
   })
 
+  it('A SÍ puede borrar su propio documento (la cascada la hace DELETE /api/me)', async () => {
+    // El borrado real con eventos, registros y Auth lo hace el backend;
+    // la regla sólo tiene que dejar pasar el propio y frenar el ajeno
+    // (cubierto en el test de arriba).
+    await assertSucceeds(deleteDoc(doc(comoA().firestore(), 'organizadores', ORG_A)))
+  })
+
   it('B NO puede listar todos los organizadores', async () => {
     await assertFails(getDocs(collection(comoB().firestore(), 'organizadores')))
   })

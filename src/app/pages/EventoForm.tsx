@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
-import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, eliminarEvento, obtenerEvento } from '../../services/eventos'
+import ConfirmModal from '../components/ConfirmModal'
+import { t } from '../../shared/toast'
+import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, duplicarEvento, eliminarEvento, obtenerEvento } from '../../services/eventos'
 import { validarBorrador, type BorradorEvento, type ProblemaDeValidacion } from '../../services/documentoEvento'
 
 /**
@@ -44,6 +46,8 @@ export default function EventoForm() {
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [cargando, setCargando] = useState(!esNuevo)
+  const [confirmaBorrado, setConfirmaBorrado] = useState(false)
+  const [confirmaDuplicado, setConfirmaDuplicado] = useState(false)
 
   useEffect(() => {
     if (esNuevo) return
@@ -104,9 +108,11 @@ export default function EventoForm() {
         // Se vuelve al listado, donde la tarjeta del evento nuevo ya
         // muestra el código con los botones para compartirlo.
         await crearEventoBackend(borrador)
+        t.success('Evento creado. Compartilo con el código o el link.')
         navegar('/panel', { replace: true })
       } else {
         await actualizarEvento(eventoId, borrador, organizador)
+        t.success('Cambios guardados.')
         navegar('/panel', { replace: true })
       }
     } catch (fallo) {
@@ -129,9 +135,30 @@ export default function EventoForm() {
     }
   }
 
+  async function duplicar() {
+    if (esNuevo) return
+    setConfirmaDuplicado(false)
+    setGuardando(true)
+    setError(null)
+    try {
+      const evento = await obtenerEvento(eventoId)
+      if (!evento) {
+        setError('Ese evento no existe o ya no es tuyo.')
+        setGuardando(false)
+        return
+      }
+      const creado = await duplicarEvento(evento)
+      t.success(`Duplicado como ${creado.codigoCorto}.`)
+      navegar('/panel', { replace: true })
+    } catch (fallo) {
+      setError(fallo instanceof Error ? fallo.message : 'No se pudo duplicar el evento.')
+      setGuardando(false)
+    }
+  }
+
   async function borrar() {
     if (esNuevo) return
-    if (!confirm('¿Borrar este evento? Se va con las reservas que tenga adentro.')) return
+    setConfirmaBorrado(false)
     setGuardando(true)
     try {
       await eliminarEvento(eventoId, organizador)
@@ -152,6 +179,27 @@ export default function EventoForm() {
   return (
     <form onSubmit={enviar} className="flex flex-col gap-5" noValidate>
       <h1 className="text-lg font-bold text-texto">{esNuevo ? 'Nuevo evento' : 'Editar evento'}</h1>
+
+      {confirmaBorrado ? (
+        <ConfirmModal
+          titulo="¿Borrar este evento?"
+          mensaje="Se va con las reservas que tenga adentro. No se puede deshacer."
+          confirmar="Borrar evento"
+          enCurso={guardando ? 'Borrando…' : undefined}
+          onConfirmar={() => void borrar()}
+          onCerrar={() => setConfirmaBorrado(false)}
+        />
+      ) : null}
+      {confirmaDuplicado ? (
+        <ConfirmModal
+          titulo="¿Duplicar este evento?"
+          mensaje="Se crea una copia con los mismos datos y un código nuevo. Las reservas empiezan en cero."
+          confirmar="Duplicar evento"
+          enCurso={guardando ? 'Duplicando…' : undefined}
+          onConfirmar={() => void duplicar()}
+          onCerrar={() => setConfirmaDuplicado(false)}
+        />
+      ) : null}
 
       {error ? (
         <p role="alert" className="rounded-xl border border-borde p-3 text-sm text-texto">
@@ -319,7 +367,15 @@ export default function EventoForm() {
             </button>
             <button
               type="button"
-              onClick={borrar}
+              onClick={() => setConfirmaDuplicado(true)}
+              disabled={guardando}
+              className="min-h-[var(--touch-min)] rounded-xl border border-borde px-4 text-sm font-medium text-texto disabled:opacity-60"
+            >
+              Duplicar evento
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmaBorrado(true)}
               disabled={guardando}
               className="min-h-[var(--touch-min)] px-4 text-sm font-medium text-texto-suave underline disabled:opacity-60"
             >

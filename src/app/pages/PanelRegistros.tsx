@@ -2,6 +2,8 @@ import { Fragment, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
+import ConfirmModal from '../components/ConfirmModal'
+import EmptyState from '../components/EmptyState'
 import {
   obtenerRegistros,
   exportarRegistros,
@@ -45,17 +47,36 @@ const PAGO_COLORS: Record<EstadoPago, string> = {
 
 export default function PanelRegistros() {
   const { eventoId } = useParams<{ eventoId: string }>()
-  const [busca] = useSearchParams()
+  const [busca, setBusca] = useSearchParams()
   const organizador = useOrganizador()
   const [registros, setRegistros] = useState<RegistroUI[]>([])
   const [total, setTotal] = useState(0)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, ] = useState(busca.get('search') || '')
-  const [estadoFiltro, ] = useState(busca.get('estado') || '')
-  const [pagoFiltro, ] = useState(busca.get('pagoEstado') || '')
+  const [search, setSearch] = useState(busca.get('search') || '')
+  const [estadoFiltro, setEstadoFiltro] = useState(busca.get('estado') || '')
+  const [pagoFiltro, setPagoFiltro] = useState(busca.get('pagoEstado') || '')
   const [pagina, setPagina] = useState(1)
   const [porPagina] = useState(20)
+
+  // Los filtros viven en la URL para que el link sea compartible ("mirá
+  // los pendientes de este evento") y el back del navegador funcione.
+  // Cada cambio vuelve a la página 1: si no, filtrar desde la página 4
+  // muestra una tabla vacía que parece un bug.
+  function actualizarFiltros(parche: { search?: string; estado?: string; pagoEstado?: string }) {
+    const params = new URLSearchParams(busca)
+    const actual: Record<string, string | undefined> = {
+      search: parche.search ?? search,
+      estado: parche.estado ?? estadoFiltro,
+      pagoEstado: parche.pagoEstado ?? pagoFiltro,
+    }
+    for (const [clave, valor] of Object.entries(actual)) {
+      if (valor) params.set(clave, valor)
+      else params.delete(clave)
+    }
+    setBusca(params)
+    setPagina(1)
+  }
   const [acciones, setAcciones] = useState<Record<string, 'enviando' | 'reintentando' | undefined>>({})
   const [recontando, setRecontando] = useState(false)
   const [aviso, setAviso] = useState<{ texto: string; advertencia: boolean } | null>(null)
@@ -63,6 +84,7 @@ export default function PanelRegistros() {
   const [generandoLink, setGenerandoLink] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [eliminaReserva, setEliminaReserva] = useState<RegistroUI | null>(null)
   const [borradorEdicion, setBorradorEdicion] = useState({ estado: 'pendiente', nombre: '', email: '', telefono: '' })
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
 
@@ -234,8 +256,10 @@ export default function PanelRegistros() {
     }
   }
 
-  async function handleEliminar(r: RegistroUI) {
-    if (!confirm(`¿Borrar la reserva de ${r.nombre}? No se puede deshacer.`)) return
+  async function handleEliminar() {
+    const r = eliminaReserva
+    if (!r) return
+    setEliminaReserva(null)
     setError(null)
     try {
       await eliminarRegistro(eventoId!, r.id)
@@ -256,6 +280,15 @@ export default function PanelRegistros() {
 
   return (
     <div className="flex flex-col gap-4">
+      {eliminaReserva ? (
+        <ConfirmModal
+          titulo="¿Borrar esta reserva?"
+          mensaje={`Se borra la reserva de ${eliminaReserva.nombre}. No se puede deshacer.`}
+          confirmar="Borrar reserva"
+          onConfirmar={() => void handleEliminar()}
+          onCerrar={() => setEliminaReserva(null)}
+        />
+      ) : null}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg font-bold text-texto">Registros</h1>
         <div className="flex flex-wrap gap-2">
@@ -284,6 +317,73 @@ export default function PanelRegistros() {
         <span>Usados: <strong>{usados}</strong></span>
         <span>Disponibles: <strong>{LIMITE - reservados}</strong></span>
       </div>
+
+      <form
+        className="flex flex-col gap-2 sm:flex-row"
+        role="search"
+        aria-label="Buscar y filtrar reservas"
+        onSubmit={(e) => {
+          e.preventDefault()
+          actualizarFiltros({})
+          cargar()
+        }}
+      >
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            actualizarFiltros({ search: e.target.value })
+          }}
+          placeholder="Buscar por nombre, email, DNI o ID"
+          aria-label="Buscar reserva"
+          className="campo flex-1"
+        />
+        <select
+          value={estadoFiltro}
+          onChange={(e) => {
+            setEstadoFiltro(e.target.value)
+            actualizarFiltros({ estado: e.target.value })
+          }}
+          aria-label="Filtrar por estado"
+          className="campo sm:w-40"
+        >
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="rechazado">Rechazado</option>
+        </select>
+        <select
+          value={pagoFiltro}
+          onChange={(e) => {
+            setPagoFiltro(e.target.value)
+            actualizarFiltros({ pagoEstado: e.target.value })
+          }}
+          aria-label="Filtrar por pago"
+          className="campo sm:w-40"
+        >
+          <option value="">Todos los pagos</option>
+          <option value="no_aplica">Gratis</option>
+          <option value="pendiente">Pago pendiente</option>
+          <option value="pagado">Pagado</option>
+          <option value="rechazado">Pago rechazado</option>
+        </select>
+        {(search || estadoFiltro || pagoFiltro) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setEstadoFiltro('')
+              setPagoFiltro('')
+              setBusca(new URLSearchParams())
+              setPagina(1)
+            }}
+            className="min-h-11 rounded-lg border border-borde px-4 text-sm text-texto-suave"
+          >
+            Limpiar
+          </button>
+        )}
+      </form>
 
       {linkOperador && (
         <section
@@ -344,9 +444,10 @@ export default function PanelRegistros() {
           ))}
         </div>
       ) : registros.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-borde p-6 text-center">
-          <p className="text-sm text-texto-suave">No hay reservas para este evento</p>
-        </div>
+        <EmptyState
+          titulo="No hay reservas para este evento"
+          ayuda="Compartí el link o el código del evento para que empiecen a llegar. Cuando alguien se registre, lo vas a ver acá con su estado y su pago."
+        />
       ) : (
         <>
           <div className="overflow-x-auto rounded-xl border border-borde">
@@ -410,7 +511,7 @@ export default function PanelRegistros() {
                           ✏️
                         </button>
                         <button
-                          onClick={() => handleEliminar(r)}
+                          onClick={() => setEliminaReserva(r)}
                           className="px-2 py-1 rounded text-xs text-red-600 hover:bg-red-50"
                           title="Borrar reserva"
                           aria-label={`Borrar reserva de ${r.nombre}`}

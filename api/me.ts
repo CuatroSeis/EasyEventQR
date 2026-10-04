@@ -1,8 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore'
 
 import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID
+
+/** Tope de lotes de Firestore: 500 escrituras por batch, 400 por seguridad. */
+const TOPE_LOTE = 400
 
 /**
  * `/api/me` — quién es esta persona y qué puede hacer.
@@ -103,5 +107,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  if (req.method === 'DELETE') {
+    return await eliminarMiCuenta(res, uid)
+  }
+
   return res.status(200).json({ ok: true, uid, isAdmin, porQue, organizador })
+}
+
+/**
+ * DELETE /api/me — el usuario borra su propia cuenta con todo adentro.
+ *
+ * La baja pasa por el backend y no por deletes sueltos desde el cliente
+ * por dos motivos: 1) son N documentos (eventos + registros) y un fallo
+ * a mitad de camino desde el navegador deja basura huérfana; 2) la cuenta
+ * de Auth sólo la puede borrar el Admin SDK.
+ *
+ * El orden importa: primero los registros de cada evento, después los
+ * eventos, después el documento del organizador y ÚLTIMO el usuario de
+ * Auth. Si el deleteUser fallara, los datos ya están borrados y la cuenta
+ * queda vacía en vez de al revés (cuenta borrada con datos vivos que
+ * nadie puede administrar).
+ */
+async function eliminarMiCuenta(res: VercelResponse, uid: string) {
+  // La puerta de atrás no se auto-elimina por acá: sin SUPER_ADMIN_UID
+  // no hay forma de recuperar el acceso de break-glass. Las cuentas de
+  // super-admin se gestionan desde /admin.
+  if (SUPER_ADMIN_UID !== undefined && uid === SUPER_ADMIN_UID) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Esa cuenta se elimina desde el panel de super-admin.',
+    })
+  }
+
+  try {
+    const db = getDb()
+    let eliminados = 0
+
+    const eventos = await db.collection('eventos').where('organizadorId', '==', uid).get()
+    for (const docEvento of eventos.docs) {
+      const registros = await db.collection('registros').where('eventoId', '==', docEvento.id).get()
+      await eliminarEnLotes(
+        db,
+        registros.docs.map((d) => d.ref),
+      )
+      eliminados += registros.size
+      await docEvento.ref.delete()
+      eliminados += 1
+    }
+
+    await db.collection('organizadores').doc(uid).delete()
+    eliminados += 1
+
+    try {
+      await (await getAdminAuth()).deleteUser(uid)
+    } catch (error) {
+      console.error('[me] no se pudo borrar la cuenta de Auth:', error)
+    }
+
+    return res.status(200).json({ ok: true, eliminados })
+  } catch (error) {
+    console.error('[me] error eliminando cuenta:', error)
+    return res.status(500).json({ ok: false, error: 'No se pudo eliminar la cuenta.' })
+  }
+}
+
+/** Borra en bloques: un batch de Firestore admite 500 escrituras, no más. */
+async function eliminarEnLotes(db: Firestore, referencias: DocumentReference[]): Promise<void> {
+  for (let i = 0; i < referencias.length; i += TOPE_LOTE) {
+    const lote = referencias.slice(i, i + TOPE_LOTE)
+    const batch = db.batch()
+    for (const ref of lote) batch.delete(ref)
+    await batch.commit()
+  }
 }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrganizadorEditable } from '../ContextoOrganizador'
 import { t } from '../../shared/toast'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Cuenta() {
   const { organizador } = useOrganizadorEditable()
@@ -9,6 +10,7 @@ export default function Cuenta() {
 
   const [passwordNueva, setPasswordNueva] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
+  const [confirmaEliminar, setConfirmaEliminar] = useState(false)
 
   async function handleGuardarPerfil(e: React.FormEvent) {
     e.preventDefault()
@@ -28,7 +30,6 @@ export default function Cuenta() {
 
   async function handleCambiarPassword(e: React.FormEvent) {
     e.preventDefault()
-    const { passwordNueva, passwordConfirm } = getPasswordState()
     if (passwordNueva !== passwordConfirm) {
       t.error('Las contraseñas no coinciden')
       return
@@ -41,18 +42,17 @@ export default function Cuenta() {
       const { auth } = await import('../../services/firebase')
       const { cambiarPassword } = await import('../../services/perfil')
       if (!auth.currentUser) throw new Error('Sesión no válida')
-      await cambiarPassword(auth.currentUser, '', getPasswordState().passwordNueva)
+      await cambiarPassword(auth.currentUser, '', passwordNueva)
       t.success('Contraseña cambiada')
-      setPasswordState({ passwordNueva: '', passwordConfirm: '' })
+      setPasswordNueva('')
+      setPasswordConfirm('')
     } catch (e) {
       t.error(e instanceof Error ? e.message : 'No se pudo cambiar la contraseña')
     }
   }
 
   async function handleEliminarCuenta() {
-    if (!window.confirm('¿Eliminar tu cuenta definitivamente? Se borrarán TODOS tus eventos, reservas y tu usuario. No se puede deshacer.')) return
-    if (!window.confirm('Última confirmación: ¿borrar definitivamente tu cuenta y TODOS tus datos?')) return
-
+    setConfirmaEliminar(false)
     try {
       await import('../../services/perfil').then(m => m.eliminarCuenta())
       const { salir } = await import('../../services/auth')
@@ -296,22 +296,21 @@ export default function Cuenta() {
         </p>
         <button
           type="button"
-          onClick={handleEliminarCuenta}
+          onClick={() => setConfirmaEliminar(true)}
           className="w-full sm:w-auto min-h-[56px] rounded-xl bg-red-600 px-6 py-3 text-lg font-semibold text-white"
         >
           Eliminar mi cuenta definitivamente
         </button>
       </section>
+      {confirmaEliminar ? (
+        <ConfirmModal
+          titulo="¿Eliminar tu cuenta definitivamente?"
+          mensaje="Se borran TODOS tus eventos, las reservas de tus invitados y tu usuario. No se puede deshacer."
+          confirmar="Sí, eliminar todo"
+          onConfirmar={() => void handleEliminarCuenta()}
+          onCerrar={() => setConfirmaEliminar(false)}
+        />
+      ) : null}
     </div>
   )
-}
-
-function getPasswordState() {
-  // This is a workaround for the fact that we can't use hooks outside the component
-  // In a real implementation, we'd use a ref or context
-  return { passwordNueva: '', passwordConfirm: '' }
-}
-
-function setPasswordState(_state: { passwordNueva: string; passwordConfirm: string }) {
-  // No-op
 }

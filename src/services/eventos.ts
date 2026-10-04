@@ -233,6 +233,57 @@ export async function crearEventoBackend(borrador: BorradorEvento): Promise<Even
 }
 
 /**
+ * Duplica un evento: mismo contenido, identidad nueva.
+ *
+ * Lo que se copia: nombre (con " (copia)"), fecha, lugar, descripción,
+ * cupo, pago, banner y visibilidad. Lo que NO se copia: reservas (0),
+ * estado (nace activo), código, slug ni personalización de colores
+ * (el borrador sólo trae bannerUrl; el resto nace en null y el
+ * organizador lo ajusta si quiere).
+ *
+ * Va por `crearEventoBackend` y no clonando el documento: el código corto
+ * tiene que nacer en transacción o dos duplicados simultáneos colisionan.
+ */
+export async function duplicarEvento(evento: EventoConId): Promise<EventoCreado> {
+  return crearEventoBackend({
+    nombre: `${evento.nombre} (copia)`.slice(0, 80),
+    fecha: evento.fecha,
+    lugar: evento.lugar,
+    descripcion: evento.descripcion,
+    capacidadMaxima: evento.capacidadMaxima,
+    requierePago: evento.requierePago,
+    precioEntrada: evento.precioEntrada,
+    bannerUrl: evento.personalizacion?.bannerUrl ?? null,
+    visibilidad: evento.visibilidad,
+  })
+}
+
+/**
+ * Ventas pagadas de una lista de eventos: cantidad y monto total.
+ *
+ * Una query por evento con un solo `where` (sin índice compuesto): a
+ * escala de organizador (decenas de eventos) es barato y no pide índices
+ * nuevos. El filtro de pagado se aplica en memoria, igual que en
+ * `obtenerRegistros`. Tope de 500 pagadas por evento: si un evento vende
+ * más, el número queda corto y hay que paginarlo (pendiente).
+ */
+export async function resumenVentas(eventoIds: string[]): Promise<{ entradas: number; monto: number }> {
+  const { obtenerRegistros } = await import('./registros')
+  let entradas = 0
+  let monto = 0
+  await Promise.all(
+    eventoIds.map(async (eventoId) => {
+      const { registros } = await obtenerRegistros({ eventoId, pagoEstado: 'pagado', limite: 500 })
+      entradas += registros.length
+      for (const r of registros) {
+        if (typeof r.pago.montoPagado === 'number') monto += r.pago.montoPagado
+      }
+    }),
+  )
+  return { entradas, monto }
+}
+
+/**
  * Edita un evento.
  *
  * Se manda un objeto con los campos a cambiar, NO el evento entero. Es

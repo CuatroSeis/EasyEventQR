@@ -216,9 +216,11 @@ service cloud.firestore {
                     || (esPropio() && noCambiaPrivilegios() && soloCamposPermitidos()
                         && respetaLimitesDeMarca() && respetaLimiteDeLogo());
 
-      // Borrar la cuenta es cosa del super-admin, no del usuario:
-      // un organizador que se va deja eventos con invitados adentro.
-      allow delete: if esSuperAdmin();
+      // Borrar la cuenta propia está permitido: el borrado real con
+      // cascada (eventos, registros, Auth) lo hace DELETE /api/me en el
+      // backend con el Admin SDK. Lo que esta regla impide es borrar
+      // cuentas AJENAS: B no toca lo de A.
+      allow delete: if esSuperAdmin() || esPropio();
     }
 
     // ==============================================================

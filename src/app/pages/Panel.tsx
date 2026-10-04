@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
-import { listarEventos } from '../../services/eventos'
+import EmptyState from '../components/EmptyState'
+import { listarEventos, resumenVentas } from '../../services/eventos'
 import type { EventoConId } from '../../services/eventos'
 
 /**
@@ -17,6 +18,7 @@ import type { EventoConId } from '../../services/eventos'
 export default function Panel() {
   const organizador = useOrganizador()
   const [eventos, setEventos] = useState<EventoConId[] | null>(null)
+  const [ventas, setVentas] = useState<{ entradas: number; monto: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -28,7 +30,17 @@ export default function Panel() {
     // compuesto: sin él, la consulta falla con FAILED_PRECONDITION.
     listarEventos(organizador.uid)
       .then((resultado) => {
-        if (vigente) setEventos(resultado)
+        if (!vigente) return
+        setEventos(resultado)
+        // Las ventas se calculan después del listado: si falla, el panel
+        // igual muestra eventos e inscriptos y la card queda en "—".
+        resumenVentas(resultado.map((e) => e.id))
+          .then((r) => {
+            if (vigente) setVentas(r)
+          })
+          .catch(() => {
+            if (vigente) setVentas(null)
+          })
       })
       .catch((fallo: unknown) => {
         if (!vigente) return
@@ -63,7 +75,7 @@ export default function Panel() {
 
       {!error && eventos === null ? <Cargando /> : null}
 
-      {!error && eventos !== null ? <Resumen eventos={eventos} /> : null}
+      {!error && eventos !== null ? <Resumen eventos={eventos} ventas={ventas} /> : null}
 
       {!error && eventos?.length === 0 ? <Vacio /> : null}
 
@@ -91,7 +103,13 @@ function Cargando() {
   )
 }
 
-function Resumen({ eventos }: { eventos: EventoConId[] }) {
+function Resumen({
+  eventos,
+  ventas,
+}: {
+  eventos: EventoConId[]
+  ventas: { entradas: number; monto: number } | null
+}) {
   // Suma de `reservas` (emitidas) de los eventos propios. No es un conteo
   // en vivo de la base: es lo que ya trajo `listarEventos`, sin queries
   // extra. Si un evento se llena mientras se mira esta pantalla, el número
@@ -99,7 +117,7 @@ function Resumen({ eventos }: { eventos: EventoConId[] }) {
   const inscriptos = eventos.reduce((total, e) => total + (Number(e.reservas) || 0), 0)
   const abiertos = eventos.filter((e) => e.estado === 'activo').length
   return (
-    <dl className="grid grid-cols-3 gap-2">
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
         <dt className="text-xs text-texto-suave">Eventos</dt>
         <dd className="text-xl font-bold text-texto">{eventos.length}</dd>
@@ -112,26 +130,36 @@ function Resumen({ eventos }: { eventos: EventoConId[] }) {
         <dt className="text-xs text-texto-suave">Inscriptos</dt>
         <dd className="text-xl font-bold text-texto">{inscriptos}</dd>
       </div>
+      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
+        <dt className="text-xs text-texto-suave">Vendidas</dt>
+        <dd className="text-xl font-bold text-texto">
+          {ventas === null ? '—' : ventas.entradas}
+        </dd>
+        {ventas !== null && ventas.monto > 0 ? (
+          <dd className="text-xs text-texto-suave">
+            $ {ventas.monto.toLocaleString('es-AR')}
+          </dd>
+        ) : null}
+      </div>
     </dl>
   )
 }
 
 function Vacio() {
   return (
-    <div className="rounded-xl border border-dashed border-borde p-6 text-center">
-      <p className="text-sm font-medium text-texto">Todavía no tenés eventos</p>
-      <p className="mt-1 text-xs text-texto-suave">
-        Creá el primero con el botón de abajo. Después vas a poder compartir el link de
-        reservas.
-      </p>
-    </div>
+    <EmptyState
+      titulo="Todavía no tenés eventos"
+      ayuda="Creá el primero con el botón de abajo. Después vas a poder compartir el link de reservas y el código con tus invitados."
+      cta="Crear mi primer evento"
+      to="/panel/eventos/nuevo"
+    />
   )
 }
 
 function TarjetaEvento({ evento }: { evento: EventoConId }) {
   const cerrado = evento.estado === 'cerrado'
   const pagado = evento.requierePago
-  const [copiado, setCopiado] = useState<'link' | 'codigo' | null>(null)
+  const [copiado, setCopiado] = useState<'link' | 'codigo' | 'qr' | null>(null)
 
   // El link público usa el código corto, no el id interno: es lo que el
   // invitado escribe en el buscador y lo que se comparte por WhatsApp.
@@ -139,8 +167,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
     ? `${window.location.origin}/e/${evento.codigoCorto}`
     : ''
 
-  async function copiar(texto: string, cual: 'link' | 'codigo') {
-    try {
+  async function copiar(texto: string, cual: 'link' | 'codigo' | 'qr') {    try {
       await navigator.clipboard.writeText(texto)
     } catch {
       // Fallback para navegadores viejos
@@ -153,6 +180,26 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
     }
     setCopiado(cual)
     setTimeout(() => setCopiado(null), 2000)
+  }
+
+  // QR descargable del link público, para imprimirlo o pegarlo en un flyer.
+  // Se genera en el navegador: no viaja nada al servidor y el link es el
+  // mismo que copia "Copiar link", así que no hay dos verdades.
+  async function descargarQR() {
+    try {
+      const { default: QRCode } = await import('qrcode')
+      const png = await QRCode.toDataURL(linkPublico, { width: 512, margin: 2 })
+      const a = document.createElement('a')
+      a.href = png
+      a.download = `qr-${evento.codigoCorto}.png`
+      a.click()
+      setCopiado('qr')
+      setTimeout(() => setCopiado(null), 2000)
+    } catch {
+      // Sin toast acá a propósito: la tarjeta no tiene contexto de error
+      // y un alert del sistema es peor. El botón simplemente no hace nada
+      // visible si falla, igual que "Copiar link" en navegadores viejos.
+    }
   }
 
   return (
@@ -204,6 +251,15 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
           aria-label="Copiar código del evento"
         >
           {copiado === 'codigo' ? '✓ Copiado' : 'Copiar código'}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void descargarQR(); }}
+          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          disabled={copiado !== null}
+          aria-label="Descargar QR del evento"
+        >
+          {copiado === 'qr' ? '✓ Listo' : 'QR'}
         </button>
       </div>
 

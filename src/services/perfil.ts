@@ -76,18 +76,28 @@ export async function reautenticarParaEliminar(): Promise<void> {
   if (!credencial.user) throw new Error('Re-autenticación fallida')
 }
 
-/** Elimina la cuenta del organizador (Auth + Firestore). Requiere re-autenticación previa. */
+/** Elimina la cuenta del organizador con todo adentro (eventos, registros, Auth).
+ *
+ * La cascada la hace DELETE /api/me en el backend: borrar N documentos
+ * desde el navegador deja basura huérfana al primer fallo de red, y la
+ * cuenta de Auth sólo la puede borrar el Admin SDK. Acá sólo se cierra
+ * la sesión local después de que el servidor confirma.
+ */
 export async function eliminarCuenta(): Promise<void> {
   const usuario = auth.currentUser
   if (!usuario) throw new Error('No hay usuario autenticado')
 
-  const uid = usuario.uid
-  const { deleteDoc, doc } = await import('firebase/firestore')
-  const { deleteUser } = await import('firebase/auth')
+  const resp = await fetch('/api/me', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${await usuario.getIdToken()}` },
+  })
+  const data = await resp.json().catch(() => null)
+  if (!resp.ok || !data?.ok) {
+    throw new Error(
+      typeof data?.error === 'string' && data.error ? data.error : 'No se pudo eliminar la cuenta.',
+    )
+  }
 
-  // 1. Borrar documento de organizador
-  await deleteDoc(doc(db, 'organizadores', uid))
-
-  // 2. Borrar usuario de Auth
-  await deleteUser(auth.currentUser!)
+  const { salir } = await import('./auth')
+  await salir()
 }
