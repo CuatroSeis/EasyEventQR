@@ -27,12 +27,12 @@ La documentación completa está indexada en [`docs/README.md`](./docs/README.md
 | 1 | Login con Google + reglas de seguridad multi-tenant | ✅ |
 | 2 | CRUD de eventos (mobile-first) + branding del panel | ✅ |
 | 3 | Registro público + theming dinámico + QR + mail | ✅ |
-| 4 | `<ticket-widget>` embebible (Shadow DOM, bundle propio) | |
-| 5 | Capa de pagos desacoplada (modo simulado) + webhook firmado | |
-| 6 | Panel de gestión de registros + CSV + reenvío de mail | |
-| 7 | Escáner de QR con transacción atómica + link temporal de operador | |
-| 8 | Panel de super-admin (desktop-first) | |
-| 9 | Pulido de UI responsive + README + demo pública | |
+| 4 | `<ticket-widget>` embebible (Shadow DOM, bundle propio) | ✅ |
+| 5 | Capa de pagos desacoplada (modo simulado) + webhook firmado | ✅ |
+| 6 | Panel de gestión de registros + CSV + reenvío de mail | ✅ |
+| 7 | Escáner de QR con transacción atómica + link temporal de operador | ✅ |
+| 8 | Panel de super-admin (desktop-first) | ✅ |
+| 9 | Pulido de UI responsive + README + demo pública | ✅ |
 
 ## Arquitectura
 
@@ -56,12 +56,12 @@ Dos builds desde un solo repo:
 `src/shared/` lo importan los dos builds: una sola lógica de negocio, dos
 empaquetados.
 
-La 3 está implementada de punta a punta pero **sin deploy**: falta subir las
-reglas de Firestore y cargar `BREVO_API_KEY` en Vercel. El 🟡 es por eso, y no
-por falta de código. La diferencia con las otras es que la 3 tiene dos
-dependencias externas que no se pueden resolver desde el repo: las reglas se
-despliegan con el CLI de Firebase y el remitente de Brevo se verifica en el
-panel del proveedor.
+El deploy está funcionando (`https://easyeventqr.vercel.app`, CI en verde).
+El circuito crítico (reserva atómica con guarda de cupo, validación por
+SHA-256, marcado de `usado` en transacción con doble escaneo) se verifica
+sin navegador con `npm run test:e2e` contra el emulador. El recorrido
+completo de 12 pasos con navegador, mail real y cámara está en
+[`docs/arquitectura/ENDPOINTS.md`](./docs/arquitectura/ENDPOINTS.md).
 
 ## Puesta en marcha
 
@@ -77,6 +77,23 @@ Si querés probar el login contra los emuladores, en otra terminal:
 npm run emuladores           # firestore :8080, auth :9099, UI :4000
 # y en .env.local:  VITE_USAR_EMULADORES=si
 ```
+
+### Demo local con datos de ejemplo
+
+Sin cuentas, sin mail real, sin cámara: dos eventos y tres reservas en
+estados distintos (válida, usada, pendiente) más las URLs para verificarlas.
+
+```bash
+npm run emuladores           # terminal 1: firestore :8080, auth :9099
+npm run demo:seed            # terminal 2: crea la demo e imprime las URLs
+npm run dev:api              # terminal 3: app + functions (vercel dev)
+npm run build:widget         # una vez, para el paso del widget
+```
+
+El seed solo corre contra el emulador (se niega sin
+`FIRESTORE_EMULATOR_HOST`) y los links del QR salen impresos porque es el
+único momento en que los tokens existen en claro. El panel (`/panel`) y
+`/admin` sí piden sesión: esa parte no es demo.
 
 ### Variables de entorno
 
@@ -124,9 +141,10 @@ node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json --write  # a
 | `npm run build` | Widget primero, después la app (así el widget entra en `dist/`) |
 | `npm run typecheck` | `tsc -b` sobre `src/`, `api/`, `tests/` y las configs |
 | `npm run lint` | oxlint |
-| `npm run test:rules` | Emulador + 45 tests de reglas de seguridad |
+| `npm run test:rules` | Emulador + 90 tests de reglas de seguridad |
+| `npm run test:e2e` | Circuito reserva → cupo → validación → uso atómico contra emulador |
 | `npm run emuladores` | Emuladores de Firestore y Auth a mano (UI en `:4000`) |
-| `npm run test` | typecheck + lint + reglas, en un comando |
+| `npm run test` | typecheck + lint + reglas + e2e, en un comando |
 | `npm run auth:admin` | Asigna el custom claim `admin` a un correo |
 | `npm run svc:preparar` | Aplana el JSON del service account a una línea |
 

@@ -20,12 +20,14 @@ import { useSearchParams } from 'react-router-dom'
  * hace falta ni bloquearla del lado del cliente: el flag es la única
  * fuente de verdad.
  *
+ * Las URLs van RELATIVAS (`/api/...`): el frontend llama a su propio
+ * origen. Armarlas con `VITE_APP_URL` hacía que el entorno local pegara
+ * contra la API de producción (ver src/services/pagos.ts).
+ *
  * `external_reference` es el `qrHash` de la reserva, que también es el id
  * del documento en Firestore. Por eso el backend puede encontrar la
  * reserva sin que el cliente le mande nada más.
  */
-
-const APP_URL = import.meta.env.VITE_APP_URL || ''
 
 type EstadoDecision = 'idle' | 'aprobando' | 'rechazando' | 'hecho'
 
@@ -47,11 +49,13 @@ function formatoFecha(iso: string): string {
 }
 
 function formatoMoneda(monto: number, moneda: string): string {
+  // precioEntrada viaja en unidades (pesos), no en centavos: el resto de
+  // la app lo muestra con toLocaleString/toFixed directo.
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency: moneda,
     minimumFractionDigits: 0,
-  }).format(monto / 100)
+  }).format(monto)
 }
 
 export default function PagoSimulado() {
@@ -84,7 +88,7 @@ export default function PagoSimulado() {
 
     ;(async () => {
       try {
-        const resp = await fetch(`${APP_URL}/api/pagos/resumen?registroId=${encodeURIComponent(registroId)}`)
+        const resp = await fetch(`/api/pagos/resumen?registroId=${encodeURIComponent(registroId)}`)
         const data = await resp.json()
         if (!vivo) return
         if (!resp.ok || !data.ok) {
@@ -124,7 +128,7 @@ export default function PagoSimulado() {
         external_reference: registroId,
         status: estado,
       })
-      const webhook = `${APP_URL}/api/pagos/webhook?${params.toString()}`
+      const webhook = `/api/pagos/webhook?${params.toString()}`
 
       try {
         const resp = await fetch(webhook, { method: 'POST' })

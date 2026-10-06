@@ -69,12 +69,10 @@ export default function PagoExito() {
         <p className="text-sm text-texto-suave">
           Te enviamos el código QR por correo. Revisa tu bandeja de entrada (y spam).
         </p>
-        <a
-          href={`/q/${registroId}`}
-          className="mt-4 rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario"
-        >
-          Ver mi entrada
-        </a>
+        <p className="text-xs text-texto-suave">
+          El código viaja en el mail porque el token en claro no se guarda en
+          ningún lado: ningún link de esta pantalla puede rearmarlo.
+        </p>
       </main>
     )
   }

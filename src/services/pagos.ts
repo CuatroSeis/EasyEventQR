@@ -70,7 +70,10 @@ export async function verificarEstadoPago(registroId: string): Promise<{ ok: boo
       return { ok: false, error: data.error }
     }
 
-    return { ok: true, estado: data.registro?.pago?.estado }
+    // /api/pagos/estado devuelve { ok, estado } plano, sin envoltorio
+    // `registro`: leer otra forma deja el estado en undefined y /pago/exito
+    // nunca llega a "aprobado".
+    return { ok: true, estado: data.estado }
   } catch {
     return { ok: false, error: 'Error de conexión' }
   }

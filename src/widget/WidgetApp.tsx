@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { aplicarTema } from '../shared/theming'
 
 interface EventoPublico {
   eventoId: string
@@ -35,14 +36,31 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
   const [success, setSuccess] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
+  // El tema del evento se aplica sobre el contenedor del widget (vive
+  // dentro del Shadow DOM). A propósito NO se toca document.documentElement:
+  // el widget corre en la página de un tercero y escribir ahí filtraría
+  // estilos hacia afuera, que es justo lo que el Shadow DOM evita.
+  const cajaRef = useRef<HTMLDivElement>(null)
+  const esquemaOscuro =
+    theme === 'dark' ||
+    (theme === 'auto' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
+
   useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.style.colorScheme = 'dark'
-    } else {
-      root.style.colorScheme = 'light'
+    const nodo = cajaRef.current
+    if (!nodo || !evento) return
+    aplicarTema(
+      {
+        colorPrimario: evento.personalizacion?.colorPrimario ?? null,
+        colorSecundario: evento.personalizacion?.colorSecundario ?? null,
+      },
+      nodo,
+    )
+    return () => {
+      aplicarTema(null, nodo)
     }
-  }, [theme])
+  }, [evento])
 
   useEffect(() => {
     let mounted = true
@@ -89,15 +107,9 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
     })
   }, [])
 
-  const escapeHtml = useCallback((str: string) => {
-    return str
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"')
-      .replace(/'/g, '')
-  }, [])
-
+  // Sin escapeHtml manual: React ya escapa el texto en JSX, y la versión
+  // anterior de esta función era un no-op (reemplazaba cada carácter por
+  // sí mismo), o sea falsa seguridad con nombre de seguridad.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (submitting) return
@@ -166,7 +178,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
     return (
       <div style={{ padding: 24, textAlign: 'center', color: '#dc2626', background: '#fef2f2', borderRadius: 12 }}>
         No se pudo cargar el evento.<br />
-        <code>{escapeHtml(error)}</code>
+        <code>{(error)}</code>
       </div>
     )
   }
@@ -196,7 +208,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
   if (!evento) return null
 
   return (
-    <div style={{ fontFamily: 'inherit' }}>
+    <div ref={cajaRef} style={{ fontFamily: 'inherit', colorScheme: esquemaOscuro ? 'dark' : 'light' }}>
       {evento.personalizacion?.bannerUrl && (
         <img
           src={evento.personalizacion.bannerUrl}
@@ -216,23 +228,23 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
       )}
 
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
-        {escapeHtml(evento.nombre)}
+        {(evento.nombre)}
       </h1>
 
       <div style={{ fontSize: 13, color: '#64748b', display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
-        <span>📅 {escapeHtml(formatDate(evento.fecha))}</span>
-        {evento.lugar && <span>📍 {escapeHtml(evento.lugar)}</span>}
+        <span>📅 {(formatDate(evento.fecha))}</span>
+        {evento.lugar && <span>📍 {(evento.lugar)}</span>}
       </div>
 
       {evento.descripcion && (
         <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.5, marginBottom: 16 }}>
-          {escapeHtml(evento.descripcion)}
+          {(evento.descripcion)}
         </p>
       )}
 
       {evento.personalizacion?.textoBienvenida && (
         <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, fontSize: 14, color: '#334155', marginBottom: 16 }}>
-          {escapeHtml(evento.personalizacion.textoBienvenida)}
+          {(evento.personalizacion.textoBienvenida)}
         </div>
       )}
 

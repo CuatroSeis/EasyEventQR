@@ -518,15 +518,12 @@ export default function PanelRegistros() {
                         >
                           🗑️
                         </button>
-                        <a
-                          href={`/q/${r.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2 py-1 rounded text-xs text-texto-suave hover:bg-superficie"
-                          title="Ver QR"
+                        <span
+                          className="px-2 py-1 rounded text-xs text-texto-suave"
+                          title="El QR no se puede reabrir desde acá: el token en claro solo sale por mail y acá solo queda su hash"
                         >
                           👁
-                        </a>
+                        </span>
                       </div>
                     </td>
                   </tr>

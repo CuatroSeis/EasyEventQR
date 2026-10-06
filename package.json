@@ -16,9 +16,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "emuladores": "node scripts/emuladores.mjs",
+    "demo:seed": "node scripts/demo-seed.mjs",
     "test:rules": "node scripts/emuladores.mjs test:rules",
+    "test:e2e": "node scripts/emuladores.mjs e2e",
     "test:unit": "node --test --test-reporter=spec \"tests/unit/*.test.ts\"",
-    "test": "npm run typecheck && npm run lint && npm run test:unit && npm run test:rules",
+    "test": "npm run typecheck && npm run lint && npm run test:unit && npm run test:rules && npm run test:e2e",
     "svc:preparar": "node scripts/preparar-service-account.mjs",
     "auth:admin": "node scripts/asignar-admin.mjs"
   },

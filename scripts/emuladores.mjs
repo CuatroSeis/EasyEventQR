@@ -100,6 +100,12 @@ const MODOS = {
     emulators: ['emulators:exec', '--only', 'firestore'],
     comando: 'node --test --test-concurrency=1 --test-reporter=spec tests/rules/*.test.ts',
   },
+  // Circuito E2E (scripts/e2e-circuito.mjs): reserva, cupo, validación por
+  // hash y marcado atómico de usado, todo contra Firestore emulado.
+  e2e: {
+    emulators: ['emulators:exec', '--only', 'firestore'],
+    comando: 'node scripts/e2e-circuito.mjs',
+  },
 }
 
 const modo = MODOS[subcomando]

@@ -61,10 +61,17 @@ export default function Operador() {
     setUltimoEscaneo(decodedText)
 
     try {
-      // Extraer token del QR (formato: https://dominio/q/TOKEN?eventoId=XXX)
-      const url = new URL(decodedText)
-      const tokenQR = url.pathname.split('/q/')[1]
-      const eventoIdQR = url.searchParams.get('eventoId') || payload.eventoId
+      // El QR trae la URL completa (https://dominio/q/TOKEN?eventoId=XXX),
+      // pero si algún día llega el token pelado, se acepta igual.
+      let tokenQR: string | null = null
+      let eventoIdQR = payload.eventoId
+      try {
+        const url = new URL(decodedText)
+        tokenQR = url.pathname.split('/q/')[1] || null
+        eventoIdQR = url.searchParams.get('eventoId') || payload.eventoId
+      } catch {
+        tokenQR = decodedText.trim() || null
+      }
 
       if (!tokenQR) {
         throw new Error('Formato QR inválido')

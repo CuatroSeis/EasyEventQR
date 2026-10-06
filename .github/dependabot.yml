@@ -29,17 +29,3 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: monthly
-      day: 1
-      time: "07:00"
-    open-pull-requests-limit: 3
-    allow:
-      # Dependabot no abre PRs de major sin que uno los pida: un major de
-      # Vite o de Vitest rompe el build y no es algo que se quiera
-      # descubrir de un lunes a la mañana.
-      update-type: "minor"
-      update-type: "patch"

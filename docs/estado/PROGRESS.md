@@ -1,5 +1,61 @@
 # EasyEventQR - Progress Report
 
+## Sesión del 6 Oct 2026 (2ª parte) — Demo pública + deuda menor
+
+**Demo local** (`scripts/demo-seed.mjs` + `npm run demo:seed`): organizador,
+dos eventos (gratis y pago) y tres reservas (válida, usada, pendiente) con
+las URLs impresas para recorrer sin cuentas, sin mail y sin cámara. Solo
+emulador (se niega sin `FIRESTORE_EMULATOR_HOST`). Verificado con
+`emulators:exec` (exit 0). Documentado en README "Demo local con datos de
+ejemplo".
+
+**Deuda menor:** entrada npm duplicada en `.github/dependabot.yml`
+fusionada en una (el bloque mensual de minor/patch solapaba al semanal).
+YAML validado.
+
+**Gates:** typecheck 0 errores · lint 15 warnings preexistentes · unit
+187/187 · build OK. Queda sin commitear junto con la sesión anterior.
+
+---
+
+## Sesión del 6 Oct 2026 — re-auditoría Fases 4-8 + circuito E2E
+
+Alcance confirmado con el usuario: no reimplementar, re-auditar el código
+existente de 4-8 contra SPEC/PLAN/ENDPOINTS y cerrar con verificación.
+
+**Bugs encontrados y corregidos (todos verificados con gates en verde):**
+
+| Severidad | Dónde | Qué pasaba |
+|---|---|---|
+| **Crítico** | `src/services/pagos.ts` | `verificarEstadoPago()` leía `data.registro?.pago?.estado`, pero `/api/pagos/estado` devuelve `{ ok, estado }` plano. `/pago/exito` nunca llegaba a "aprobado": el polling quedaba en error para siempre. |
+| **Crítico** | `src/app/pages/PagoExito.tsx`, `src/app/pages/PanelRegistros.tsx` | Links `/q/<id>` armados con el id del documento (= qrHash). Validar hashea de nuevo, así que `hash(hash)` nunca existe: "Ver QR" y "Ver mi entrada" llevaban siempre a "Código no válido". Eliminados (el token no se puede rearmar; el QR real viaja solo por mail). |
+| **Alto** | `src/app/pages/PagoSimulado.tsx` | Usaba `VITE_APP_URL` para armar `/api/...`, violando la convención de URLs relativas: en local podía pegar contra producción. Ahora relativo. Mismo archivo: `formatoMoneda` dividía por 100 (mostraba $50 para $5000); `precioEntrada` viaja en unidades en todo el resto. |
+| **Alto** | `src/widget/WidgetApp.tsx` | `escapeHtml` era un no-op (reemplazaba cada carácter por sí mismo): falsa seguridad con nombre de seguridad. Eliminada (React ya escapa en JSX). Además nunca aplicaba el tema del evento (criterio de cierre de Fase 4 incumplido) y escribía `colorScheme` en `document.documentElement`, filtrando estilos a la página del tercero. Ahora aplica `aplicarTema()` con la personalización sobre el contenedor del Shadow DOM y limpia al desmontar. |
+| **Medio** | `src/widget/ticket-widget.ts` | Placeholder de Fase 0 muerto que duplicaba el tag `ticket-widget` (el entry real es `src/widget/index.tsx`). Eliminado. |
+| **Bajo** | `src/app/pages/Operador.tsx` | El parse del QR exigía URL completa (`new URL` tiraba con token pelado). Ahora acepta token directo como fallback. |
+
+**Nuevo:** `scripts/e2e-circuito.mjs` + `npm run test:e2e` (modo `e2e` en
+`scripts/emuladores.mjs`): 7 pasos contra Firestore emulado — reserva
+atómica con guarda de cupo, `reservas == 2`, tercera da agotado, validación
+por SHA-256, doble escaneo secuencial y **paralelo** (uno pasa, el otro ve
+ya usado). Cableado en `npm test`, job `test-e2e` en CI y documentado en
+`docs/operacion/CI_CD.md`.
+
+**Nuevo:** `tests/unit/contratos-fase4-8.test.ts` (4 casos): prohíbe
+`VITE_APP_URL` en `src/`, fija `data.estado`, prohíbe armar `/q/` con ids
+en páginas y fija tema+aislamiento del widget.
+
+**Estado de gates:** typecheck 0 errores · lint solo warnings preexistentes ·
+unit 187/187 · rules 90/90 · e2e 7/7 · build app+widget OK.
+
+**Queda manual (requiere tu sesión/inbox/cámara):** los 12 pasos de
+`docs/arquitectura/ENDPOINTS.md` con navegador, mail real de Brevo y
+checkout simulado (`MERCADOPAGO_SIMULADO=true` solo para probar, apagar
+después). Rotar `OPERADOR_SECRET` y el service account filtrados sigue
+pendiente (`docs/operacion/GUIA_MANUAL.md` pasos 1 y 2.1).
+
+---
+
 ## Estado Actual: ✅ Deploy funcionando, `/admin` abre
 
 ### Sesión del 2 Oct 2026 (2ª parte) — dos bugs, el segundo tapaba al primero
