@@ -46,6 +46,13 @@ interface EventoPublico {
     textoBienvenida: string | null
     textoConfirmacion: string | null
   }
+  organizador?: {
+    nombre: string
+    descripcion: string
+    logoUrl: string | null
+    instagram: string | null
+    web: string | null
+  }
 }
 
 /**
@@ -182,8 +189,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         logoUrl: limites.logoPermitido ? p?.logoUrl ?? null : null,
         colorPrimario: limites.colorPersonalizadoPermitido ? p?.colorPrimario ?? null : null,
         colorSecundario: limites.colorPersonalizadoPermitido ? p?.colorSecundario ?? null : null,
-        textoBienvenida: p?.textoBienvenida ?? null,
-        textoConfirmacion: p?.textoConfirmacion ?? null,
+        // El evento manda; si no definió, caen los defaults de la cuenta.
+        textoBienvenida: p?.textoBienvenida ?? organizador.textoBienvenida ?? null,
+        textoConfirmacion: p?.textoConfirmacion ?? organizador.textoConfirmacion ?? null,
+      },
+      // Lo público del organizador: la landing lo usa para "Organizado por".
+      organizador: {
+        nombre: organizador.nombre,
+        descripcion: organizador.descripcion ?? '',
+        logoUrl: organizador.brandingPanel?.logoUrl ?? null,
+        instagram: organizador.redesSociales?.instagram ?? null,
+        web: organizador.redesSociales?.web ?? null,
       },
     }
 

@@ -29,6 +29,8 @@ export default function Branding() {
   const [secundario, setSecundario] = useState<ColorElegido>(
     organizador.brandingPanel.colorSecundario,
   )
+  const [textoBienvenida, setTextoBienvenida] = useState(organizador.textoBienvenida ?? '')
+  const [textoConfirmacion, setTextoConfirmacion] = useState(organizador.textoConfirmacion ?? '')
   const [guardado, setGuardado] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -54,6 +56,13 @@ export default function Branding() {
         colorPrimario: colorPermitido ? primario : undefined,
         colorSecundario: colorPermitido ? secundario : undefined,
       })
+      try {
+        const { actualizarPerfil } = await import('../../services/perfil')
+        await actualizarPerfil(organizador.uid, { textoBienvenida, textoConfirmacion })
+      } catch (falloPerfil) {
+        setError(falloPerfil instanceof Error ? falloPerfil.message : 'No se pudo guardar la landing.')
+        return
+      }
       setPrimario(actualizado.brandingPanel.colorPrimario)
       setSecundario(actualizado.brandingPanel.colorSecundario)
       setNombre(actualizado.nombre)
@@ -127,14 +136,39 @@ export default function Branding() {
         <legend className="px-1 text-sm font-medium text-texto-suave">Logo</legend>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-borde text-xs text-texto-suave">
-            {logoPermitido ? '—' : 'Bloqueado'}
+            {logoPermitido ? organizador.brandingPanel.logoUrl ? '✓' : '—' : 'Bloqueado'}
           </div>
           <p className="text-xs text-texto-suave">
             {logoPermitido
-              ? 'Próximamente. Por ahora el logo se usa en la página pública del evento.'
+              ? 'Subilo desde Mi cuenta → Logo de tu marca.'
               : 'El logo está disponible en el plan pro+.'}
           </p>
         </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
+        <legend className="px-1 text-sm font-medium text-texto">Landing pública</legend>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-texto">Texto de bienvenida (default)</span>
+          <textarea
+            className="campo min-h-20"
+            value={textoBienvenida}
+            onChange={(e) => setTextoBienvenida(e.target.value)}
+            placeholder="Lo primero que lee quien abre el link del evento."
+          />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-texto">Texto de confirmación (default)</span>
+          <textarea
+            className="campo min-h-16"
+            value={textoConfirmacion}
+            onChange={(e) => setTextoConfirmacion(e.target.value)}
+            placeholder="Lo que confirmaste al reservar (también va en el mail)."
+          />
+        </label>
+        <p className="text-xs text-texto-suave">
+          El evento puede sobreescribir estos textos desde su edición. El banner se sube por evento.
+        </p>
       </fieldset>
 
       <button

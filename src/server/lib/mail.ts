@@ -35,7 +35,7 @@ import { construirMensajeBrevo, type EntradaDelMail } from './email.js'
  */
 
 export type ResultadoEnvio =
-  | { enviado: true; transporte: 'brevo' | 'consola' }
+  | { enviado: true; transporte: 'brevo' | 'resend' | 'consola' }
   | { enviado: false; transporte: 'ninguno'; motivo: string }
 
 const URL_BREVO = 'https://api.brevo.com/v3/smtp/email'
@@ -55,10 +55,30 @@ export function brevoConfigurado(): boolean {
  * alta: la reserva se guarda igual y el mail queda pendiente de reenvío.
  */
 export async function enviarMail(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
-  if (!brevoConfigurado()) {
-    return registrarEnConsola(entrada)
+  // Orden: Brevo primero (es el transporte histórico); si falla o no está
+  // configurado, Resend como respaldo. Si ninguno está, consola.
+  if (brevoConfigurado()) {
+    const resultado = await enviarPorBrevo(entrada)
+    if (resultado.enviado) return resultado
+    if (resendConfigurado()) {
+      const respaldo = await enviarPorResend(entrada)
+      if (respaldo.enviado) return respaldo
+    }
+    return resultado
   }
 
+  if (resendConfigurado()) {
+    return enviarPorResend(entrada)
+  }
+
+  return registrarEnConsola(entrada)
+}
+
+function resendConfigurado(): boolean {
+  return Boolean(process.env.RESEND_API_KEY && (process.env.RESEND_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL))
+}
+
+async function enviarPorBrevo(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
   const mensaje = construirMensajeBrevo(
     entrada,
     process.env.BREVO_SENDER_EMAIL!,
@@ -76,20 +96,10 @@ export async function enviarMail(entrada: EntradaDelMail): Promise<ResultadoEnvi
         accept: 'application/json',
       },
       body: JSON.stringify(mensaje),
-      // El alta no puede quedar colgada esperando a Brevo. Si Brevo está
-      // lento, la reserva ya está escrita y el usuario igual está
-      // esperando una respuesta: mejor un timeout y un reenvío después
-      // que una request que muere a los 30 segundos del lado del
-      // navegador.
       signal: AbortSignal.timeout(8_000),
     })
 
     if (!respuesta.ok) {
-      // El body de Brevo dice por qué, y casi siempre es una de dos
-      // cosas que hay que poder leer en el log de Vercel: el remitente
-      // no está verificado (401/400) o se pasó la cuota diaria del plan
-      // (402/429). Sin este texto, un 400 de Brevo es indistinguible de
-      // cualquier otro error.
       const cuerpo = await respuesta.text().catch(() => '')
       console.error(
         `[mail] Brevo respondió ${respuesta.status} para ${entrada.destinatario}: ${cuerpo.slice(0, 500)}`,
@@ -99,13 +109,52 @@ export async function enviarMail(entrada: EntradaDelMail): Promise<ResultadoEnvi
 
     return { enviado: true, transporte: 'brevo' }
   } catch (error) {
-    // Timeout, DNS, Brevo caído. Mismo criterio que antes: se registra y
-    // se sigue, la reserva ya está escrita.
     console.error(
       `[mail] no se pudo mandar a ${entrada.destinatario}: ${
         error instanceof Error ? error.message : 'error desconocido'
       }`,
     )
+    return { enviado: false, transporte: 'ninguno', motivo: 'red' }
+  }
+}
+
+/**
+ * Resend como transporte alternativo/de respaldo.
+ *
+ * Manda lo mismo que Brevo: subject, HTML y remitente verificado. La API
+ * de Resend acepta Authorization: Bearer. Sin clave, no configura esta
+ * rama y se usa Brevo/consola.
+ */
+async function enviarPorResend(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
+  const remitente = process.env.RESEND_SENDER_EMAIL ?? process.env.BREVO_SENDER_EMAIL!
+  const nombreRemitente = process.env.RESEND_SENDER_NAME ?? process.env.BREVO_SENDER_NAME ?? 'EasyEventQR'
+  const mensaje = construirMensajeBrevo(entrada, remitente, nombreRemitente)
+
+  try {
+    const respuesta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${nombreRemitente} <${remitente}>`,
+        to: [mensaje.to[0].email],
+        subject: mensaje.subject,
+        html: mensaje.htmlContent,
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text().catch(() => '')
+      console.error(`[mail] Resend respondió ${respuesta.status}: ${cuerpo.slice(0, 500)}`)
+      return { enviado: false, transporte: 'ninguno', motivo: `Resend ${respuesta.status}` }
+    }
+
+    return { enviado: true, transporte: 'resend' }
+  } catch (error) {
+    console.error(`[mail] Resend no se pudo mandar: ${error instanceof Error ? error.message : 'error'}`)
     return { enviado: false, transporte: 'ninguno', motivo: 'red' }
   }
 }

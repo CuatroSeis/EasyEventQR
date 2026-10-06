@@ -84,6 +84,9 @@ export interface Organizador {
     linkedin?: string
     web?: string
   }
+  /** Landing pública: copy por defecto (el evento puede sobreescribirlo). */
+  textoBienvenida?: string | null
+  textoConfirmacion?: string | null
   brandingPanel: {
     logoUrl: string | null
     colorPrimario: string | null

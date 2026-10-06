@@ -18,7 +18,7 @@ GOOGLE_PROVIDER.setCustomParameters({ prompt: 'select_account' })
 /** Actualiza campos del perfil del organizador. */
 export async function actualizarPerfil(
   uid: string,
-  datos: Partial<Pick<Organizador, 'nombre' | 'telefono' | 'descripcion' | 'redesSociales'>>
+  datos: Partial<Pick<Organizador, 'nombre' | 'telefono' | 'descripcion' | 'redesSociales' | 'textoBienvenida' | 'textoConfirmacion'>>
 ): Promise<import('../shared/types').Organizador> {
   const ref = doc(db, 'organizadores', uid)
   const limpio: Record<string, unknown> = {}
@@ -26,6 +26,8 @@ export async function actualizarPerfil(
   if (typeof (datos as any).nombre === 'string') limpio.nombre = (datos as any).nombre.trim()
   if (typeof (datos as any).telefono === 'string') limpio.telefono = (datos as any).telefono.trim()
   if (typeof (datos as any).descripcion === 'string') limpio.descripcion = (datos as any).descripcion.trim()
+  if (typeof (datos as any).textoBienvenida === 'string') limpio.textoBienvenida = (datos as any).textoBienvenida.trim() || null
+  if (typeof (datos as any).textoConfirmacion === 'string') limpio.textoConfirmacion = (datos as any).textoConfirmacion.trim() || null
   if ((datos as any).redesSociales && typeof (datos as any).redesSociales === 'object') {
     limpio.redesSociales = {
       instagram: (datos as any).redesSociales.instagram?.trim() || null,

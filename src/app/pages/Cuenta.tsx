@@ -8,6 +8,13 @@ export default function Cuenta() {
   const { organizador } = useOrganizadorEditable()
   const navigate = useNavigate()
 
+  const [nombre, setNombre] = useState(organizador.nombre ?? '')
+  const [telefono, setTelefono] = useState(organizador.telefono ?? '')
+  const [descripcion, setDescripcion] = useState(organizador.descripcion ?? '')
+  const [instagram, setInstagram] = useState(organizador.redesSociales?.instagram ?? '')
+  const [twitter, setTwitter] = useState(organizador.redesSociales?.twitter ?? '')
+  const [linkedin, setLinkedin] = useState(organizador.redesSociales?.linkedin ?? '')
+  const [web, setWeb] = useState(organizador.redesSociales?.web ?? '')
   const [passwordNueva, setPasswordNueva] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [confirmaEliminar, setConfirmaEliminar] = useState(false)
@@ -17,10 +24,10 @@ export default function Cuenta() {
     try {
       const { actualizarPerfil } = await import('../../services/perfil')
       await actualizarPerfil(organizador.uid, {
-        nombre: organizador.nombre,
-        telefono: organizador.telefono ?? '',
-        descripcion: organizador.descripcion ?? '',
-        redesSociales: organizador.redesSociales ?? { instagram: '', twitter: '', linkedin: '', web: '' },
+        nombre,
+        telefono,
+        descripcion,
+        redesSociales: { instagram, twitter, linkedin, web },
       })
       import('../../shared/toast').then(m => m.t.success('Perfil guardado'))
     } catch (e) {
@@ -84,7 +91,8 @@ export default function Cuenta() {
               <span className="text-sm font-medium text-texto">Nombre / Razón social</span>
               <input
                 type="text"
-                value={organizador.nombre}
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
                 className="campo"
                 autoComplete="name"
                 required
@@ -94,7 +102,8 @@ export default function Cuenta() {
               <span className="text-sm font-medium text-texto">Teléfono</span>
               <input
                 type="tel"
-                value={organizador.telefono ?? ''}
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
                 className="campo"
                 autoComplete="tel"
                 placeholder="+54 9 11 1234-5678"
@@ -105,7 +114,8 @@ export default function Cuenta() {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-texto">Descripción</span>
             <textarea
-              value={organizador.descripcion ?? ''}
+              value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
               className="campo min-h-24"
               rows={3}
               placeholder="Descripción de tu organización, experiencia, etc."
@@ -119,7 +129,8 @@ export default function Cuenta() {
                 <span className="text-sm font-medium text-texto">Instagram</span>
                 <input
                   type="text"
-                  value={organizador.redesSociales?.instagram ?? ''}
+                  value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
                   className="campo"
                   placeholder="@usuario"
                 />
@@ -128,7 +139,8 @@ export default function Cuenta() {
                 <span className="text-sm font-medium text-texto">Twitter / X</span>
                 <input
                   type="text"
-                  value={organizador.redesSociales?.twitter ?? ''}
+                  value={twitter}
+                    onChange={(e) => setTwitter(e.target.value)}
                   className="campo"
                   placeholder="@usuario"
                 />
@@ -137,7 +149,8 @@ export default function Cuenta() {
                 <span className="text-sm font-medium text-texto">LinkedIn</span>
                 <input
                   type="text"
-                  value={organizador.redesSociales?.linkedin ?? ''}
+                  value={linkedin}
+                    onChange={(e) => setLinkedin(e.target.value)}
                   className="campo"
                   placeholder="usuario o URL"
                 />
@@ -146,7 +159,8 @@ export default function Cuenta() {
                 <span className="text-sm font-medium text-texto">Sitio web</span>
                 <input
                   type="url"
-                  value={organizador.redesSociales?.web ?? ''}
+                  value={web}
+                    onChange={(e) => setWeb(e.target.value)}
                   className="campo"
                   placeholder="https://ejemplo.com"
                 />
@@ -212,11 +226,18 @@ export default function Cuenta() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0]
-                    if (file && file.type.startsWith('image/')) {
-                      URL.createObjectURL(file)
-                      // Preview shown via object URL in file input
+                    if (!file || !file.type.startsWith('image/')) return
+                    try {
+                      const { subirLogo, actualizarLogo } = await import('../../services/perfil')
+                      const base64 = await subirLogo(file)
+                      await actualizarLogo(organizador.uid, base64)
+                      import('../../shared/toast').then(m => m.t.success('Logo actualizado. Recargá para verlo en el panel.'))
+                    } catch (err) {
+                      import('../../shared/toast').then(m => m.t.error(err instanceof Error ? err.message : 'No se pudo subir el logo'))
+                    } finally {
+                      e.target.value = ''
                     }
                   }}
                   className="sr-only"

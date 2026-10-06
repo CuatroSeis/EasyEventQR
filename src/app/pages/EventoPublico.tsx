@@ -57,6 +57,13 @@ interface EventoPublico {
     textoBienvenida: string | null
     textoConfirmacion: string | null
   }
+  organizador?: {
+    nombre: string
+    descripcion: string
+    logoUrl: string | null
+    instagram: string | null
+    web: string | null
+  }
 }
 
 interface ProblemasDelFormulario {
@@ -78,6 +85,7 @@ export default function EventoPublico() {
   const [problemas, setProblemas] = useState<ProblemasDelFormulario>({})
   const [enviando, setEnviando] = useState(false)
   const [reservado, setReservado] = useState(false)
+  const [mostrandoForm, setMostrandoForm] = useState(false)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
 
   // El evento de ESTE id, o null. Va antes de los efectos porque los
@@ -155,6 +163,49 @@ export default function EventoPublico() {
     <Marco evento={evento}>
       <div className="space-y-8">
         <Encabezado evento={evento} />
+
+        {evento.organizador ? (
+          <section className="rounded-xl border border-borde bg-superficie p-4 space-y-2" aria-label="Organizador">
+            <div className="flex items-center gap-3">
+              {evento.organizador.logoUrl ? (
+                <img
+                  src={evento.organizador.logoUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-md object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              ) : null}
+              <div>
+                <p className="text-sm font-semibold text-texto">Organizado por {evento.organizador.nombre}</p>
+                {evento.organizador.descripcion ? (
+                  <p className="text-xs text-texto-suave">{evento.organizador.descripcion}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex gap-3 text-xs text-texto-suave">
+              {evento.organizador.instagram ? <span>@{evento.organizador.instagram.replace(/^@/, '')}</span> : null}
+              {evento.organizador.web ? <span>{evento.organizador.web}</span> : null}
+            </div>
+          </section>
+        ) : null}
+
+        {evento.requierePago && evento.precioEntrada !== null ? (
+          <p className="rounded-lg border border-borde bg-superficie p-3 text-sm font-semibold text-texto">
+            Entrada: ${evento.precioEntrada.toLocaleString('es-AR')}
+          </p>
+        ) : null}
+
+        {!mostrandoForm && !evento.agotado ? (
+          <button
+            type="button"
+            onClick={() => setMostrandoForm(true)}
+            className="min-h-[56px] w-full rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario"
+          >
+            Asistir / Comprar entrada
+          </button>
+        ) : null}
+
+        {mostrandoForm ? (
         <Formulario
           evento={evento}
           problemas={problemas}
@@ -209,6 +260,7 @@ export default function EventoPublico() {
             }
           }}
         />
+        ) : null}
       </div>
     </Marco>
   )

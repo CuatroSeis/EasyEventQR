@@ -40,6 +40,7 @@ const Branding = lazy(() => import('./pages/Branding'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const PanelRegistros = lazy(() => import('./pages/PanelRegistros'))
 const Operador = lazy(() => import('./pages/Operador'))
+const EscanearQR = lazy(() => import('./pages/EscanearQR'))
 const PagoSimulado = lazy(() => import('./pages/PagoSimulado'))
 const PagoExito = lazy(() => import('./pages/PagoExito'))
 const PagoFallo = lazy(() => import('./pages/PagoFallo'))
@@ -91,6 +92,7 @@ export default function App() {
               <Route path="/panel/eventos/nuevo" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId/registros" element={<PanelRegistros />} />
+              <Route path="/panel/eventos/:eventoId/escanear" element={<EscanearQR />} />
               <Route path="/panel/branding" element={<Branding />} />
             </Route>
           </Route>

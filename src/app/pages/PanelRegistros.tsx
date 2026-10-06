@@ -297,8 +297,14 @@ export default function PanelRegistros() {
             disabled={generandoLink}
             className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie disabled:opacity-60"
           >
-            {generandoLink ? 'Generando…' : 'Link de operador'}
+            {generandoLink ? 'Generando…' : 'Link para 3ro (puerta)'}
           </button>
+          <a
+            href={`/panel/eventos/${eventoId}/escanear`}
+            className="inline-flex items-center rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie"
+          >
+            Escanear QR
+          </a>
           <button onClick={handleExport} className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie">
             Exportar CSV
           </button>
