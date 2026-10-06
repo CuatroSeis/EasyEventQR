@@ -15,18 +15,8 @@ env:
   NODE_VERSION: '22'
   JAVA_VERSION: '21'
 
-# Sin esto el workflow hereda el default del repositorio, que suele ser
-# `write-all` o `contents: write` según dónde se armó. El token que
-# corre tests de un PR no necesita escribir nada en el repo, y menos
-# todavía en `pull_request`, donde el código es del que propone el PR.
-#
-# Lo que sí hace falta:
-#   - `contents: read` para clonar.
-#   - `id-token: write` en el job de deploy, porque la CLI de Vercel
-#     autenticando con OIDC pide un token de la Actions.
-#
-# OJO: el permiso se acota al job, no al workflow. Si se deja arriba
-# aplica también a los jobs de test, que es justo lo que se quiere evitar.
+# Sin esto el workflow hereda el default del repositorio. Los jobs sólo
+# testean y compilan: `contents: read` para clonar alcanza.
 permissions:
   contents: read
 
@@ -178,108 +168,3 @@ jobs:
             dist/
             public/widget/
           retention-days: 1
-
-  deploy-preview:
-    name: Deploy Preview
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'pull_request'
-    # La CLI de Vercel con OIDC pide un token de la Actions. Este es el
-    # único job que lo necesita; el default del workflow sigue siendo
-    # `contents: read`.
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      # Se despliega la RAÍZ (`.`), no `dist/`.
-      #
-      # `vercel deploy dist/` sube SÓLO la carpeta de build: el sitio
-      # subía y cada /api/* daba 404, porque las funciones de `api/` nunca
-      # viajaban. Con la raíz, Vercel corre su propio `npm run build`
-      # (está en vercel.json) y sube `api/` junto.
-      #
-      # Por eso YA NO se baja el artifact `dist` del job de build: acá Vercel
-      # recompila, y un bundle local sólo agregaría la tentación de
-      # volver a pasar `dist/` por error. El job de build sigue existiendo
-      # como puerta: si el typecheck o los tests fallan, `needs: build` no
-      # deja llegar acá.
-
-# Auth: token estático en `VERCEL_TOKEN`.
-      #
-      # Se probó OIDC primero (sin `--token`, con `id-token: write`) y no
-      # va: la CLI responde "No existing credentials found" porque exige la
-      # app de Vercel instalada en el repo, que se fue cuando se desconectó
-      # la integración Git. Si alguna vez se reinstala, OIDC es mejor —
-      # `VERCEL_TOKEN` es una credencial de larga vida que envejece sin
-      # avisar, y cuando dejó de resolver el job murió con un 404 que se
-      # lee como si fuera un problema de código.
-      #
-      # Sin `--scope`: ese flag espera el *slug* del equipo
-      # ("cuatroseis-projects") y `VERCEL_ORG_ID` guarda el *id*
-      # ("team_...", el mismo de `.vercel/project.json`). Con los dos
-      # juntos la CLI responde "You do not have access to the specified
-      # account". El proyecto ya está en `.vercel/project.json`, así que
-      # alcanza con `--project`.
-      - name: Deploy to Vercel Preview
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          vercel deploy --yes \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --project=${{ secrets.VERCEL_PROJECT_ID }} \
-            --alias=pr-${{ github.event.number }}-easyeventqr.vercel.app \
-            .
-
-      - name: Comment PR with preview URL
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '🚀 **Preview deploy ready!**\n\nCheck the preview at: https://pr-${{ github.event.number }}-easyeventqr.vercel.app'
-            })
-
-  deploy-production:
-    name: Deploy Production
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      # Ídem: raíz del proyecto, no `dist/`, y mismo auth por token que el preview.
-      - name: Deploy to Vercel Production
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          vercel deploy --prod --yes \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --project=${{ secrets.VERCEL_PROJECT_ID }} \
-            .
-
-      - name: Notify deployment
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Production deploy successful!"
-          else
-            echo "❌ Production deploy failed!"
-          fi

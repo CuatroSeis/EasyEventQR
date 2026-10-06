@@ -5,9 +5,9 @@ import { guardarBranding, type ColorElegido } from '../../services/branding'
 import { colorDeTextoSobre, esColorValido } from '../../shared/theming'
 
 /** Editor de marca: colores, copy de landing y estado del logo (se sube en Cuenta). Los límites los aplica la regla, no esta pantalla. */
-export default function Branding() {
+/** Formulario de marca y landing. Vive como sección de Cuenta (misma pantalla, guardados separados por sección). */
+export function SeccionMarca() {
   const { organizador, actualizar } = useOrganizadorEditable()
-  const [nombre, setNombre] = useState(organizador.nombre)
   const [primario, setPrimario] = useState<ColorElegido>(organizador.brandingPanel.colorPrimario)
   const [secundario, setSecundario] = useState<ColorElegido>(
     organizador.brandingPanel.colorSecundario,
@@ -29,8 +29,8 @@ export default function Branding() {
     setError(null)
     setGuardado(false)
     try {
+      // El nombre vive en Perfil (misma pantalla): acá solo colores y copy.
       const actualizado = await guardarBranding(organizador, {
-        nombre,
         colorPrimario: colorPermitido ? primario : undefined,
         colorSecundario: colorPermitido ? secundario : undefined,
       })
@@ -43,7 +43,6 @@ export default function Branding() {
       }
       setPrimario(actualizado.brandingPanel.colorPrimario)
       setSecundario(actualizado.brandingPanel.colorSecundario)
-      setNombre(actualizado.nombre)
       // Esto es lo que hace que el boton de abajo cambie de color al
       // instante. Sin esto el guardado se veria bien pero el panel
       // seguiria con el color viejo hasta el proximo refresh, y el
@@ -64,7 +63,7 @@ export default function Branding() {
       noValidate
       aria-busy={guardando}
     >
-      <h1 className="text-lg font-bold text-texto">Tu marca</h1>
+      <h2 id="marca-heading" className="text-xl font-bold text-texto">Marca y landing</h2>
 
       {guardado ? (
         <p role="status" className="rounded-xl border border-borde p-3 text-sm text-texto">
@@ -77,17 +76,6 @@ export default function Branding() {
           {error}
         </p>
       ) : null}
-
-      <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-texto">Nombre visible</span>
-        <input
-          className="campo"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          autoComplete="off"
-        />
-        <span className="text-xs text-texto-suave">Es el nombre que ven tus clientes en el panel.</span>
-      </label>
 
       <SelectorColor
         etiqueta="Color principal"

@@ -7,48 +7,21 @@ Pipeline completo que corre en cada push y PR:
 
 1. **TypeCheck** - `npm run typecheck` (tsc -b)
 2. **Lint** - `npm run lint` (oxlint)
-3. **Unit Tests** - `npm run test:unit` (187 tests)
+3. **Unit Tests** - `npm run test:unit` (208 tests)
 4. **Rules Tests** - `npm run test:rules` (90 tests contra emulador)
 5. **E2E Circuit** - `npm run test:e2e` (7 pasos: reserva, cupo, hash, uso atómico)
 6. **Build** - `npm run build` (app + widget)
-7. **Deploy Preview** (solo PRs) - Deploy a Vercel Preview
-8. **Deploy Production** (solo push a main) - Deploy a Vercel Production
 
-## Secrets requeridos en GitHub
+## Quién despliega: SÓLO Vercel Git
 
-Ve a **Settings → Secrets and variables → Actions → New repository secret**:
+El deploy lo hace la integración Git de Vercel (push a `main` →
+producción, PR → preview con comentario automático). GitHub Actions
+sólo verifica: si un check falla, el commit no debería mergearse, pero
+Vercel igual puede desplegar — mirar los checks antes de mergear.
 
-| Secret | Descripción | Dónde conseguirlo |
-|--------|-------------|-------------------|
-| `VERCEL_TOKEN` | Token de Vercel para deploy | Vercel → Settings → Tokens → Create |
-| `VERCEL_ORG_ID` | ID de la organización/equipo | Vercel → Settings → General → Team ID |
-| `VERCEL_PROJECT_ID` | ID del proyecto | Vercel → Project Settings → General → Project ID |
-
-## Quién despliega: SÓLO GitHub Actions
-
-El deploy lo hace el workflow, no Vercel. Eso significa que **la integración
-Git de Vercel tiene que estar apagada**, porque si está prendida Vercel
-también construye en cada push a `main` y los dos deploys se pisan.
-
-Apagarla es un paso manual, en el dashboard:
-
-```
-Vercel → easyeventqr → Settings → Git
-  → "Ignored Build Step" o desconectar el repositorio
-```
-
-Si tu plan no permite desconectar del todo, la forma equivalente de que
-Vercel no construya sola es poner un ignored build step que siempre
-devuelva nada:
-
-```bash
-exit 0
-```
-
-Mientras tanto, como el deploy pasa por la CLI (`vercel deploy`),
-el repositorio **no** necesita estar conectado a Vercel para que
-funcione: alcanza con `VERCEL_TOKEN`, `VERCEL_ORG_ID` y
-`VERCEL_PROJECT_ID`.
+Los secrets `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` ya no
+se usan y pueden borrarse de GitHub → Settings → Secrets. El artifact
+`dist` del job de build queda para inspección manual (retención 1 día).
 
 ### Por qué se despliega la raíz y no `dist/`
 

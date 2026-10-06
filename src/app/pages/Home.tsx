@@ -46,46 +46,85 @@ export default function Home() {
   // Un solo resultado exacto no redirige: el usuario elige de la lista.
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-8 p-4 pb-12">
-      <header className="pt-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-texto">EasyEventQR</h1>
-          <p className="mt-2 text-texto-suave text-lg">
-            La forma simple de gestionar entradas para tus eventos
-          </p>
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-10 p-4 pb-12">
+      {/* Hero: qué es, para quién, qué hacer. */}
+      <header className="pt-10 text-center">
+        <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
+          Entradas con QR
+        </p>
+        <h1
+          className="mt-3 text-5xl font-bold leading-none tracking-wide text-texto sm:text-6xl"
+          style={{ fontFamily: "'Bebas Neue', 'Source Sans 3', system-ui, sans-serif" }}
+        >
+          EasyEventQR
+        </h1>
+        <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
+          Creá tu evento, compartí el link y validá entradas con el celular.
+          Sin apps que instalar, sin vueltas en la puerta.
+        </p>
+        <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
+          <Link
+            to="/entrar"
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition hover:brightness-110"
+          >
+            Crear mi evento
+          </Link>
+          <a
+            href="#buscar"
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario transition hover:bg-primario/5"
+          >
+            Tengo un código
+          </a>
         </div>
       </header>
 
-      <section aria-labelledby="organizador-heading" className="space-y-4">
-        <h2 id="organizador-heading" className="text-xl font-bold text-texto text-center">
-          ¿Sos organizador?
+      {/* Cómo funciona: 3 pasos. */}
+      <section aria-labelledby="como-funciona" className="space-y-4">
+        <h2 id="como-funciona" className="text-center text-xl font-bold text-texto">
+          Cómo funciona
         </h2>
-        <p className="text-center text-texto-suave">
-          Creá tu evento, vendé entradas y gestioná asistentes en minutos.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            to="/entrar"
-            className="flex-1 min-h-[56px] inline-flex items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario hover:opacity-90 transition"
-          >
-            Iniciar sesión
+        <ol role="list" className="grid gap-3 sm:grid-cols-3">
+          {[
+            { n: '1', t: 'Creá tu evento', d: 'Nombre, fecha, lugar, cupo y precio. Te damos un link y un código para compartir.' },
+            { n: '2', t: 'Compartí el link', d: 'El invitado se anota en 1 minuto y recibe su QR por mail. Sin cuentas ni apps.' },
+            { n: '3', t: 'Escaneá en puerta', d: 'Con tu celular o un link para tu equipo. Cada QR vale una sola vez.' },
+          ].map((p) => (
+            <li key={p.n} className="rounded-xl border border-borde bg-superficie p-4">
+              <p aria-hidden="true" className="text-2xl font-bold text-primario">{p.n}</p>
+              <h3 className="mt-1 font-semibold text-texto">{p.t}</h3>
+              <p className="mt-1 text-sm text-texto-suave">{p.d}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* Dos públicos. */}
+      <section aria-labelledby="para-quien" className="grid gap-3 sm:grid-cols-2">
+        <h2 id="para-quien" className="sr-only">Para quién es</h2>
+        <div className="rounded-xl border border-borde bg-superficie p-5">
+          <h3 className="font-bold text-texto">Si organizás</h3>
+          <p className="mt-1 text-sm text-texto-suave">
+            Cursos, cenas, shows, torneos: panel con registros, CSV, reenvío de mails y control de puerta.
+          </p>
+          <Link to="/entrar" className="mt-3 inline-block text-sm font-semibold text-primario">
+            Entrar al panel →
           </Link>
-          <Link
-            to="/entrar"
-            className="flex-1 min-h-[56px] inline-flex items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario hover:bg-primario/5 transition"
-          >
-            Crear cuenta
-          </Link>
+        </div>
+        <div className="rounded-xl border border-borde bg-superficie p-5">
+          <h3 className="font-bold text-texto">Si te invitaron</h3>
+          <p className="mt-1 text-sm text-texto-suave">
+            Buscá tu evento con el código, anotate y guardá el QR que llega a tu mail.
+          </p>
+          <a href="#buscar" className="mt-3 inline-block text-sm font-semibold text-primario">
+            Buscar mi evento →
+          </a>
         </div>
       </section>
 
-      <section aria-labelledby="invitado-heading" className="space-y-4">
-        <h2 id="invitado-heading" className="text-xl font-bold text-texto text-center">
-          ¿Sos invitado?
+      <section id="buscar" aria-labelledby="invitado-heading" className="scroll-mt-4 space-y-4">
+        <h2 id="invitado-heading" className="text-center text-xl font-bold text-texto">
+          Encontrá tu evento
         </h2>
-        <p className="text-center text-texto-suave">
-          Encontrá tu evento con el código o el nombre.
-        </p>
 
         <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto" noValidate>
           <label htmlFor="buscar" className="sr-only">

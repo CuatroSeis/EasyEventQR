@@ -24,15 +24,15 @@ Gates en verde: typecheck · lint · unit (208) · rules (90) · e2e (7) · buil
 6. **Variables de Vercel**: casi todas en Production solamente; para
    previews marcar Preview/Development. Sacar `VITE_USAR_EMULADORES` de
    Production si está en `si`.
-7. **Doble deploy**: Vercel Git + GitHub Actions construyen cada push.
-   Decidir un solo dueño.
+7. ~~**Doble deploy**~~ Hecho: dueña única Vercel Git; Actions solo verifica.
+   Borrar `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` de GitHub Secrets.
 
 ## Deuda no bloqueante
 
 - `TOPE_LECTURA = 2000` en el listado global del admin (filtros mienten
   con más de 2000 registros).
 - Lint: sólo warnings `set-state-in-effect` / `only-export-components`.
-- `VERCEL_TOKEN` estático en vez de OIDC (ya venció una vez).
+- `VERCEL_TOKEN` ya no se usa (Actions no despliega): borrarlo de GitHub Secrets.
 
 ## Verificar
 

@@ -44,21 +44,12 @@ OPERADOR_SECRET"*.
 
 ## Paso 2 — Integración Git de Vercel
 
-**Decisión tomada: se deja conectada.** Antes este paso pedía desconectarla
-para que el deploy fuera sólo de GitHub Actions.
+**Decisión tomada: dueña única, Vercel Git.** GitHub Actions solo verifica
+(typecheck → lint → tests → build); el deploy lo hace Vercel al pushear a
+`main` (producción) o abrir un PR (preview con comentario automático).
 
-Ahora están los dos caminos activos:
-
-- **Vercel con GitHub**: cada push a `main` dispara un build.
-- **GitHub Actions**: corre los checks y después `vercel deploy --prod`.
-
-Con los dos connected, cada push produce dos builds. No rompió nada —los dos
-despliegan el mismo commit y el último que termina gana—, pero se wastea tiempo
-y es una fuente confusa de "no sé cuál deployé".
-
-Si querés dejar **sólo GitHub Actions** como dueña del deploy, hay que
-desconectar la integración de Vercel y dejar el workflow con `VERCEL_TOKEN`.
-Es un clic: Vercel → Settings → Git → **Disconnect**.
+Ya no hace falta `VERCEL_TOKEN` ni desconectar nada: la integración queda
+conectada y el workflow ya no despliega.
 
 ---
 
@@ -219,10 +210,11 @@ un cartel.
 
 Sólo cuando los pasos anteriores pasen.
 
-1. `git add -A && git commit` — hay **muchos archivos sin trackear**
+1. `git add -A && git commit`
 2. Push a `main`
-3. GitHub Actions corre solo: typecheck → lint → tests → build → deploy
-4. Mirá el run en la pestaña **Actions**
+3. GitHub Actions verifica (typecheck → lint → tests → build) y Vercel
+   despliega solo a producción
+4. Mirá el run en la pestaña **Actions** y el deployment en Vercel
 
 **Si el deploy falla en `test-rules`:** es el emulador de Firestore. El log lo
 dice; el fix histórico fue sacar `cache: 'gradle'` de `setup-java`, porque el

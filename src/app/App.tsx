@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import Home from './pages/Home'
 
@@ -14,7 +14,6 @@ const Login = lazy(() => import('./pages/Login'))
 const Panel = lazy(() => import('./pages/Panel'))
 const Cuenta = lazy(() => import('./pages/Cuenta'))
 const EventoForm = lazy(() => import('./pages/EventoForm'))
-const Branding = lazy(() => import('./pages/Branding'))
 const AdminPanel = lazy(() => import('./pages/AdminPanel'))
 const PanelRegistros = lazy(() => import('./pages/PanelRegistros'))
 const Operador = lazy(() => import('./pages/Operador'))
@@ -71,7 +70,8 @@ export default function App() {
               <Route path="/panel/eventos/:eventoId" element={<EventoForm />} />
               <Route path="/panel/eventos/:eventoId/registros" element={<PanelRegistros />} />
               <Route path="/panel/eventos/:eventoId/escanear" element={<EscanearQR />} />
-              <Route path="/panel/branding" element={<Branding />} />
+              {/* Marca vive dentro de Cuenta: la ruta vieja redirige. */}
+              <Route path="/panel/branding" element={<Navigate to="/panel/cuenta" replace />} />
             </Route>
           </Route>
           {/*

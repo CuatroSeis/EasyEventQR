@@ -49,13 +49,7 @@ export default function PanelLayout() {
             to="/panel/cuenta"
             className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto hover:bg-superficie"
           >
-            Cuenta
-          </Link>
-          <Link
-            to="/panel/branding"
-            className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto hover:bg-superficie"
-          >
-            Marca
+            Cuenta y marca
           </Link>
           <button
             type="button"

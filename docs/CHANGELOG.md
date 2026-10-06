@@ -3,6 +3,14 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — Deploy único + onboarding
+- CI: fuera los jobs de deploy de Actions; dueña única Vercel Git.
+  `VERCEL_*` a borrar de Secrets. Docs (CI_CD, GUIA_MANUAL, ESTADO) al día.
+- Cuenta y Marca unificadas en `/panel/cuenta` (Perfil · Marca y landing ·
+  Logo · Seguridad · Peligro); `/panel/branding` redirige; nombre vive
+  solo en Perfil.
+- Home como landing explicativa: hero + 3 pasos + dos públicos + buscador.
+
 ## 6 Oct 2026 (7ª parte) — Auditoría profunda
 - Webhook: al aprobarse un pago en evento pago se rota el token y se manda
   el mail con el QR (`rotarToken()` nuevo en `src/server/lib/rotacion.ts`).

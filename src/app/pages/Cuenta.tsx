@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrganizadorEditable } from '../ContextoOrganizador'
+import { SeccionMarca } from './Branding'
 import { t } from '../../shared/toast'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -268,6 +269,10 @@ export default function Cuenta() {
             </button>
           </div>
         </div>
+      </section>
+
+      <section aria-labelledby="marca-heading" className="space-y-4 rounded-xl border border-borde p-5">
+        <SeccionMarca />
       </section>
 
       <section aria-labelledby="password-heading" className="space-y-4 rounded-xl border border-borde p-5">
