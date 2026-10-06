@@ -5,17 +5,9 @@ import { SignJWT, jwtVerify } from 'jose'
 import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
- * Secreto de firma de los links de operador.
- *
- * ANTES: `process.env.OPERADOR_SECRET || 'dev-secret-change-in-production-…'`.
- * Esos 40 caracteres están en el repo, así que en cualquier entorno donde
- * faltara la variable —un deploy nuevo, un entorno de prueba— los links se
- * firmaban con un secreto público y cualquiera podía fabricar el JWT de un
- * evento ajeno. Un fallback, por inocente que parezca, es una puerta abierta igual.
- *
- * Ahora falla cerrado: si la variable no está, el módulo explota al importar
- * y el endpoint responde 500 antes de firmar nada. Es preferible un panel de
- * operador caído a uno abierto.
+ * Secreto de firma de los links de operador. Sin fallback: antes un valor
+ * público en el repo firmaba JWTs en cualquier entorno sin la variable.
+ * Falla cerrado (500 al importar) antes que firmar con secreto público.
  */
 function secretoOperador(): Uint8Array {
   const crudo = process.env.OPERADOR_SECRET
@@ -38,28 +30,13 @@ interface OperadorPayload {
   exp: number
 }
 
-/**
- * POST /api/operador/link
- *
- * Genera un link firmado para el operador de puerta.
- * Solo accesible por el organizador dueño del evento.
- *
- * Body: { eventoId: string }
- * Response: { ok: true, url: string, expiraEn: string }
- */
+/** POST /api/operador/link — JWT de 4h para la puerta, sólo el dueño del evento. */
 async function handleLink(req: VercelRequest, res: VercelResponse) {
-  // El uid sale del ID token verificado. Sin este fallback, generar un link
-  // de operador para un evento ajeno era cuestión de mandar el header
-  // `x-user-uid` con el UID de otra persona: el chequeo de propiedad de más
-  // abajo comparaba contra un dato que elegía el cliente.
+  // UID del token verificado, nunca de un header del cliente.
   const authHeader = req.headers.authorization
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      // `getAdminAuth()` y no `getAuth()`: sin app inicializado el
-      // `verifyIdToken` tira `app/no-app`, y el `catch {}` lo convierte en
-      // "No autenticado" (401) aunque el token sea perfecto. Ver
-      // `getAdminAuth()` en src/server/lib/firebase-admin.ts.
       const decoded = await (await getAdminAuth()).verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
     } catch {}
@@ -76,8 +53,7 @@ async function handleLink(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    // Verificar propiedad del evento
-    const snapEvento = await db.collection('eventos').doc(eventoId).get()
+      const snapEvento = await db.collection('eventos').doc(eventoId).get()
     if (!snapEvento.exists) {
       return res.status(404).json({ ok: false, error: 'Evento no encontrado' })
     }
@@ -86,7 +62,6 @@ async function handleLink(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ ok: false, error: 'No autorizado' })
     }
 
-    // Crear JWT firmado
     const now = Math.floor(Date.now() / 1000)
     const token = await new SignJWT({ eventoId, organizadorId: uid })
       .setProtectedHeader({ alg: 'HS256' })
@@ -108,12 +83,7 @@ async function handleLink(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-/**
- * GET /api/operador/verificar?token=xxx
- *
- * Verifica un token de operador y devuelve el payload si es válido.
- * No requiere autenticación adicional (el token mismo es la credencial).
- */
+/** GET /api/operador/verificar — el token ES la credencial, no pide más nada. */
 async function handleVerificar(req: VercelRequest, res: VercelResponse) {
   const { token } = req.query as { token?: string }
 
@@ -122,7 +92,6 @@ async function handleVerificar(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Verificar JWT
     const { payload } = await import('jose').then(({ jwtVerify }) =>
       jwtVerify(token, OPERADOR_SECRET)
     )
@@ -133,10 +102,7 @@ async function handleVerificar(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-/**
- * Verifica un token de operador y devuelve el payload si es válido.
- * Lanza error si expiración o firma inválida.
- */
+
 export async function verificarTokenOperador(token: string): Promise<OperadorPayload> {
   try {
     const { payload } = await jwtVerify(token, OPERADOR_SECRET)

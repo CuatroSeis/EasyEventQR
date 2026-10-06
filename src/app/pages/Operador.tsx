@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Html5Qrcode } from 'html5-qrcode'
+import { extraerTokenQr, useEscanerQr } from '../components/useEscanerQr'
 
 interface OperadorPayload {
   eventoId: string
@@ -20,10 +20,9 @@ export default function Operador() {
     asistente?: string
     mensaje?: string
   }>({})
-  const [ultimoEscaneo, setUltimoEscaneo] = useState<string | null>(null)
   const [payload, setPayload] = useState<OperadorPayload | null>(null)
-  const escanerRef = useRef<Html5Qrcode | null>(null)
-  const escaneando = useRef(false)
+  const payloadRef = useRef<OperadorPayload | null>(null)
+  payloadRef.current = payload
 
   // Verificar token al montar
   useEffect(() => {
@@ -48,37 +47,17 @@ export default function Operador() {
     verificar()
   }, [token])
 
-  // Escanear QR
-  const onScanSuccess = useCallback(async (decodedText: string) => {
-    if (escaneando.current || !payload) return
-    escaneando.current = true
-
-    // Evitar escanear el mismo QR dos veces seguidas
-    if (decodedText === ultimoEscaneo) {
-      escaneando.current = false
-      return
-    }
-    setUltimoEscaneo(decodedText)
+  // Escanear QR. El freno de duplicados y la cámara viven en el hook;
+  // acá sólo queda qué hacer con el token (misma API que el panel).
+  async function onScanSuccess(decodedText: string) {
+    const operativo = payloadRef.current
+    if (!operativo) return
 
     try {
-      // El QR trae la URL completa (https://dominio/q/TOKEN?eventoId=XXX),
-      // pero si algún día llega el token pelado, se acepta igual.
-      let tokenQR: string | null = null
-      let eventoIdQR = payload.eventoId
-      try {
-        const url = new URL(decodedText)
-        tokenQR = url.pathname.split('/q/')[1] || null
-        eventoIdQR = url.searchParams.get('eventoId') || payload.eventoId
-      } catch {
-        tokenQR = decodedText.trim() || null
-      }
-
-      if (!tokenQR) {
-        throw new Error('Formato QR inválido')
-      }
+      const { token: tokenQR, eventoId: eventoIdQR } = extraerTokenQr(decodedText)
 
       // Validar que el token del QR coincide con el evento del operador
-      if (eventoIdQR !== payload.eventoId) {
+      if ((eventoIdQR ?? operativo.eventoId) !== operativo.eventoId) {
         throw new Error('Este QR no pertenece a este evento')
       }
 
@@ -86,7 +65,7 @@ export default function Operador() {
       const resp = await fetch('/api/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tokenQR, eventoId: eventoIdQR }),
+        body: JSON.stringify({ token: tokenQR, eventoId: operativo.eventoId }),
       })
       const data = await resp.json()
 
@@ -121,38 +100,15 @@ export default function Operador() {
     } catch (error) {
       setEstado('invalido')
       setResultado({ mensaje: error instanceof Error ? error.message : 'Error escaneando' })
-    } finally {
-      escaneando.current = false
-      // Limpiar último escaneo después de 2s para permitir re-escanear
-      setTimeout(() => setUltimoEscaneo(null), 2000)
     }
-  }, [payload, ultimoEscaneo])
+  }
 
-  // Configurar escáner
-  useEffect(() => {
-    if (!payload || estado === 'valido' || estado === 'ya_usado') return
-
-    const escaner = new Html5Qrcode('escaner')
-    escanerRef.current = escaner
-
-    escaner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-      },
-      onScanSuccess,
-      () => {} // onScanError - ignorar errores de lectura
-    ).catch((err) => {
-      console.error('Error iniciando cámara:', err)
-      setEstado('error_permiso')
-    })
-
-    return () => {
-      escaner.stop().catch(() => {})
-    }
-  }, [payload, estado, onScanSuccess])
+  useEscanerQr({
+    elementoId: 'escaner',
+    activo: payload !== null && estado !== 'valido' && estado !== 'ya_usado',
+    onScan: onScanSuccess,
+    onErrorCamara: () => setEstado('error_permiso'),
+  })
 
   // Verificar expiración del token
   useEffect(() => {
@@ -166,7 +122,6 @@ export default function Operador() {
   const reiniciarEscaneo = () => {
     setEstado(payload ? 'verificando' : 'error_token')
     setResultado({})
-    setUltimoEscaneo(null)
   }
 
   const volver = () => navegar('/panel')

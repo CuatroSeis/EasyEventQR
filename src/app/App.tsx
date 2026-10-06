@@ -4,31 +4,9 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 
 /**
- * BrowserRouter usa la History API: /panel se resuelve en el cliente.
- * Por eso el deploy necesita el rewrite de vercel.json que manda todo a
- * index.html — sin eso, recargar una URL profunda da 404.
- *
- * POR QUÉ LAS RUTAS CON FIREBASE VAN CON lazy()
- *
- * Home es la landing pública: no necesita ni auth ni firestore. Si
- * Login y Panel se importan de forma estática, el import estático los
- * mete en el grafo del bundle inicial y con ellos entra TODO el SDK de
- * Firebase. Medido: el bundle inicial sube de 263 kB a 798 kB, que es
- * exactamente el problema que el patrón de src/services/config.ts
- * había resuelto en la Fase 0 y que vuelve por la puerta de atrás si
- * las rutas se importan sin pensar.
- *
- * Con lazy() el SDK queda en los chunks de /entrar y /panel, y quien
- * abre la home no lo descarga. Además es el comportamiento correcto para
- * un producto mobile-first: menos kilobytes en la primera pantalla
- * sobre datos móviles.
- */
-/**
- * Las dos rutas públicas de la Fase 3 van con lazy() por el mismo motivo
- * que las del panel y con un motivo más: ni una ni otra toca Firebase.
- * Si se importaran de forma estática, el import estático los mete en el
- * grafo del bundle inicial y arrastran el SDK entero a la landing
- * pública, que es la página que abre la mayoría de las visitas.
+ * Todo con Firebase va con lazy(): un import estático metería el SDK
+ * entero en el bundle inicial (medido: 263 kB → 798 kB). El rewrite a
+ * index.html vive en vercel.json (History API).
  */
 const EventoPublico = lazy(() => import('./pages/EventoPublico'))
 const QrPublico = lazy(() => import('./pages/QrPublico'))

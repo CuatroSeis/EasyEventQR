@@ -4,34 +4,7 @@ import { useParams } from 'react-router-dom'
 import { aplicarTema, resolverColores } from '../../shared/theming'
 import { crearPreferenciaPago, abrirCheckoutMP } from '../../services/pagos'
 
-/**
- * La landing pública de un evento, en /e/:eventoId.
- *
- * Esta pantalla es la primera vez que alguien que no tiene cuenta ve el
- * producto, y por lo tanto es la que decide si el producto sirve. Tres
- * cosas la definen:
- *
- *   1. No usa el SDK de Firebase. Ni Auth, ni Firestore, ni config. Todo
- *      lo que necesita sale de /api/evento-publico, que es una función
- *      serverless con el Admin SDK. Si esta pantalla importara
- *      src/services/firebase, el bundle público arrastraría el SDK entero
- *      y además las reglas no dejarían leer el evento sin sesión.
- *   2. El formulario manda a /api/registro, no a Firestore. Por lo mismo:
- *      las reglas no permiten escribir registros sin sesión, y aunque
- *      permitieran, la reserva tiene que ser atómica con el contador de
- *      cupo, y eso sólo se puede hacer con el Admin SDK.
- *   3. Valida con las reglas del navegador antes de mandar. No por
- *      seguridad (la validación real es la de /api/validarRegistro) sino
- *      por el round trip: en una conexión de datos de campo, un 400 que
- *      tarda tres segundos en volver se lee como la app colgada.
- *
- * El `useEffect` del tema tiene un `cleanup` que llama a `aplicarTema`
- * con null. Sin eso, si el visitante pasa por dos eventos seguidos con
- * el mismo cliente SPA, el color rojo del evento anterior queda pegado en
- * el `documentElement` del segundo. `aplicarTema(null, ...)` es lo que
- * borra las variables, y su semántica exacta está probada en
- * tests/unit/theming.test.ts.
- */
+/** Landing pública /e/:eventoId. Sin SDK de Firebase (bundle chico y las reglas no dejan leer sin sesión): todo sale de /api. El cleanup del tema con `aplicarTema(null)` evita que el color de un evento se pegue al siguiente. */
 
 /** Lo que se sabe de la carga, siempre ligado al id que se pidió. */
 type Carga =
@@ -75,12 +48,8 @@ export default function EventoPublico() {
   const { eventoId } = useParams<{ eventoId: string }>()
   const identificador = eventoId?.toUpperCase()
 
-  // Un solo estado para la carga, con el id adentro. El "cargando" se
-  // DERIVA de que el id de la carga sea el id que se está mirando, en
-  // vez de poner un setEstado('cargando') adentro del efecto: con dos
-  // eventos visits uno atrás del otro en la misma sesión, ese setState
-  // dispara un render de más en cada cambio de ruta y, peor, deja el
-  // evento anterior en pantalla hasta que termina el setState.
+  // El "cargando" se deriva del id (no setState en el efecto): si no, al
+  // navegar entre eventos se ve el anterior hasta que llega el nuevo.
   const [carga, setCarga] = useState<Carga>(null)
   const currentId = identificador ?? ''
   const [problemas, setProblemas] = useState<ProblemasDelFormulario>({})
@@ -99,9 +68,7 @@ export default function EventoPublico() {
   }
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
 
-  // El evento de ESTE id, o null. Va antes de los efectos porque los
-  // efectos lo leen, y los hooks no se pueden poner después de un return
-  // temprano.
+  // Antes de los efectos (los hooks no van después de un return).
   const evento =
     carga !== null && carga.id === currentId && carga.estado === 'listo' ? carga.evento : null
   const fallo = carga !== null && carga.id === currentId && carga.estado === 'error'
@@ -114,10 +81,7 @@ export default function EventoPublico() {
     fetch(`/api/evento-publico?id=${encodeURIComponent(identificador)}`)
       .then(async (respuesta) => {
         const cuerpo = await respuesta.json().catch(() => null)
-        // El flag `vigente`: si mientras se escuchaba la respuesta el
-        // visitante navegó a otro evento, el resultado de esta request ya
-        // no le corresponde a nadie y se tira. Sin esto, volver atrás en
-        // el historial muestra el evento del que se fue.
+        // Si navegó a otro evento mientras tanto, esta respuesta ya no es de nadie.
         if (!vigente) return
         if (!respuesta.ok || !cuerpo?.ok) {
           setCarga({ id: currentId, estado: 'error' })
@@ -142,8 +106,7 @@ export default function EventoPublico() {
     return () => aplicarTema(null, document.documentElement)
   }, [evento])
 
-  // El <title> del evento. Sin esto la pestaña dice "EasyEventQR" para
-  // todos, y el evento se comparte por WhatsApp con un link.
+  // <title> por evento: se comparte por WhatsApp con link.
   useEffect(() => {
     if (!evento) return
     const anterior = document.title
@@ -153,11 +116,8 @@ export default function EventoPublico() {
     }
   }, [evento])
 
-  // Los dos casos sin datos van PRIMERO, para que después de ellos
-  // TypeScript sepa que `evento` no es null y no haya que castear en cada
-  // uso. El "reservado" va después a propósito: si el evento se recarga
-  // justo después de reservar, la confirmación tiene que seguir en
-  // pantalla.
+  // Sin-datos primero (narrowing sin casts); "reservado" después para que
+  // sobreviva a un reload.
   if (fallo) return <Marco><NoDisponible /></Marco>
   if (!evento) return <Marco><Cargando /></Marco>
 
@@ -256,12 +216,10 @@ export default function EventoPublico() {
                 return
               }
 
-              // Reserva exitosa
               const requierePago = evento.requierePago && evento.precioEntrada
               const registroId = cuerpo.registroId // El backend debería devolver esto
 
               if (requierePago && registroId) {
-                // Evento con pago: crear preferencia y redirigir a checkout
                 const pref = await crearPreferenciaPago(registroId)
                 if (pref.ok && pref.init_point) {
                   abrirCheckoutMP(pref.init_point)
@@ -272,7 +230,6 @@ export default function EventoPublico() {
                 return
               }
 
-              // Evento gratis o sin pago: mostrar confirmación normal
               setReservado(true)
             } catch {
               setErrorEnvio('No pudimos conectarnos. Revisá la conexión e intentá de nuevo.')
@@ -313,8 +270,7 @@ function Marco({ evento, children }: { evento?: EventoPublico; children: React.R
             src={p.bannerUrl}
             alt=""
             className="h-56 w-full object-cover sm:h-72"
-            // Una imagen rota no puede romper la landing: se esconde y
-            // queda el degradado del tema.
+            // Imagen rota = se esconde, queda el degradado.
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}

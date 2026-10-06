@@ -14,46 +14,15 @@ import { capturarError } from '../src/server/lib/sentry.js'
 /**
  * POST /api/registro — la reserva de una entrada.
  *
- * Este es el endpoint más importante de la fase. Todo lo demás (la
- * landing, el mail, la validación) es consequence de que este funcione.
+ * Orden (cada paso ahorra cuota del plan Spark: 50k lecturas/día):
+ *   1. Método (405) · 2. Cuerpo (400) · 3. Honeypot (200 falso) ·
+ *   4. Límite por IP (429) · 5. Transacción (409/503) · 6. Mail · 7. 201.
  *
- * EL ORDEN DE LAS OPERACIONES, Y POR QUÉ ES ESTE
- *
- *   1. Método.              405
- *   2. Validar el cuerpo.   400
- *   3. Trampa (honeypot).    200 falso
- *   4. Límite por IP.        429
- *   5. Transacción.          409 / 503
- *   6. Mandar el mail.       201 igual
- *   7. Responder.            201
- *
- * Los tres primeros van antes de tocar Firestore, a propósito. Una
- * request con el cuerpo roto o con la trampa llena no lee ni escribe NADA
- * en la base, y en el plan Spark las lecturas son 2,5 veces más caras que
- * las escrituras (50.000 contra 20.000 por día). Que un bot pueda gastar
- * cuota de lectura sin límite es justo lo que este orden evita.
- *
- * El límite por IP va después de validar y no antes, por una razón que
- * parece contraintuitiva: el contador del limitador lleva tres ventanas
- * junta, y dos de ellas cuentan ENVÍOS de mail. Si el límite corriera
- * antes de validar, diez formularios con un error de tipeo gastarían diez
- * de los diez envíos por hora de esa IP, y a la gente real de esa misma
- * conexión le diríamos "ya enviamos suficientes entradas" sin haber
- * enviado ninguna. A un bot que manda cuerpos mal formados no lo frenamos
- * con esto, pero tampoco le estamos dando nada: no llega a la base.
- *
- * EL MAIL VA DESPUÉS DE LA TRANSACCIÓN Y NUNCA LA DESHACE
- *
- * No se puede meter un `fetch` a Brevo adentro de una transacción de
- * Firestore: la transacción tiene un tiempo máximo de vida, y mientras
- * espera a la red mantiene los documentos del evento bloqueados, con lo
- * que cualquier otra persona que se esté registrando al mismo tiempo ve
- * su transacción abortada y reintentada.
- *
- * El orden inverso tiene el problema de que un fallo del mail deja la
- * reserva escrita y una respuesta de error, y el usuario reintenta: dos
- * reservas y dos mails por la misma persona. Ver la nota de
- * `api/lib/mail.ts` sobre por qué se responde 201 aunque el mail no salga.
+ * El límite va DESPUÉS de validar: dos de sus tres ventanas cuentan
+ * envíos de mail, y validar primero evita quemar cuota con formularios
+ * mal tipeados. El mail va DESPUÉS de la transacción (red dentro de una
+ * transacción = locks holdeados = abortos) y nunca la deshace: un 201
+ * que no promete el mail es mejor que un 500 que duplica la reserva.
  */
 
 /** Cuántas veces reintenta Firestore una transacción que se pisa. */
@@ -66,17 +35,10 @@ const COLECCION_LIMITE = 'rateLimit'
 type MotivoDeAlta = 'no-existe' | 'suspendido' | 'cerrado' | 'agotado'
 
 /**
- * Un error con nombre propio, para no usar el texto del mensaje como
- * bandera.
- *
- * Los mensajes de Firestore cambian entre versiones y están en inglés, así
- * que compararlos con `includes` es una bomba de tiempo. Con este tipo, el
- * `switch` del catch es exhaustivo: si mañana se agrega un motivo nuevo y
- * no se maneja, TypeScript lo dice.
- *
- * Se escribe a mano y no con `constructor(readonly motivo)` porque el
- * proyecto compila con `erasableSyntaxOnly`: las parameter properties son
- * sintaxis de TypeScript que desaparece al compilar, y acá no se puede.
+ * Error con nombre propio en vez del texto del mensaje: los mensajes de
+ * Firestore cambian entre versiones, y el `switch` del catch queda
+ * exhaustivo (un motivo nuevo sin manejar lo dice TypeScript).
+ * Sin parameter properties por `erasableSyntaxOnly`.
  */
 class ErrorDeAlta extends Error {
   readonly motivo: MotivoDeAlta
@@ -101,11 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 2. El cuerpo
   // -------------------------------------------------------------------
   const validacion = validarRegistro(req.body)
-  // `=== false` y no `!validacion.ok`: el segundo depende de que el
-  // compilador estreche la unión discriminada por el valor de una
-  // variable, y hay builds (el de Vercel) donde eso no ocurre y
-  // `problemas` deja de existir. Comparar contra el literal es el
-  // estrechamiento que no depende de la versión.
+  // `=== false` y no `!validacion.ok`: hay builds (el de Vercel) donde el
+  // estrechamiento por variable no ocurre y `problemas` deja de existir.
   if (validacion.ok === false) {
     return res.status(400).json({
       ok: false,
@@ -119,24 +78,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 3. La trampa
   // -------------------------------------------------------------------
   //
-  // Antes que cualquier acceso a la base, y con la respuesta 200 más
-  // común que se puede devolver: la misma forma y el mismo texto que un
-  // alta exitoso. Si se devolviera 400, un bot que completa formularios
-  // automáticamente aprende en un intento que el campo invisible lo delató
-  // y al siguiente lo deja vacío. Por eso se responde IGUAL que un alta
-  // exitoso y no se escribe nada: el bot no tiene forma de saber qué
-  // pasó, y para cuando lo descubre ya gastó CPU y no cuota.
-  //
-  // EL RIESGO REAL DE ESTA TRAMPA NO ES EL BOT, ES EL AUTOCOMPLETADO.
-  // Un navegador que autocompleta un campo escondido le devuelve un
-  // "registrado" a una persona que nunca se registró y que no va a recibir
-  // ningún mail. Por eso el campo del formulario va con `sr-only` y no con
-  // `display: none` (que algunos navegadores ni autocompletan), con
-  // `autoComplete="off"` y con `tabIndex={-1}`: las tres cosas juntas son
-  // la diferencia entre una trampa para bots y una trampa para gente.
+  // Antes que cualquier acceso a la base, respondiendo IGUAL que un alta
+  // exitosa: si devolviera 400, el bot aprende en un intento que el campo
+  // invisible lo delató. Y el campo va con `sr-only` + `autoComplete="off"`
+  // + `tabIndex={-1}` (no `display: none`) para que el autocompletado del
+  // navegador no le regale un "registrado" falso a una persona real.
   if (esTrampa(alta)) {
-    // Las mismas claves que el 201 de verdad, para que un bot no pueda
-    // distinguir los dos casos por la forma de la respuesta.
+    // Mismas claves que el 201 de verdad: indistinguible por forma.
     return res.status(201).json({
       ok: true,
       evento: alta.eventoId,
@@ -158,20 +106,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 5. La transacción
     // -----------------------------------------------------------------
     //
-    // El token se genera ANTES y se pasa adentro. Es lo que hace que la
-    // transacción sea reintentable sin cambiar el resultado: si el
-    // conflicto se resolviera adentro, un reintento generaría un token
-    // nuevo y el mail podría ir con un token distinto del que quedó
-    // guardado. Generado afuera, el reintento reescribe el mismo.
+    // El token se genera AFUERA para que el reintento reescriba el mismo:
+    // generado adentro, un reintento cambiaría el token y el mail podría
+    // ir con uno distinto del guardado.
     const token = generarToken()
     const qrHash = hashearToken(token)
     const base = resolverBasePublica(req.headers, process.env)
 
     const resultado = await db.runTransaction(
       async (tx: Transaction) => {
-        // Todas las lecturas ANTES de cualquier escritura. Firestore
-        // exige ese orden, y además es lo correcto: los dos documentos
-        // que se leen tienen que ser de la misma foto.
+        // Lecturas antes que escrituras (lo exige Firestore) y de la
+        // misma foto: los dos documentos se leen juntos.
         const refEvento = db.collection('eventos').doc(alta.eventoId)
         const snapEvento = await tx.get(refEvento)
         if (!snapEvento.exists) throw new ErrorDeAlta('no-existe')
@@ -179,10 +124,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (evento.estado !== 'activo') throw new ErrorDeAlta('cerrado')
 
-        // El organizador sale del evento, no del cuerpo de la request: no
-        // hay ningún input del cliente que pueda apuntar a otro.
-        // `tx` no tiene `.collection()`: las referencias salen de `db` y
-        // se le pasan a la transacción.
+        // El organizador sale del evento, nunca del cuerpo: ningún input
+        // del cliente puede apuntar a otro. (`tx` no tiene `.collection()`.)
         const snapOrganizador = await tx.get(
           db.collection('organizadores').doc(evento.organizadorId),
         )
@@ -191,10 +134,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           throw new ErrorDeAlta('suspendido')
         }
 
-        // El cupo, contra el contador del servidor. `?? 0` porque los
-        // eventos creados antes de la Fase 3 no tienen el campo, y sin
-        // esto un evento viejo daría NaN y la comparación 'NaN >= N' da
-        // false: dejaría pasar a todo el mundo.
+        // El cupo, contra el contador del servidor. `?? 0` por los
+        // eventos pre-Fase 3 sin el campo (NaN dejaría pasar a todos).
         const reservas = Number(evento.reservas ?? 0)
         if (!(reservas < evento.capacidadMaxima)) throw new ErrorDeAlta('agotado')
 
@@ -273,10 +214,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 6. El mail, ya con la reserva confirmada
     // -----------------------------------------------------------------
     //
-    // Fuera de la transacción, a propósito. `enviarMail` no tira nunca: si
-    // Brevo está caído, el log dice por qué y la reserva sigue adelante.
-    // El `eventoId` va en la URL del QR para que la validación exija que
-    // la reserva sea de ESTE evento, y no de cualquiera.
+    // Fuera de la transacción: red adentro = locks holdeados = abortos.
+    // El `eventoId` va en la URL para que la validación exija ESTE evento.
     const urlQr = urlQrDe(token, base, alta.eventoId)
     try {
       const imagenQr = await imagenQrDe(urlQr)
@@ -295,9 +234,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       })
     } catch (error) {
-      // Esta es la red de seguridad de `enviarMail`, que ya no tira. Si
-      // algo se escapa de adentro (por ejemplo, que `qrcode` no esté
-      // instalado), la reserva NO se pierde y el log deja rastro.
+      // Red de seguridad por si algo escapa de `enviarMail` (que no tira):
+      // la reserva NO se pierde y el log deja rastro.
       await capturarError(error, { ruta: '[registro] falló el envío, la reserva quedó guardada:' })
     }
 
@@ -305,11 +243,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 7. La respuesta
     // -----------------------------------------------------------------
     //
-    // NO va el token. Si fuera, cualquiera que intercepte la respuesta
-    // (un proxy, el wifi del local, un log de Vercel) tendría una entrada
-    // válida, y el token dejaría de ser un secreto que sólo conoce su
-    // dueño. Tampoco va el email: la respuesta no necesita repetir lo que
-    // el cliente ya sabe.
+    // Sin token ni email: un proxy o un log con la respuesta no puede
+    // convertirse en una entrada válida.
     return res.status(201).json({
       ok: true,
       evento: resultado.evento.nombre,
@@ -325,14 +260,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 /**
  * El límite por IP: leer, decidir, y escribir sólo si tiene que.
  *
- * El documento es `/rateLimit/{sha256 de la IP}`. El hash está para que
- * un dump de la colección no sea una lista de direcciones IP de gente que
- * se anotó a un taller, y para que el ID sea siempre válido.
- *
- * Si la IP no se puede determinar se usa la constante 'desconocida': todos
- * los que no la tienen comparten el mismo contador. Suena injusto pero es
- * lo correcto: sin IP no hay forma de distinguirlos, y repartir el límite
- * entre ellos sería inventarse un límite que no existe.
+ * El documento es `/rateLimit/{sha256 de la IP}` (un dump no expone IPs).
+ * Sin IP detectable se usa 'desconocida' y todos comparten contador: sin
+ * IP no hay forma de distinguirlos.
  */
 async function aplicarLimite(
   db: Firestore,
@@ -349,17 +279,15 @@ async function aplicarLimite(
   const decision = evaluarCupo(actual, ahora)
 
   if (!decision.permitido) {
-    // 429 con Retry-After. El `escribir: false` de la decisión evita el
-    // costo, y el 429 no dice en qué ventana se cayó: `mensajeDeMotivo`
-    // devuelve el mismo texto para los dos límites de envío.
+    // 429 con Retry-After. `escribir: false` evita el costo, y el 429 no
+    // dice en qué ventana cayó (`mensajeDeMotivo` unifica los textos).
     const espera = decision.motivo === 'pedidos' ? 60 : 900
     res.setHeader('Retry-After', String(espera))
     return res.status(429).json({ ok: false, error: mensajeDeMotivo(decision.motivo) })
   }
 
-  // Sólo se escribe cuando la request pasó. Un request ya rechazado no
-  // gasta una escritura, que es lo que evita que el propio limitador
-  // consuma la cuota de escrituras de Firestore cuando lo atacan.
+  // Sólo se escribe cuando la request pasó: un rechazo no gasta
+  // escritura, o el propio limitador fundiría la cuota bajo ataque.
   await ref.set(decision.siguiente, { merge: true })
   return null
 }
@@ -367,11 +295,8 @@ async function aplicarLimite(
 /**
  * Traduce los errores de la transacción a respuestas HTTP.
  *
- * La distinción importante es la de fondo: un evento lleno es un 409 que
- * el usuario tiene que leer ("no quedan lugares"), y una contención es un
- * 503 que puede reintentarse solo ("reintentá en un segundo"). Meterlas en
- * el mismo sobre es lo que hace que un evento lleno se vea como un error
- * del servidor y que la gente reintente sin parar.
+ * 409 lleno (leer y no reintentar) vs 503 contención (reintentable): en
+ * el mismo sobre, un evento lleno se vería como error del servidor.
  */
 function responderConError(error: unknown, res: VercelResponse) {
   if (error instanceof ErrorDeAlta) {
@@ -380,9 +305,8 @@ function responderConError(error: unknown, res: VercelResponse) {
         return res.status(409).json({ ok: false, error: 'Se agotaron los lugares de este evento.' })
       case 'cerrado':
         return res.status(409).json({ ok: false, error: 'Este evento ya no acepta reservas.' })
-      // Un evento inexistente y un organizador suspendido dan el mismo
-      // 404 y el mismo texto, por lo mismo que en api/evento-publico.ts:
-      // confirmar que existe sería filtrar.
+      // Inexistente y suspendido dan el mismo 404: confirmar que existe
+      // sería filtrar (ver api/evento-publico.ts).
       case 'no-existe':
       case 'suspendido':
         return res.status(404).json({
@@ -392,14 +316,9 @@ function responderConError(error: unknown, res: VercelResponse) {
     }
   }
 
-  // Los códigos de Firestore que valen la pena tratar distinto. 10 es
-  // ABORTED (alguien escribió el evento mientras transactábamos) y 4 es
-  // DEADLINE_EXCEEDED: los dos son reintentables, y después de 5 intentos
-  // no queda otra cosa que hacer que decirle al usuario que reintente.
-  // 6 es ALREADY_EXISTS: el `tx.create` del registro encontró una huella
-  // que ya estaba. Con 192 bits de token es bien improbable, pero si
-  // pasara, reintentar con un token nuevo lo resuelve, así que es un 503
-  // y no un 500.
+  // 10 ABORTED y 4 DEADLINE_EXCEEDED: reintentables. 6 ALREADY_EXISTS:
+  // el `tx.create` chocó una huella (192 bits: casi imposible) y con un
+  // token nuevo se resuelve: 503, no 500.
   const codigo = (error as { code?: number | string } | null)?.code
   if (codigo === 10 || codigo === 4 || codigo === 14 || codigo === 6) {
     return res.status(503).json({

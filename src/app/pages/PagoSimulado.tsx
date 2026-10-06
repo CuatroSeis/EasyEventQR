@@ -1,33 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-/**
- * Checkout SIMULADO: /pago/simulado?preference_id=…&payment_id=…&external_reference=…
- *
- * Esta pantalla reemplaza a Mercado Pago mientras no haya integración real.
- * No cobra nada: los dos botones arman la URL del webhook y la pegan, que
- * es exactamente lo que haría MP del otro lado.
- *
- * POR QUÉ ESTA PANTALLA DICE "SIMULACIÓN" EN GRANDE
- *
- * Porque si pareciera un checkout real, alguien podría creer que el
- * botón de rechazar es una funcionalidad del producto. El riesgo real es
- * al revés: que en una demo alguien crea entradas de verdad creyendo que
- * se están pagando. El aviso va arriba de todo, no en un pie de página.
- *
- * La ruta entera depende de `MERCADOPAGO_SIMULADO=true`. Apagada, el
- * backend responde 501 y esta pantalla muestra el error, así que no
- * hace falta ni bloquearla del lado del cliente: el flag es la única
- * fuente de verdad.
- *
- * Las URLs van RELATIVAS (`/api/...`): el frontend llama a su propio
- * origen. Armarlas con `VITE_APP_URL` hacía que el entorno local pegara
- * contra la API de producción (ver src/services/pagos.ts).
- *
- * `external_reference` es el `qrHash` de la reserva, que también es el id
- * del documento en Firestore. Por eso el backend puede encontrar la
- * reserva sin que el cliente le mande nada más.
- */
+/** Checkout SIMULADO (`MERCADOPAGO_SIMULADO=true`): no cobra nada, los botones pegan al webhook como haría MP. El banner arriba es para que nadie lo confunda con un checkout real. */
 
 type EstadoDecision = 'idle' | 'aprobando' | 'rechazando' | 'hecho'
 
@@ -49,8 +23,7 @@ function formatoFecha(iso: string): string {
 }
 
 function formatoMoneda(monto: number, moneda: string): string {
-  // precioEntrada viaja en unidades (pesos), no en centavos: el resto de
-  // la app lo muestra con toLocaleString/toFixed directo.
+  // En unidades (pesos), no centavos.
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency: moneda,
@@ -81,9 +54,7 @@ export default function PagoSimulado() {
       return
     }
 
-    // Cancelado si el componente se desmonta: sin esto, unStrictMode de
-    // desarrollo hace dos requests y el segundo escribe estado sobre un
-    // componente que ya no está.
+    // Sin esto, StrictMode hace doble request y escribe sobre un desmontado.
     let vivo = true
 
     ;(async () => {
@@ -118,9 +89,7 @@ export default function PagoSimulado() {
       setDecision(estado === 'approved' ? 'aprobando' : 'rechazando')
       setFallo(null)
 
-      // El redirect es al webhook con el estado, que es lo que haría el
-      // checkout real al terminar. La pantalla de destino la decide el
-      // backend, no esta función.
+      // Al webhook, como haría el checkout real; el destino lo decide el backend.
       const destino = estado === 'approved' ? '/pago/exito' : '/pago/fallo'
       const params = new URLSearchParams({
         preference_id: preferenceId,

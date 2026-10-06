@@ -36,19 +36,7 @@ function eventoPedido(bruto: string | string[] | undefined): string | null {
   return /^[A-Za-z0-9_-]{1,1500}$/.test(id) ? id : null
 }
 
-/**
- * GET /api/validar?q=<token>&eventoId=<id> — ¿este código sirve?
- *
- * ES LA FUNCIÓN DE SOLO LECTURA.
- *
- * La validación de verdad (marcar `usado`, tocar la fecha) es POST /api/validar.
- *
- * Responde:
- *   - el token tiene el formato correcto
- *   - existe una reserva con esa huella
- *   - esa reserva es del evento que se está mostrando
- *   - no está anulada
- */
+/** GET /api/validar — sólo lectura. Marcar `usado` es el POST. */
 async function handleValidarQr(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, max-age=0')
 
@@ -66,6 +54,10 @@ async function handleValidarQr(req: VercelRequest, res: VercelResponse) {
     }
 
     const registro = snap.data() as Registro
+
+    if (typeof registro.reemplazadoPor === 'string' && registro.reemplazadoPor) {
+      return res.status(200).json(noValido('Este código fue reemplazado por uno nuevo. Pedí el último mail.'))
+    }
 
     if (registro.estado === 'rechazado') {
       return res.status(200).json(noValido('Esta entrada fue anulada.'))
@@ -89,19 +81,7 @@ async function handleValidarQr(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-/**
- * POST /api/validar
- *
- * Valida y marca un QR como usado de forma atómica.
- * Body: { token: string, eventoId: string }
- *
- * Usa transacción para evitar race conditions:
- * - Lee el registro
- * - Si ya está usado → error
- * - Si no está usado → marca usado: true, fechaUso: now
- *
- * Response: { ok: true, evento: string, asistente: string, usado: boolean }
- */
+/** POST /api/validar — marca `usado` en transacción (doble escaneo = un solo pase). */
 async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store, max-age=0')
 
@@ -116,9 +96,7 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: 'Faltan token o eventoId' })
   }
 
-  // Mismo filtro que el GET: no tiene que ver si el token EXISTE, solo que
-  // tenga la forma que `generarToken()` produce. Sin esto, un token con la
-  // forma de un id de Firestore hacía 32 bytes de SHA-256 para terminar
+  // Sólo formato, no existencia: un id de Firestore hasheado caería
   // siempre en el mismo 404.
   if (!esFormatoToken(token)) {
     return res.status(404).json({ ok: false, error: 'Código no válido' })
@@ -136,6 +114,11 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
       // nada y toda entrada daba "Código no válido". El GET de más arriba
       // ya hasheaba; ahora los dos caminos hashean y hay una sola manera
       // de encontrar un registro.
+      //
+      // Las DOS lecturas van ANTES de cualquier escritura: el Firestore
+      // real exige reads-before-writes y revienta la transacción si un
+      // `tx.get` corre después de un `tx.update` (500 en producción; el
+      // emulador no lo controla y por eso los tests no lo vieron).
       const refRegistro = db.collection('registros').doc(hashearToken(token))
       const snapRegistro = await tx.get(refRegistro)
 
@@ -144,6 +127,13 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
       }
 
       const registro = snapRegistro.data()!
+
+      // Un código reemplazado por rotación (reenvío o pago aprobado)
+      // deja una lápida que apunta al nuevo: se dice explícito en vez
+      // de un "no corresponde" que manda a buscar otro evento.
+      if (typeof registro.reemplazadoPor === 'string' && registro.reemplazadoPor) {
+        throw new Error('REEMPLAZADO')
+      }
 
       // Verificar que pertenece al evento correcto
       if (registro.eventoId !== eventoId) {
@@ -160,15 +150,14 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
         throw new Error('RESERVA_NO_VALIDA')
       }
 
-      // Marcar como usado
+      // Recién acá, con todo leído: la única escritura.
+      const snapEvento = await tx.get(db.collection('eventos').doc(eventoId))
+      const evento = snapEvento.data()!
+
       await tx.update(refRegistro, {
         usado: true,
         fechaUso: FieldValue.serverTimestamp(),
       })
-
-      // Obtener nombre del evento para la respuesta
-      const snapEvento = await tx.get(db.collection('eventos').doc(eventoId))
-      const evento = snapEvento.data()!
 
       return {
         evento: evento.nombre || 'Evento',
@@ -189,6 +178,8 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
           return res.status(409).json({ ok: false, error: 'Este código ya fue usado', usado: true })
         case 'RESERVA_NO_VALIDA':
           return res.status(400).json({ ok: false, error: 'La reserva no está confirmada' })
+        case 'REEMPLAZADO':
+          return res.status(410).json({ ok: false, error: 'Este código fue reemplazado: pedí el mail nuevo al organizador' })
       }
     }
     await capturarError(error, { ruta: '[validar-uso]' })

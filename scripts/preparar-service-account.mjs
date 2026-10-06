@@ -3,14 +3,8 @@
  * Convierte el service account de Firebase en algo que se pueda pegar
  * en Vercel sin romperlo.
  *
- * Por qué hace falta: la private_key del JSON trae saltos de línea
- * reales. Si copiás el archivo tal cual al panel de variables de Vercel
- * a veces se pegan mal (el portapapeles, el navegador, el CMD) y la
- * función falla con un error de clave inválida que no dice nada útil.
- *
- * Este script lo aplana a una sola línea escapando los \n. Cuando el
- * backend hace JSON.parse(), los \n vuelven a ser saltos de línea reales
- * y la librería criptográfica los acepta.
+ * La private_key trae saltos de línea que se pegan mal en Vercel: se
+ * aplana a una línea escapando los \n (JSON.parse los restaura).
  *
  * Uso:
  *   node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json

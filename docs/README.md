@@ -31,8 +31,8 @@ docs/
 
 | Doc | Para qué |
 |---|---|
-| [PROGRESS.md](./estado/PROGRESS.md) | Log de avance por fases, fixes aplicados y pendientes abiertos. |
-| [SIGUIENTE.md](./estado/SIGUIENTE.md) | Plan de la sesión en curso: qué falta, en qué orden y cómo verificar cada paso. Es el primer documento que hay que abrir. |
+| [ESTADO.md](./estado/ESTADO.md) | Estado actual, pendientes y cómo verificar. Se actualiza en cada sesión. |
+| [CHANGELOG.md](../CHANGELOG.md) | Bitácora comprimida por sesión (el detalle vive en git). |
 
 ## La raíz
 

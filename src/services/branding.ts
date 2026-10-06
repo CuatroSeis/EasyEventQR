@@ -56,14 +56,7 @@ export async function guardarBranding(
     limpio.nombre = cambios.nombre.trim()
   }
 
-  // Un color inválido NO se manda: se ignora. Si se mandara, la regla
-  // compararía contra resource.data, lo rechazaría, y el usuario vería
-  // un error de permisos por escribir "azul" en un campo de color. Peor:
-  // si la regla lo aceptara, el CSS quedaría con --c-primario: azul, que
-  // no es lo que el usuario quiso escribir.
-  //
-  // Un null sí se manda, y es distinto: es "sacá la personalización", y lo
-  // trata escribirColor() quitando la variable CSS.
+  // Inválido se ignora (no se manda); null sí: es "sacá la personalización".
   if (cambios.colorPrimario !== undefined) {
     if (cambios.colorPrimario === null) panel.colorPrimario = null
     else if (esColorValido(cambios.colorPrimario)) panel.colorPrimario = cambios.colorPrimario.trim()
@@ -74,9 +67,7 @@ export async function guardarBranding(
     else if (esColorValido(cambios.colorSecundario)) panel.colorSecundario = cambios.colorSecundario.trim()
   }
 
-  // `updateDoc` hace merge profundo, así que mandar sólo los colores
-  // tocados deja intactos `logoUrl` y el otro color. No hace falta mandar
-  // el brandingPanel entero, y mandarlo sería mandar de más.
+  // Sólo los colores tocados (`updateDoc` mergea; el resto queda intacto).
   if (Object.keys(panel).length > 0) limpio.brandingPanel = panel
 
   if (Object.keys(limpio).length === 0) {
@@ -89,11 +80,7 @@ export async function guardarBranding(
     throw explicarErrorFirestore(error, organizador)
   }
 
-  // Devuelvo el documento con los cambios ya aplicados, para que la UI
-  // pueda tematizarse al instante sin esperar un segundo getDoc. Es la
-  // MISMA operación que grabó en Firestore, no una predicción: si el
-  // estado local se actualizara distinto de lo que se grabó, el tema y
-  // los datos disagree y el error recién se ve al recargar.
+  // Se devuelve lo grabado (no una predicción) para tematizar al instante.
   return {
     ...organizador,
     ...(typeof limpio.nombre === 'string' ? { nombre: limpio.nombre } : {}),

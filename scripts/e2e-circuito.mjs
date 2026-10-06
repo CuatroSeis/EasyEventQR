@@ -11,7 +11,7 @@
  * (emulators:exec levanta Firestore, corre esto y apaga todo solo).
  *
  * Lo que NO cubre (requiere sesión real, inbox y cámara): login con
- * Google, llegada del mail de Brevo, checkout simulado en el navegador y
+ * Google, llegada del mail, checkout simulado en el navegador y
  * escaneo físico. Esos pasos están en docs/arquitectura/ENDPOINTS.md.
  */
 

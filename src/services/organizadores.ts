@@ -1,10 +1,4 @@
-// El import lleva la extensión explícita a propósito, y es el único
-// archivo de src/ que lo hace. Este módulo lo importan los tests de
-// reglas, que corren con el type-stripping nativo de Node: ahí la
-// resolución es "nodenext" y un import sin extensión no compila. La
-// extensión explícita es válida para los dos lados (Vite la resuelve
-// igual, y tsconfig.app.json tiene allowImportingTsExtensions), así que
-// es el precio de que el test use el código real y no una copia.
+// Extensión explícita: los tests de reglas resuelven en modo "nodenext".
 import { LIMITES_POR_PLAN, type Organizador } from '../shared/types.ts'
 
 /**
@@ -38,8 +32,7 @@ export function nuevoDocumentoOrganizador(
     email,
     nombre,
     fechaAlta: new Date(),
-    // El plan gratis es el único que un cliente puede elegir, porque es
-    // el único gratis. Los otros dos los asigna el super-admin.
+    // Sólo el gratis es elegible; el resto lo asigna el super-admin.
     plan: 'gratis',
     estadoSuscripcion: 'activo',
     brandingPanel: {
@@ -47,8 +40,7 @@ export function nuevoDocumentoOrganizador(
       colorPrimario: null,
       colorSecundario: null,
     },
-    // Copia profunda: LIMITES_POR_PLAN no debe quedar compartido con el
-    // documento, o un `update` sobre el doc mutaría la tabla global.
+    // Copia profunda: sin esto un update mutaría la tabla global.
     limitesPersonalizacion: { ...LIMITES_POR_PLAN.gratis },
   }
 }

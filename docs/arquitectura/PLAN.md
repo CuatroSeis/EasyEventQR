@@ -57,7 +57,7 @@ Decisiones que se tomaron acá y conviene no volver a discutir:
   Antes eran seis `.md` sueltos en la raíz, mezclando el diseño del sistema
   con el log de lo que se hizo la semana pasada. Ahora `arquitectura/` dice
   cómo es el sistema, `operacion/` cómo se lo usa, y `estado/` qué se hizo.
-  El motivo concreto: `SPEC.md` y `PROGRESS.md` se contradecían a la vista
+  El motivo concreto: `SPEC.md` y el viejo `PROGRESS.md` se contradecían a la vista
   (el primero documenta el sistema, el segundo es bitácora de sesiones) y
   `.vercelignore` tenía que listar uno por uno los archivos de la raíz.
   Con un directorio, la regla del `.vercelignore` es una línea.

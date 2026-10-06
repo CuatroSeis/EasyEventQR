@@ -18,8 +18,7 @@ export default function Login() {
   const navegar = useNavigate()
   const ubicacion = useLocation()
 
-  // A dónde volver después del login. El guarda de ruta lo pasa por
-  // state; si el usuario entró a /panel a mano, el default es /panel.
+  // Destino post-login (default /panel).
   const destino =
     (ubicacion.state as { desde?: string } | null)?.desde ?? '/panel'
 
@@ -31,9 +30,7 @@ export default function Login() {
       navegar(destino, { replace: true })
     } catch (error) {
       setEstado('error')
-      // El caso real: el usuario cierra el popup de Google. Para el
-      // usuario eso no es un error, es que cambió de idea, así que el
-      // mensaje no es alarmista.
+      // Popup cerrado = cambió de idea, no es error: mensaje neutro.
       const codigo = (error as { code?: string }).code ?? ''
       setMensaje(
         codigo === 'auth/popup-closed-by-user'
@@ -69,11 +66,7 @@ export default function Login() {
       )}
 
       {!firebaseConfigurado && (
-        // Los colores de error NO salen del tema del organizador, y es a
-        // propósito: si un evento es rojo y el mensaje de error también,
-        // el usuario no distingue una cosa de la otra. El tema decora la
-        // marca; los estados del sistema (error, aviso) usan la paleta
-        // fija de la app.
+        // Errores con paleta fija (no del tema): si no, se confunden con la marca.
         <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-center text-xs text-slate-700">
           Falta configurar Firebase. Completá el <code>.env</code> y reiniciá{' '}
           <code>npm run dev</code>. Está todo en el README.

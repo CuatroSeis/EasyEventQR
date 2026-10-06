@@ -68,11 +68,7 @@ function construirApp(): App {
   }
 
   if (emuladorConfigurado()) {
-    // Sin `credential` a propósito. El emulador no valida credenciales
-    // y `cert()` exige una private_key real que acá no tenemos ni vamos
-    // a tener: la clave se borró de la máquina y vive cifrada en Vercel
-    // (ver docs/arquitectura/PLAN.md, pendientes). El projectId acá es sólo un nombre de
-    // namespace para el emulador, no una dirección de conexión.
+    // Sin `credential`: el emulador no valida, y el projectId es sólo namespace.
     return initializeApp({
       projectId: process.env.FIREBASE_PROJECT_ID ?? 'demo-easyeventqr',
     })
@@ -83,8 +79,7 @@ function construirApp(): App {
     throw new Error('Falta la variable de entorno FIREBASE_SERVICE_ACCOUNT en Vercel')
   }
 
-  // Vercel guarda las variables de entorno como texto plano, así que el
-  // JSON hay que parsearlo a mano. El private_key viene con \n escapados;
+  // Vercel guarda env como texto: el JSON se parsea a mano.
   // JSON.parse los devuelve como saltos de línea reales, que es lo que
   // espera la librería de criptografía.
   //

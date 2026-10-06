@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Html5Qrcode } from 'html5-qrcode'
+import { extraerTokenQr, useEscanerQr } from '../components/useEscanerQr'
 
 type Estado = 'listo' | 'valido' | 'ya_usado' | 'invalido' | 'error_permiso'
 
@@ -17,29 +17,14 @@ export default function EscanearQR() {
   const navegar = useNavigate()
   const [estado, setEstado] = useState<Estado>('listo')
   const [resultado, setResultado] = useState<{ asistente?: string; evento?: string; mensaje?: string }>({})
-  const [ultimo, setUltimo] = useState<string | null>(null)
-  const escanerRef = useRef<Html5Qrcode | null>(null)
-  const escaneando = useRef(false)
 
-  const onScan = useCallback(async (texto: string) => {
-    if (escaneando.current || texto === ultimo) return
-    escaneando.current = true
-    setUltimo(texto)
+  async function onScan(texto: string) {
     try {
-      let tokenQR: string | null = null
-      let eventoQR: string | null = null
-      try {
-        const url = new URL(texto)
-        tokenQR = url.pathname.split('/q/')[1] || null
-        eventoQR = url.searchParams.get('eventoId')
-      } catch {
-        tokenQR = texto.trim() || null
-      }
-      if (!tokenQR) throw new Error('QR inválido')
+      const { token: tokenQR, eventoId: eventoIdQR } = extraerTokenQr(texto)
       const resp = await fetch('/api/validar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tokenQR, eventoId: eventoQR ?? eventoId }),
+        body: JSON.stringify({ token: tokenQR, eventoId: eventoIdQR ?? eventoId }),
       })
       const data = await resp.json()
       if (!resp.ok) {
@@ -52,21 +37,17 @@ export default function EscanearQR() {
     } catch (e) {
       setEstado('invalido')
       setResultado({ mensaje: e instanceof Error ? e.message : 'Error' })
-    } finally {
-      escaneando.current = false
-      setTimeout(() => setUltimo(null), 2000)
     }
-  }, [eventoId, ultimo])
+  }
 
-  useEffect(() => {
-    const escaner = new Html5Qrcode('escaner-panel')
-    escanerRef.current = escaner
-    escaner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScan, () => {})
-      .catch(() => setEstado('error_permiso'))
-    return () => { escaner.stop().catch(() => {}) }
-  }, [onScan])
+  useEscanerQr({
+    elementoId: 'escaner-panel',
+    activo: estado !== 'error_permiso',
+    onScan,
+    onErrorCamara: () => setEstado('error_permiso'),
+  })
 
-  const reiniciar = () => { setEstado('listo'); setResultado({}); setUltimo(null) }
+  const reiniciar = () => { setEstado('listo'); setResultado({}) }
 
   if (estado === 'error_permiso') {
     return (

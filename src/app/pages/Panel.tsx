@@ -24,16 +24,12 @@ export default function Panel() {
   useEffect(() => {
     let vigente = true
 
-    // El `where` de listarEventos es lo que impide que un list sin filtro
-    // devuelva una lista vacía sin error. Si algún día esta pantalla se
-    // queda en blanco, el primer lugar donde mirar es el índice
-    // compuesto: sin él, la consulta falla con FAILED_PRECONDITION.
+    // Pantalla en blanco = mirar el índice compuesto (FAILED_PRECONDITION sin él).
     listarEventos(organizador.uid)
       .then((resultado) => {
         if (!vigente) return
         setEventos(resultado)
-        // Las ventas se calculan después del listado: si falla, el panel
-        // igual muestra eventos e inscriptos y la card queda en "—".
+        // Si las ventas fallan, el panel igual muestra lo demás.
         resumenVentas(resultado.map((e) => e.id))
           .then((r) => {
             if (vigente) setVentas(r)
@@ -52,9 +48,7 @@ export default function Panel() {
         )
       })
 
-    // El flag evita setState sobre un componente desmontado. Con
-    // StrictMode en desarrollo el efecto corre dos veces y la primera
-    // promesa se resuelve después del desmontaje.
+    // Flag anti setState post-desmontaje (StrictMode corre el efecto dos veces).
     return () => {
       vigente = false
     }
@@ -110,10 +104,7 @@ function Resumen({
   eventos: EventoConId[]
   ventas: { entradas: number; monto: number } | null
 }) {
-  // Suma de `reservas` (emitidas) de los eventos propios. No es un conteo
-  // en vivo de la base: es lo que ya trajo `listarEventos`, sin queries
-  // extra. Si un evento se llena mientras se mira esta pantalla, el número
-  // se actualiza al volver a entrar.
+  // Suma local de `reservas` (no en vivo: se actualiza al volver a entrar).
   const inscriptos = eventos.reduce((total, e) => total + (Number(e.reservas) || 0), 0)
   const abiertos = eventos.filter((e) => e.estado === 'activo').length
   return (
@@ -161,8 +152,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
   const pagado = evento.requierePago
   const [copiado, setCopiado] = useState<'link' | 'codigo' | 'qr' | null>(null)
 
-  // El link público usa el código corto, no el id interno: es lo que el
-  // invitado escribe en el buscador y lo que se comparte por WhatsApp.
+  // Link público con código corto (es lo que se comparte).
   const linkPublico = typeof window !== 'undefined'
     ? `${window.location.origin}/e/${evento.codigoCorto}`
     : ''
@@ -170,7 +160,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
   async function copiar(texto: string, cual: 'link' | 'codigo' | 'qr') {    try {
       await navigator.clipboard.writeText(texto)
     } catch {
-      // Fallback para navegadores viejos
+
       const textarea = document.createElement('textarea')
       textarea.value = texto
       document.body.appendChild(textarea)
@@ -182,9 +172,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
     setTimeout(() => setCopiado(null), 2000)
   }
 
-  // QR descargable del link público, para imprimirlo o pegarlo en un flyer.
-  // Se genera en el navegador: no viaja nada al servidor y el link es el
-  // mismo que copia "Copiar link", así que no hay dos verdades.
+  // QR del link público, generado en el navegador (nada viaja al servidor).
   async function descargarQR() {
     try {
       const { default: QRCode } = await import('qrcode')
@@ -196,9 +184,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
       setCopiado('qr')
       setTimeout(() => setCopiado(null), 2000)
     } catch {
-      // Sin toast acá a propósito: la tarjeta no tiene contexto de error
-      // y un alert del sistema es peor. El botón simplemente no hace nada
-      // visible si falla, igual que "Copiar link" en navegadores viejos.
+      // Sin toast: sin contexto de error, fallar en silencio es mejor que un alert.
     }
   }
 

@@ -3,10 +3,8 @@ import { Timestamp, type Transaction } from 'firebase-admin/firestore'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
 
 import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
-import { enviarMail } from '../src/server/lib/mail.js'
-import { generarToken, hashearToken, imagenQrDe } from '../src/server/lib/qr.js'
-import { urlQrDe, resolverBasePublica } from '../src/server/lib/url.js'
-import { type EntradaDelMail } from '../src/server/lib/email.js'
+import { resolverBasePublica } from '../src/server/lib/url.js'
+import { rotarToken } from '../src/server/lib/rotacion.js'
 import type { Registro, Evento } from '../src/shared/types.js'
 import { capturarError } from '../src/server/lib/sentry.js'
 
@@ -32,7 +30,7 @@ async function obtenerRegistros(
   const snap = await query.get()
   let registros = snap.docs.map((doc: QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() })) as (Registro & { id: string })[]
 
-  // Filtros en memoria (para evitar índices complejos)
+  // En memoria: sin índices compuestos.
   if (search) {
     const s = search.toLowerCase()
     registros = registros.filter(
@@ -50,7 +48,6 @@ async function obtenerRegistros(
     registros = registros.filter((r) => r.pago?.estado === pagoEstado)
   }
 
-  // Ordenar por fechaRegistro descendente
   registros.sort((a, b) => {
     const fa = (a.fechaRegistro as unknown as FirestoreTimestamp)?.toMillis?.() ?? 0
     const fb = (b.fechaRegistro as unknown as FirestoreTimestamp)?.toMillis?.() ?? 0
@@ -179,93 +176,17 @@ async function handleResendRegistros(req: VercelRequest, res: VercelResponse, db
     let fallidos = 0
 
     for (const registroId of registroIds) {
-      const snapReg = await db.collection('registros').doc(registroId).get()
-      if (!snapReg.exists) {
-        fallidos++
-        continue
-      }
-      const registro = snapReg.data() as Registro
-      if (registro.eventoId !== eventoId) {
-        fallidos++
-        continue
-      }
-
-      // Reenviar implica ROTAR el token, y hay que decirlo.
-      //
-      // El token en claro no se guarda (solo su SHA-256, en `qrHash`), así
-      // que el reenvío no puede volver a armar el mismo QR: no hay de
-      // dónde sacarlo. La única forma de mandarle al asistente un código
-      // que funcione es generar uno nuevo y cambiar la huella guardada.
-      //
-      // Antes se hacía `mock_token_${registroId}`, que no era un token
-      // válido bajo ningún aspecto: no pasaba `esFormatoToken` (misma
-      // longitud que un id de Firestore, no 32 chars base64url) y
-      // aunque pasara, hashearlo daba una huella que no era el id de
-      // ningún registro. O sea: un QR con forma de QR que en la puerta
-      // decía "Ese código no existe".
-      //
-      // El costo del rotate es que el QR del mail anterior deja de
-      // validar. Es aceptable y es lo que espera quien reenvía (perdió el
-      // mail), pero tiene que quedar dicho en la respuesta para que el
-      // organizador lo sepa y no asuma que las dos copias sirven.
-      const token = generarToken()
-      const qrHashNuevo = hashearToken(token)
-
-      // Un choque de hash sobre otro registro no se pisa: se cuenta como
-      // fallido y se sigue. Son 192 bits, pero el costo de mirarlo es una
-      // lectura y el de no mirarlo es corromper el QR de otro invitado.
-      const snapChoque = await db.collection('registros').doc(qrHashNuevo).get()
-      if (snapChoque.exists && snapChoque.id !== snapReg.id) {
-        fallidos++
-        continue
-      }
-
-      try {
-        const urlQr = urlQrDe(token, base, eventoId)
-        const imagenQr = await imagenQrDe(urlQr)
-
-        const entrada: EntradaDelMail = {
-          destinatario: registro.email,
-          nombreAsistente: registro.nombre,
-          urlQr,
-          imagenQr,
-          evento: {
-            eventoId,
-            nombre: evento.nombre,
-            fechaIso: evento.fecha.toISOString(),
-            lugar: evento.lugar,
-            textoConfirmacion: evento.personalizacion?.textoConfirmacion ?? null,
-            colorPrimario: evento.personalizacion?.colorPrimario ?? null,
-          },
-        }
-
-        const resultado = await enviarMail(entrada)
-        if (!resultado.enviado) {
-          // El mail NO salió, así que el QR anterior tiene que seguir
-          // sirviendo. Rotar acá dejaba al asistente sin ninguna entrada
-          // válida: la vieja muerta por el rotate y la nueva que nunca
-          // llegó. Es el peor de los dos mundos y por eso el update va
-          // después del envío, no antes.
-          fallidos++
-          continue
-        }
-
-        // Ahora sí: el mail está en la bandeja, se puede dar de baja el
-        // token viejo.
-        await snapReg.ref.update({
-          qrHash: qrHashNuevo,
-          tokenEmitidoEn: Timestamp.now(),
-        })
-        enviados++
-      } catch {
-        fallidos++
-      }
+      // La rotación vive en `rotarToken()`: antes este loop generaba el
+      // token, mandaba el mail y actualizaba sólo el campo `qrHash`, pero
+      // la validación busca por ID (= hash viejo) y el QR nuevo nunca
+      // validaba mientras el viejo seguía sirviendo. Ahora rota de verdad
+      // (documento nuevo + lápida) y comparte el camino con el webhook.
+      const rotacion = await rotarToken(db, { registroId, eventoId, evento, base })
+      if (rotacion.ok) enviados++
+      else fallidos++
     }
 
-    // `rotados` va en la respuesta a propósito: el organizador tiene que
-    // saber que el QR del mail anterior dejó de validar. Si no lo sabe,
-    // va a probar con las dos copias en la puerta y la segunda va a decir
-    // "ya usado" o "no existe" sin explicación.
+    // `rotados` en la respuesta: el QR anterior deja de validar y el organizador tiene que saberlo.
     return res.status(200).json({ ok: true, enviados, fallidos, tokensRotados: enviados })
   } catch (error) {
     await capturarError(error, { ruta: '[registros/resend]' })
@@ -301,11 +222,7 @@ async function handleRecountRegistros(_req: VercelRequest, res: VercelResponse, 
 /**
  * PATCH /api/registros/<registroId>?eventoId=... — edita una reserva.
  *
- * Solo `estado`, `nombre`, `email` y `telefono`: el mismo vocabulario que
- * `soloCamposDelOrganizador()` en las reglas. `usado`, `fechaUso`,
- * `qrHash`, `pago` y `eventoId` no se tocan por acá: el QR lo rota el
- * reenvío y el uso lo marca la puerta.
- */
+ * Solo `estado`, `nombre`, `email`, `telefono` (mismo vocabulario que las reglas). */
 async function handleActualizarRegistro(
   req: VercelRequest,
   res: VercelResponse,
@@ -370,9 +287,7 @@ async function handleActualizarRegistro(
 /**
  * DELETE /api/registros/<registroId>?eventoId=... — borra una reserva.
  *
- * No toca el contador `reservas` del evento (cuenta emitidas, no vivas):
- * si el cupo quedó mentiroso, el botón "Recalcular cupo" lo recompone.
- */
+ * No toca `reservas` (cuenta emitidas): el "Recalcular cupo" lo recompone. */
 async function handleEliminarRegistro(
   res: VercelResponse,
   db: ReturnType<typeof getDb>,
@@ -406,20 +321,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ ok: false, error: 'Falta eventoId' })
   }
 
-  // Auth: el uid sale del ID token verificado por Firebase, y de ningún
-  // otro lado. Antes caía a `x-user-uid` cuando no había Authorization, y
-  // eso rompía toda la autorización de abajo: con mandarle el header, el
-  // chequeo de propiedad (`evento.organizadorId !== uid`) comparaba el
-  // uid que el cliente quiso, no el de quien realmente está conectado, y
-  // daba acceso a los registros de cualquier evento.
+  // UID sólo del token verificado: `x-user-uid` comparaba el uid que el
+  // cliente elegía y daba acceso a registros ajenos.
   const authHeader = req.headers.authorization
   let uid: string | undefined
   if (authHeader?.startsWith('Bearer ')) {
     try {
-      // `getAdminAuth()` y no `getAuth()`: acá el `catch {}` convertía un
-      // `app/no-app` en "No autenticado" (401). Hoy zafa de milagro porque
-      // `getDb()` corrió en la línea 303, pero esa es una promesa que otro
-      // puede romper sin querer. Ver `getAdminAuth()`.
+      // `getAdminAuth()` y no `getAuth()`: el `catch {}` convertía un
+      // `app/no-app` en 401 aunque el token fuera válido.
       const decoded = await (await getAdminAuth()).verifyIdToken(authHeader.slice(7))
       uid = decoded.uid
     } catch {}

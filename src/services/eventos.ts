@@ -18,32 +18,9 @@ import { explicarErrorFirestore } from './errores'
 import { normalizarTexto } from '../shared/utils'
 import type { EstadoEvento, Evento, Organizador } from '../shared/types'
 
-/**
- * CRUD de eventos desde el navegador.
- *
- * No hay backend acá, y no es un atajo: las reglas de /eventos ya
- * autorizan al dueño a crear, leer, editar y borrar lo suyo, y nada de lo
- * que hace esta fase necesita la credencial del Admin SDK. La Fase 3
- * sí lo va a necesitar, para el alta de registros, que es donde aparece
- * el QR y el mail.
- *
- * La función que CONSTRUYE el documento vive en documentoEvento.ts, sin
- * el SDK, para que los tests puedan importarla. Acá sólo se habla con
- * Firestore.
- */
+/** CRUD de eventos desde el navegador (las reglas ya autorizan al dueño; sin Admin SDK). */
 
-/**
- * Normaliza lo que devuelve Firestore a un Date de verdad.
- *
- * La interfaz `Evento` dice `fecha: Date`, y al escribir eso es cierto:
- * el SDK web convierte un `Date` a `Timestamp`. Pero al LEER, Firestore
- * devuelve un `Timestamp`, no un `Date`. O sea que sin este paso el tipo
- * declarado sería una mentira y `evento.fecha.toLocaleDateString()`
- * reventaría en runtime con "toLocaleDateString is not a function".
- *
- * Por eso normalizamos acá y no en cada componente: el que consume
- * `listarEventos` recibe Dates de verdad y no tiene que defenderse.
- */
+/** Firestore devuelve `Timestamp` al leer aunque el tipo diga `Date`: se normaliza acá una vez. */
 function aFecha(valor: unknown): Date | null {
   if (valor instanceof Date) return valor
   // `Timestamp` es la clase de Firestore; tiene toDate(). No se chequea
@@ -90,10 +67,7 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
     lugar: String(datos.lugar ?? ''),
     descripcion: String(datos.descripcion ?? ''),
     capacidadMaxima: Number(datos.capacidadMaxima ?? 0),
-    // `?? 0` y no un Number() sobre undefined: un evento creado antes de
-    // la Fase 3 no tiene el campo, y `Number(undefined)` es NaN, que
-    // comparado con cualquier capacidad da NaN y "quedan N lugares" en
-    // pantalla. Un 0 es la lectura honesta de "todavía no reservó nadie".
+    // `?? 0`: sin el campo (eventos viejos), NaN dejaría pasar a todos.
     reservas: Number(datos.reservas ?? 0),
     estado: datos.estado === 'cerrado' ? 'cerrado' : 'activo',
     requierePago: datos.requierePago === true,
@@ -110,9 +84,7 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
         ? datos.personalizacion
         : {}),
     },
-    // Documentos viejos (pre-código-corto) no tienen estos campos: el
-    // default evita el undefined sin inventar datos. El código de un
-    // evento viejo se muestra como su id hasta el backfill.
+    // Defaults para documentos viejos sin estos campos.
     codigoCorto: String(datos.codigoCorto ?? id),
     nombreNormalizado: String(datos.nombreNormalizado ?? ''),
     slug: String(datos.slug ?? ''),
@@ -185,12 +157,9 @@ export async function crearEvento(
 }
 
 /**
- * Crea el evento por el backend (POST /api/eventos).
- *
- * Es el camino vigente: el servidor genera `codigoCorto` y `slug` en
- * transacción y usa el código como id del documento, así el link
- * `/e/<codigo>` y el buscador resuelven sin fallback. Devuelve el código
- * para mostrarlo/compartirlo en el momento, sin una lectura extra.
+ * Crea el evento por el backend (POST /api/eventos): código y slug nacen
+ * en transacción y el código es el id, así el link y el buscador no
+ * necesitan fallback.
  */
 export interface EventoCreado {
   codigoCorto: string
@@ -238,12 +207,8 @@ export async function crearEventoBackend(borrador: BorradorEvento): Promise<Even
 /**
  * Duplica un evento: mismo contenido, identidad nueva.
  *
- * Lo que se copia: nombre (con " (copia)"), fecha, lugar, descripción,
- * cupo, pago, banner y visibilidad. Lo que NO se copia: reservas (0),
- * estado (nace activo), código, slug ni personalización de colores
- * (el borrador sólo trae bannerUrl; el resto nace en null y el
- * organizador lo ajusta si quiere).
- *
+ * No se copia: reservas (0), estado (nace activo), código, slug ni
+ * colores custom. Sí se copian banner y tema (identidad del evento).
  * Va por `crearEventoBackend` y no clonando el documento: el código corto
  * tiene que nacer en transacción o dos duplicados simultáneos colisionan.
  */
@@ -263,13 +228,11 @@ export async function duplicarEvento(evento: EventoConId): Promise<EventoCreado>
 }
 
 /**
- * Ventas pagadas de una lista de eventos: cantidad y monto total.
+ * Ventas pagadas de una lista de eventos.
  *
- * Una query por evento con un solo `where` (sin índice compuesto): a
- * escala de organizador (decenas de eventos) es barato y no pide índices
- * nuevos. El filtro de pagado se aplica en memoria, igual que en
- * `obtenerRegistros`. Tope de 500 pagadas por evento: si un evento vende
- * más, el número queda corto y hay que paginarlo (pendiente).
+ * Una query simple por evento (sin índice compuesto) + filtro en memoria.
+ * Tope de 500 pagadas por evento: si vende más, el número queda corto
+ * (pendiente paginarlo).
  */
 export async function resumenVentas(eventoIds: string[]): Promise<{ entradas: number; monto: number }> {
   const { obtenerRegistros } = await import('./registros')
@@ -288,17 +251,8 @@ export async function resumenVentas(eventoIds: string[]): Promise<{ entradas: nu
 }
 
 /**
- * Edita un evento.
- *
- * Se manda un objeto con los campos a cambiar, NO el evento entero. Es
- * la diferencia entre un update parcial y un overwrite: mandar el
- * documento completo con `setDoc` sobreescribiría `organizadorId` con lo
- * que viniera en el objeto, y las reglas lo rechazarían con
- * `noCambiaDueno()`.
- *
- * Se ignora cualquier `organizadorId` que venga por error en `cambios`:
- * el dueño de un evento no se cambia, y la regla lo bloquea igual, pero
- * es mejor no mandarlo.
+ * Edita un evento con update parcial (nunca `setDoc` completo: pisaría
+ * `organizadorId` y la regla `noCambiaDueno()` lo rechazaría).
  */
 export async function actualizarEvento(
   eventoId: string,

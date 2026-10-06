@@ -104,11 +104,7 @@ export default function EventoForm() {
 
     try {
       if (esNuevo) {
-        // El alta va por el backend: genera código corto y slug en
-        // transacción y usa el código como id, así el link y el buscador
-        // resuelven sin fallback. El alta directa quedó como legacy.
-        // Se vuelve al listado, donde la tarjeta del evento nuevo ya
-        // muestra el código con los botones para compartirlo.
+        // Alta por backend (código/slug en transacción).
         await crearEventoBackend(borrador)
         t.success('Evento creado. Compartilo con el código o el link.')
         navegar('/panel', { replace: true })

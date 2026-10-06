@@ -9,19 +9,15 @@ import {
   consultarPagoMP,
   pagosDisponibles as mpDisponibles,
 } from '../src/server/lib/mercadopago.js'
-import type { Registro } from '../src/shared/types.js'
+import type { Registro, Evento } from '../src/shared/types.js'
 import { capturarError } from '../src/server/lib/sentry.js'
+import { rotarToken } from '../src/server/lib/rotacion.js'
+import { resolverBasePublica } from '../src/server/lib/url.js'
 
 /**
- * Por qué los endpoints se niegan cuando `MERCADOPAGO_SIMULADO` no está.
- *
- * La pantalla simulada aprueba pagos con un botón. Si esa ruta quedara
- * abierta en producción, cualquiera con el link de una reserva se
- * marcaba su propia entrada como pagada. No se decide en el código si
- * "esto es dev": se decide con una variable que hay que prender a mano.
- *
- * El 501 es deliberado y no un 404: "no existe" sería mentira, la ruta
- * existe y está apagada a propósito.
+ * Sin `MERCADOPAGO_SIMULADO=true` ni `MERCADOPAGO_ACCESS_TOKEN`: 501
+ * deliberado (no 404). Con la simulación prendida, cualquiera con el link
+ * de una reserva se marcaría su propia entrada como pagada.
  */
 function pagosDisponibles(res: VercelResponse): boolean {
   if (mpDisponibles()) return true
@@ -33,13 +29,8 @@ function pagosDisponibles(res: VercelResponse): boolean {
 }
 
 /**
- * POST /api/pagos/preference
- *
- * Crea una preferencia de pago en Mercado Pago (simulado).
- * Requiere: registroId (para vincular el pago a la reserva).
- *
- * Body: { registroId: string }
- * Response: { ok: true, init_point: string, preferenceId: string }
+ * POST /api/pagos/preference — crea la preferencia (real o simulada).
+ * Body: { registroId }. Response: { ok, init_point, preferenceId }.
  */
 async function handlePreference(req: VercelRequest, res: VercelResponse) {
   if (!pagosDisponibles(res)) return
@@ -53,7 +44,6 @@ async function handlePreference(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    // Obtener el registro
     const snapRegistro = await db.collection('registros').doc(registroId).get()
     if (!snapRegistro.exists) {
       return res.status(404).json({ ok: false, error: 'Reserva no encontrada' })
@@ -61,12 +51,10 @@ async function handlePreference(req: VercelRequest, res: VercelResponse) {
 
     const registro = snapRegistro.data() as Registro
 
-    // Verificar que esté pendiente de pago
     if (!registro.pago?.requerido || registro.pago.estado !== 'pendiente') {
       return res.status(400).json({ ok: false, error: 'Esta reserva no requiere pago o ya fue procesada' })
     }
 
-    // Obtener el evento para el monto y descripción
     const snapEvento = await db.collection('eventos').doc(registro.eventoId).get()
     if (!snapEvento.exists) {
       return res.status(404).json({ ok: false, error: 'Evento no encontrado' })
@@ -75,7 +63,7 @@ async function handlePreference(req: VercelRequest, res: VercelResponse) {
     const evento = snapEvento.data()!
     const monto = evento.precioEntrada ?? 0
 
-    // externalReference = "registroId" para vincular webhook -> reserva
+    // externalReference = registroId: así el webhook encuentra la reserva.
     const externalReference = registroId
 
     const baseUrl = process.env.APP_URL || 'https://easyeventqr.vercel.app'
@@ -104,20 +92,13 @@ async function handlePreference(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
- * POST /api/pagos/webhook
- *
- * Recibe notificaciones de Mercado Pago (simulado).
- * Verifica firma, consulta el pago y actualiza la reserva si fue aprobado.
- *
- * En MP real, el body trae: { action: 'payment.created', data: { id: 'payment_id' }, type: 'payment' }
- * En nuestro mock, el query trae: ?preference_id=xxx&payment_id=xxx&external_reference=xxx&status=approved
+ * POST /api/pagos/webhook — notificación de MP (real o simulada).
+ * Verifica firma, actualiza la reserva si fue aprobado y, sólo en pagos,
+ * manda el mail con el QR rotado.
  */
 async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   if (!pagosDisponibles(res)) return
 
-  // Los parámetros del modo simulado vienen en el query, porque la
-  // pantalla falsa "es" Mercado Pago: el botón que aprieta el visitante
-  // arma la URL y la pega acá.
   const { preference_id, payment_id: paymentId, external_reference, status } = req.query as {
     preference_id?: string
     payment_id?: string
@@ -125,13 +106,8 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
     status?: 'approved' | 'rejected' | 'pending'
   }
 
-  // Camino real: la firma HMAC manda y es obligatoria.
-  //
-  // La firma se verifica contra el `data.id` del cuerpo, que es lo que
-  // dice el manifiesto de MP. En el modo simulado el cuerpo viene vacío,
-  // así que no hay nada que verificar: no es que la firma "pase", es que
-  // en simulación la firma no es el control de acceso. El control es el
-  // flag, que está apagado por defecto.
+  // Firma HMAC obligatoria en modo real. En simulado el cuerpo viene
+  // vacío y no hay nada que verificar: el control ahí es el flag.
   const signature = req.headers['x-signature'] as string | undefined
   const requestId = req.headers['x-request-id'] as string | undefined
   const dataId = (req.body as { data?: { id?: string } } | undefined)?.data?.id
@@ -142,8 +118,7 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ ok: false, error: 'Firma inválida' })
     }
   } else if (process.env.MERCADOPAGO_WEBHOOK_SECRET) {
-    // Hay secreto configurado pero el request no viene firmado: es un
-    // intento de colarse por el camino que el mock dejaba abierto.
+    // Con secreto configurado, un request sin firma es un intento de colarse.
     return res.status(401).json({ ok: false, error: 'Falta la firma del webhook' })
   }
 
@@ -157,27 +132,21 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getDb()
 
-    // Consultar el pago. Devuelve `null` casi siempre en serverless (el
-    // map es de memoria, ver mercadopago.ts), y no es un problema: el
-    // `status` del query es el que manda cuando la consulta no puede.
+    // En serverless el map en memoria casi nunca tiene el pago: manda
+    // el `status` del query.
     const pagoInfo = await consultarPagoMP(paymentId ?? '')
     const estadoPago = pagoInfo?.status || status || 'pending'
 
     if (estadoPago !== 'approved') {
-      // Solo procesamos si está aprobado
       if (estadoPago === 'rejected') {
-        // Actualizar registro a rechazado
         await db.collection('registros').doc(registroId).update({
           'pago.estado': 'rechazado',
           estado: 'rechazado',
         })
-        console.log(`[pagos/webhook] Pago rechazado para registro ${registroId}`)
       }
       return res.status(200).json({ ok: true, mensaje: `Pago ${estadoPago}` })
     }
 
-    // Pago aprobado: actualizar registro en transacción para decrementar cupo si es necesario
-    // (el cupo ya se reservó al crear el registro, solo cambiamos estado)
     const refRegistro = db.collection('registros').doc(registroId)
     const snapRegistro = await refRegistro.get()
 
@@ -189,26 +158,40 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
     const registro = snapRegistro.data() as Registro
 
     if (registro.pago?.estado === 'pagado') {
-      // Idempotencia: ya procesado
+      // Webhook reenviado: ya procesado, no reenviar el QR.
       return res.status(200).json({ ok: true, mensaje: 'Pago ya procesado' })
     }
 
-    // Actualizar registro: pago aprobado + estado aprobado
     await refRegistro.update({
       'pago.estado': 'pagado',
       'pago.fechaPago': FieldValue.serverTimestamp(),
       estado: 'aprobado',
     })
 
-    // El map en memoria casi nunca va a tener la preferencia, y por eso
-    // el resultado se ignora a propósito: que devuelva `false` no puede
-    // dar vuelta un pago que ya quedó confirmado en Firestore.
     if (preferenceId) actualizarEstadoPagoMock(preferenceId, 'approved')
 
-    console.log(`[pagos/webhook] Pago aprobado para registro ${registroId}`)
-
-    // TODO: Reenviar mail con QR (Fase 6)
-    // await reenviarMailConQR(registroId)
+    // Sólo eventos PAGOS: al aprobarse el pago se manda el mail con el
+    // QR. En los gratuitos el QR ya salió al registrarse y no hay nada
+    // que reenviar (el TODO viejo pedía reenviar siempre).
+    //
+    // No se reusa el token del alta porque no existe en ningún lado (sólo
+    // su hash): se rota, y el QR del mail de registro deja de validar,
+    // que es lo correcto porque esa reserva estaba pendiente de pago.
+    // Si el mail no sale, NO se rota y el pago igual queda confirmado.
+    if (registro.pago?.requerido) {
+      const snapEvento = await db.collection('eventos').doc(registro.eventoId).get()
+      if (snapEvento.exists) {
+        const rotacion = await rotarToken(db, {
+          registroId,
+          eventoId: registro.eventoId,
+          evento: snapEvento.data() as Evento,
+          base: resolverBasePublica(req.headers, process.env),
+        })
+        if (!rotacion.ok) {
+          console.error(`[pagos/webhook] pago ok pero no se pudo mandar el QR (${rotacion.motivo})`)
+        }
+      }
+    }
 
     return res.status(200).json({ ok: true, mensaje: 'Pago aprobado y reserva confirmada' })
   } catch (error) {
@@ -242,13 +225,24 @@ async function handleEstado(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const snap = await getDb().collection('registros').doc(registroId).get()
+    let snap = await getDb().collection('registros').doc(registroId).get()
 
     if (!snap.exists) {
       // Mismo 200 con `ok: false` que el resto de la API: distinguir
       // "no existe" de "no se encontró" acá no le sirve de nada al cliente
       // y confirmaría la existencia del registro a quien pruebe ids.
       return res.status(200).json({ ok: false, error: 'Reserva no encontrada' })
+    }
+
+    // Si el pago aprobado rotó el token, el id viejo es una lápida: se
+    // sigue el puntero una vez en vez de decir "no encontrada" en la
+    // pantalla de pago confirmado.
+    const datos = snap.data() as Registro
+    if (typeof datos.reemplazadoPor === 'string' && datos.reemplazadoPor) {
+      snap = await getDb().collection('registros').doc(datos.reemplazadoPor).get()
+      if (!snap.exists) {
+        return res.status(200).json({ ok: false, error: 'Reserva no encontrada' })
+      }
     }
 
     return res.status(200).json({

@@ -4,24 +4,7 @@ import { useOrganizadorEditable } from '../ContextoOrganizador'
 import { guardarBranding, type ColorElegido } from '../../services/branding'
 import { colorDeTextoSobre, esColorValido } from '../../shared/theming'
 
-/**
- * Editor de branding del panel.
- *
- * El alcance es color, no imágenes. El logo necesita subir una imagen y
- * en el plan gratis no hay Firebase Storage (exige Blaze), así que
- * subirla implica comprimirla en el navegador y guardarla en un documento
- * aparte. Eso es trabajo de la Fase 3, y metido acá sería la mitad de la
- * fase.
- *
- * El selector de logo NO se esconde: se muestra deshabilitado con el
- * motivo al lado. Escribir "tu plan no incluye logo" al lado de un
- * campo que no está explica el producto. Esconderlo deja al organizador
- * buscando una función que no existe.
- *
- * Y el límite no está en esta pantalla: la regla lo aplica. Si alguien
- * destapara el campo desde la consola, `respetaLimiteDeLogo()` lo
- * rechaza. Esta UI anticipa el error, no lo reemplaza.
- */
+/** Editor de marca: colores, copy de landing y estado del logo (se sube en Cuenta). Los límites los aplica la regla, no esta pantalla. */
 export default function Branding() {
   const { organizador, actualizar } = useOrganizadorEditable()
   const [nombre, setNombre] = useState(organizador.nombre)
@@ -39,12 +22,7 @@ export default function Branding() {
   const colorPermitido = limites.colorPersonalizadoPermitido
   const logoPermitido = limites.logoPermitido
 
-  /**
-   * OJO con el `preventDefault()`: sin él el navegador hace el submit nativo
-   * del <form> y recarga la página. Se veía "Guardando…" un instante y
-   * después la pantalla se reiniciaba sin guardar nada, porque la navegación
-   * cancelaba el `updateDoc` a medio camino. Mismo patrón que EventoForm.tsx.
-   */
+  /** Sin `preventDefault()` el submit nativo recarga y cancela el `updateDoc` a medio camino. */
   async function enviar(e: FormEvent) {
     e.preventDefault()
     setGuardando(true)
@@ -182,18 +160,7 @@ export default function Branding() {
   )
 }
 
-/**
- * Selector de color: un input[type=color] y un campo de texto al lado.
- *
- * El input de color es cómodo con el dedo y no admite nada que no sea un
- * hex, pero no deja escribir el valor exacto. El campo de texto sí. Los
- * dos juntos, porque elegir "#2563eb" a ojo es imposible y escribirlo a
- * mano en un selector de color no se puede.
- *
- * Con `esColorValido` se valida antes de escribir: si el usuario está a
- * mitad de escribir "#2", el borde se pone de advertencia en vez de
- * guardar un color roto.
- */
+/** Picker + texto: el picker no deja escribir el hex exacto, el texto sí. Valida con `esColorValido` mientras se escribe. */
 function SelectorColor({
   etiqueta,
   ayuda,
@@ -209,8 +176,7 @@ function SelectorColor({
   deshabilitado: boolean
   motivo?: string
 }) {
-  // El input type=color no acepta null, así que el "sin personalizar"
-  // se muestra con el default del tema mientras no haya valor.
+  // type=color no acepta null: mientras tanto se muestra el default.
   const efectivo = valor ?? '#2563eb'
   const valido = valor === null || esColorValido(valor)
 
@@ -258,14 +224,7 @@ function SelectorColor({
   )
 }
 
-/**
- * Muestra el color con el texto que se pondría encima.
- *
- * No es adorno: es la respuesta a "¿y si elijo un amarillo y los botones
- * quedan con texto blanco?". Con la muestra se ve el problema antes de
- * guardar, sin tener que confiar en que colorDeTextoSobre() hizo bien su
- * trabajo.
- */
+/** Preview del contraste: muestra el problema antes de guardar. */
 function MuestraContraste({ color }: { color: ColorElegido }) {
   if (color === null || !esColorValido(color)) return null
   return (

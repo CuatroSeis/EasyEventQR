@@ -59,10 +59,7 @@ export default function PanelRegistros() {
   const [pagina, setPagina] = useState(1)
   const [porPagina] = useState(20)
 
-  // Los filtros viven en la URL para que el link sea compartible ("mirá
-  // los pendientes de este evento") y el back del navegador funcione.
-  // Cada cambio vuelve a la página 1: si no, filtrar desde la página 4
-  // muestra una tabla vacía que parece un bug.
+  // Filtros en la URL (link compartible + back funciona); cada cambio vuelve a página 1.
   function actualizarFiltros(parche: { search?: string; estado?: string; pagoEstado?: string }) {
     const params = new URLSearchParams(busca)
     const actual: Record<string, string | undefined> = {
@@ -112,9 +109,7 @@ export default function PanelRegistros() {
       await navigator.clipboard.writeText(linkOperador.url)
       setCopiado(true)
     } catch {
-      // clipboard.writeText falla sin HTTPS o sin permiso. El link queda a
-      // la vista igual, asi que solo se avisa que el boton no sirvio y se
-      // deja que lo copien a mano.
+      // Sin HTTPS ni permiso el copiado falla: el link queda visible para copiar a mano.
       avisar('No se pudo copiar automático. Copiá el link seleccionándolo.', true)
     }
   }

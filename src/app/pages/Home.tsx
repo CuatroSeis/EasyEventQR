@@ -43,9 +43,7 @@ export default function Home() {
     }
   }
 
-  // Si hay un solo resultado exacto por código, redirigir directo
-  // (el backend ya filtra, pero por UX podemos redirigir si es 1 y coincide exacto)
-  // Por ahora mostramos la lista y el usuario elige.
+  // Un solo resultado exacto no redirige: el usuario elige de la lista.
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-8 p-4 pb-12">

@@ -5,24 +5,11 @@ import { getDb } from '../src/server/lib/firebase-admin.js'
 import type { Evento, Organizador } from '../src/shared/types.js'
 
 /**
- * GET /api/evento-publico?id=... — los datos del evento para la landing.
+ * GET /api/evento-publico?id=... — landing sin sesión.
  *
- * POR QUÉ EXISTE Y NO ES UN `getDoc` DESDE EL NAVEGADOR
- *
- * `firestore.rules` no deja leer /eventos sin sesión: el permiso es
- * `esSuperAdmin() || esMio()`. Es la decisión correcta, porque el mismo
- * documento tiene `organizadorId`, `reservas` y el precio de la entrada.
- *
- * La consecuencia es que alguien sin sesión no puede pintar la landing.
- * La salida es esta función, que lee con el Admin SDK (que se salta las
- * reglas) y devuelve SOLO una lista blanca de campos.
- *
- * Por eso este archivo es el más peligroso de la fase en un sentido
- * concreto: se salta las reglas, así que TODA la política de "qué puede
- * ver un desconocido" vive acá y no en `firestore.rules`. Si mañana se
- * agrega un campo a `Evento` y alguien pone `{...evento}` en el return,
- * se publica. Por eso no hay un `{...evento}` en ninguna línea de este
- * archivo, y la lista de lo que se devuelve es explícita.
+ * Las reglas no dejan leer /eventos sin sesión, así que lee el Admin SDK
+ * y devuelve SOLO la lista blanca de abajo. Nada de `{...evento}` nunca:
+ * cualquier campo nuevo del modelo se publicaría solo.
  */
 
 /** Un evento tal como lo ve alguien sin sesión. */
@@ -56,15 +43,7 @@ interface EventoPublico {
   }
 }
 
-/**
- * Un mismo 404 para los tres casos.
- *
- * "No existe", "está cerrado" y "el organizador está suspendido" devuelven
- * lo mismo, con el mismo texto. Si el suspendido devolviera un 403 con un
- * mensaje propio, el endpoint estaría confirmando que ese evento existió y
- * que tiene dueño: cualquiera podría recorrer IDs y armar un mapa de qué
- * organizadores están suspendidos.
- */
+/** Un mismo 404 para "no existe", "cerrado" y "suspendido": distinguirlos filtraría. */
 function noEncontrado(res: VercelResponse) {
   return res.status(404).json({
     ok: false,
@@ -72,14 +51,7 @@ function noEncontrado(res: VercelResponse) {
   })
 }
 
-/**
- * El `id` de la URL.
- *
- * Se valida con el mismo criterio que el registro: los IDs de Firestore
- * son [A-Za-z0-9_-]{1,1500}. Sin esto, un `id` con barra o punto hace que
- * el `doc()` de Firestore responda 500 en vez de un 400 con un mensaje que
- * un humano pueda entender.
- */
+/** El `id` se valida ([A-Za-z0-9_-]{1,1500}): sin esto un `/` o `.` da 500 en vez de 400. */
 function leerEventoId(bruto: string | string[] | undefined): string | null {
   if (typeof bruto !== 'string') return null
   const id = bruto.trim()
@@ -98,11 +70,7 @@ function aIso(valor: unknown): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Cache-Control no-store: esta respuesta cambia seguido. El cupo
-  // mientras se llena y el cierre de un evento desde el panel tienen que
-  // verse al instante. Un CDN cacheando esto muestra "quedan 20 lugares"
-  // en un evento lleno, y el caché es compartido entre visitantes, así
-  // que además filtraría datos de un evento a otro.
+  // no-store: el cupo y el cierre cambian seguido, y el caché es compartido.
   res.setHeader('Cache-Control', 'no-store, max-age=0')
 
   if (req.method !== 'GET') {

@@ -5,47 +5,14 @@ import { aplicarTema } from '../../shared/theming'
 import { useOrganizador } from '../ContextoOrganizador'
 import { salir } from '../../services/auth'
 
-/**
- * Cáscara común de todas las pantallas del panel.
- *
- * Hace tres cosas, y las tres importan:
- *
- * 1. Da la chrome comun a las pantallas del panel. El documento del
- *    organizador lo trae el contexto de Protegido, asi que las pantallas
- *    hijas no lo vuelven a pedir.
- *
- * 2. Aplica el tema del organizador con un useEffect. Va en un efecto y
- *    no en el render a propósito: aplicarTema escribe en el DOM, y
- *    escribir en el DOM durante el render es un efecto secundario. Con
- *    el efecto, además, el tema sobrevive a la navegación entre pantallas
- *    porque la variable CSS vive en documentElement, no en el componente
- *    que la puso.
- *
- * 3. Da la barra de arriba. En un celular, el botón de volver tiene que
- *    estar a la altura del pulgar: por eso los botones miden
- *    var(--touch-min) y el padding respeta el safe-area.
- */
+/** Cáscara del panel: chrome común + tema en documentElement (efecto, no render: escribe DOM y sobrevive a la navegación). */
 
 export default function PanelLayout() {
   const organizador = useOrganizador()
   const navegar = useNavigate()
   const [saliendo, setSaliendo] = useState(false)
 
-  /**
-   * Logout.
-   *
-   * No es un detalle de la UI: es la única forma de que un cambio de
-   * custom claims se vea. Los claims van horneados en el ID token cuando
-   * Firebase lo emite, y ese token se cachea una hora. Si a un
-   * super-admin le ponen `admin: true` y recarga con F5, sigue entrando
-   * con el token viejo y el panel lo expulsa igual. Lo único que renueva el
-   * token de verdad es volver a autenticarse, así que sin este botón el
-   * síntoma es "puse el claim y no cambió nada" y no hay salida.
-   *
-   * `replace` en el navigate para que el login no quede en el historial:
-   * apretar "atrás" después de salir no debe devolver a una sesión que ya
-   * no existe.
-   */
+  /** Logout: única forma de renovar el ID token (los claims se cachean una hora). `replace` para no volver atrás a la sesión. */
   async function handleSalir() {
     if (saliendo) return
     setSaliendo(true)
@@ -58,10 +25,6 @@ export default function PanelLayout() {
   }
 
   useEffect(() => {
-    // `document.documentElement` y no un div contenedor: las variables
-    // tienen que estar en el ancestro más alto para que las use todo lo
-    // que cuelgue del body, incluidas las pantallas que se montan después
-    // por navegación.
     aplicarTema(organizador.brandingPanel, document.documentElement)
   }, [organizador.brandingPanel])
 

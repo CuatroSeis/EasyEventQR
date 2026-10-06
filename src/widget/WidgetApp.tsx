@@ -37,10 +37,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
   const [success, setSuccess] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  // El tema del evento se aplica sobre el contenedor del widget (vive
-  // dentro del Shadow DOM). A propósito NO se toca document.documentElement:
-  // el widget corre en la página de un tercero y escribir ahí filtraría
-  // estilos hacia afuera, que es justo lo que el Shadow DOM evita.
+  // Tema sobre el contenedor (Shadow DOM): nunca en el document del host.
   const cajaRef = useRef<HTMLDivElement>(null)
   const esquemaOscuro =
     theme === 'dark' ||
@@ -109,9 +106,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
     })
   }, [])
 
-  // Sin escapeHtml manual: React ya escapa el texto en JSX, y la versión
-  // anterior de esta función era un no-op (reemplazaba cada carácter por
-  // sí mismo), o sea falsa seguridad con nombre de seguridad.
+  // Sin escape manual: React ya escapa en JSX.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (submitting) return
@@ -121,7 +116,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
     const honeypot = formData.get('sitioWeb')
 
     if (honeypot) {
-      // Bot detectado - responder igual que éxito pero sin hacer nada
+      // Honeypot lleno: éxito falso, sin escribir nada.
       setSuccess(true)
       return
     }

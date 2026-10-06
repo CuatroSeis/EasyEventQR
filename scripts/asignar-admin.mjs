@@ -5,25 +5,8 @@
  *   npm run auth:admin -- <email>
  *   npm run auth:admin -- <email> --quitar
  *
- * POR QUÉ UN SCRIPT Y NO UN BOTÓN EN EL PANEL
- *
- * Un custom claim vive DENTRO del ID token, que es un JWT que firma
- * Firebase. El cliente no lo puede escribir: no hay un updateDoc que lo
- * cambie. Sólo el Admin SDK, desde un entorno con credenciales de
- * servicio, puede reemitir el token con el claim nuevo.
- *
- * Y hay una consecuencia que sorprende la primera vez: el claim no
- * cambia en la sesión actual del usuario. El token ya emitido sigue
- * siendo el mismo, con o sin `admin`. Recién cuando Firebase emite un
- * token nuevo (al iniciar sesión, o al pedir un refresco) es que el claim
- * aparece. Por eso el script avisa al final que hay que volver a
- * entrar. La sesión actual del super-admin SIGUE FUNCIONANDO, porque los
- * permisos ya concedidos siguen en su token; conviene reiniciar sesión
- * para que el token nuevo los traiga.
- *
- * El claim dura como máximo una hora (la vida del token) y se refresca
- * solo. Por eso no hace falta reejecutar esto ni nada: hay que volver a
- * iniciar sesión una vez, y después alcanza con getIdTokenResult.
+ * El claim vive en el ID token (sólo el Admin SDK lo escribe) y recién
+ * aparece al reemitirse: después de correr esto hay que volver a entrar.
  *
  * REQUISITOS
  *   - FIREBASE_SERVICE_ACCOUNT con el JSON del service account, en una

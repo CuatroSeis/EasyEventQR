@@ -1,7 +1,4 @@
-// El import lleva la extension explicita por el mismo motivo que en
-// el resto de los services: los tests de reglas importan este modulo
-// el type-stripping nativo de Node y resuelven en modo "nodenext", donde
-// un import sin extensión no compila.
+// Extensión explícita: los tests de reglas resuelven en modo "nodenext".
 import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
 import { esTemaPreset } from '../shared/theming.ts'
 import { generarCodigoCorto, generarSlug, normalizarTexto } from '../shared/utils.ts'
@@ -92,15 +89,10 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
     personalizacion: {
       ...personalizacionVacia(),
       bannerUrl: borrador.bannerUrl?.trim() || null,
-      // Sólo llaves conocidas: un `tema: 'xss'` desde la consola cae a null
-      // y la landing muestra el default en vez de algo inventado.
+      // Sólo llaves conocidas (un `tema` inventado cae a null).
       tema: esTemaPreset(borrador.tema ?? null) ? borrador.tema as import('../shared/types.ts').TemaPreset : null,
     },
-    // El código corto nace acá con formato válido, pero la UNICIDAD real
-    // la garantiza el backend (POST /api/eventos) con transacción: dos
-    // clientes pueden generar el mismo código al mismo tiempo y las
-    // reglas no pueden contar colisiones. El camino por API es el que
-    // vale; este constructor mantiene vivo el alta directa legacy.
+    // La unicidad real la garantiza el backend en transacción.
     codigoCorto: generarCodigoCorto(),
     nombreNormalizado: normalizarTexto(nombre),
     slug: generarSlug(nombre),

@@ -36,18 +36,13 @@ type Resultado = { token: string; veredicto: Veredicto }
 export default function QrPublico() {
   const { token } = useParams<{ token: string }>()
   const [busca] = useSearchParams()
-  // El token viaja ADENTRO del estado, para que el "cargando" se derive
-  // en vez de poner un setState sincrónico adentro del efecto. Con dos
-  // QRs escaneados seguidos en la misma sesión (el caso real: probás el
-  // tuyo y después el de tu compañero), ese setState dibuja el veredicto
-  // del anterior mientras espera el nuevo.
+  // Token adentro del estado: el "cargando" se deriva y no se muestra el veredicto anterior.
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const cargando = resultado === null || resultado.token !== token
   const veredicto = cargando ? ({ estado: 'cargando' } as const) : resultado.veredicto
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // El QR se dibuja en cliente desde el token de la URL: el servidor no
-  // puede devolver la imagen (no guarda el token en claro, sólo su hash).
+  // QR en cliente desde el token de la URL (el servidor sólo guarda el hash).
   useEffect(() => {
     if (veredicto.estado !== 'valido' || !token || !canvasRef.current) return
     // Mismo formato que `urlQrDe()`: /q/<token>?eventoId=<id>.
@@ -70,10 +65,7 @@ export default function QrPublico() {
 
     let vigente = true
 
-    // El `eventoId` viaja como query opcional, y lo manda el link del
-    // mail. Sirve para que la validación exija que la reserva sea de
-    // este evento, así que un QR de un evento no valida en la pantalla de
-    // otro. Si no viene, el token se valida solo.
+    // `eventoId` opcional: si viene, el QR sólo valida para ese evento.
     const params = new URLSearchParams({ t: token })
     const eventoId = busca.get('eventoId')
     if (eventoId) params.set('eventoId', eventoId)

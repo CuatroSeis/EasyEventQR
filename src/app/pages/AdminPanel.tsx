@@ -22,19 +22,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'auditoria', label: 'Auditoría' },
 ]
 
-/**
- * Panel del super-admin.
- *
- * El chequeo de permisos va contra `/api/me`, que valida el ID token de
- * Firebase contra `SUPER_ADMIN_UID` en el servidor. Deliberadamente NO se
- * decide acá si la persona es admin: eso sería leer una bandera del propio
- * navegador y no protegería nada, porque el backend igual verifica cada
- * petición.
- *
- * También manda el token explícitamente. `/api/me` no lo pedía antes, así
- * que sin este `Authorization` devolvía siempre `isAdmin: false` y el panel
- * expulsaba al super-admin en el bucle de redirección.
- */
+/** Panel super-admin. El permiso lo decide `/api/me` en el servidor (nunca una bandera del navegador); el token va explícito en `Authorization`. */
 export default function AdminPanel() {
   const navegar = useNavigate()
   // El nombre sale del usuario de Firebase y NO de `useOrganizador()`.

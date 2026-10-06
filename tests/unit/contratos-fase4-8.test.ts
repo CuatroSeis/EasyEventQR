@@ -84,3 +84,30 @@ describe('contratos fases 4-8', () => {
     )
   })
 })
+
+describe('transacciones Firestore: reads before writes', () => {
+  it('handleValidarUso no lee después de escribir', async () => {
+    // Bug real con 500 en producción: `tx.get(evento)` corría DESPUÉS de
+    // `tx.update(registro)`. El Firestore real exige todas las lecturas
+    // antes que todas las escrituras y revienta la transacción; el
+    // emulador no lo controla, así que ni los tests de reglas ni el e2e
+    // lo vieron. Este test estático sí.
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const fuente = readFileSync(join(process.cwd(), 'api', 'validar.ts'), 'utf8')
+    const inicio = fuente.indexOf('async function handleValidarUso')
+    const fin = fuente.indexOf('export default async function handler')
+    assert.ok(inicio !== -1 && fin > inicio)
+    const cuerpo = fuente.slice(inicio, fin)
+    const escrituras = [...cuerpo.matchAll(/tx\.(update|create|set|delete)\(/g)].map((m) => m.index ?? -1)
+    const lecturas = [...cuerpo.matchAll(/tx\.get\(/g)].map((m) => m.index ?? -1)
+    assert.ok(escrituras.length > 0 && lecturas.length > 0)
+    const primeraEscritura = Math.min(...escrituras)
+    const lecturasTardias = lecturas.filter((i) => i > primeraEscritura)
+    assert.equal(
+      lecturasTardias.length,
+      0,
+      'handleValidarUso hace tx.get() después de escribir: 500 en producción',
+    )
+  })
+})

@@ -16,44 +16,15 @@ import {
 import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
- * Router del panel super-admin.
+ * Router del panel super-admin: un solo archivo por el límite de 12
+ * funciones serverless del plan Hobby (cada archivo en `api/` es una;
+ * ya hay nueve). Todo se enruta con `?accion=`. Quedan tres de margen.
  *
- * POR QUÉ UN SOLO ARCHIVO
- *
- * El plan Hobby de Vercel corta en 12 funciones serverless por despliegue y
- * cada archivo en `api/` es una. La app ya tiene nueve. Un endpoint por
- * pantalla —dashboard, eventos, registros, excepciones, auditoría— nos
- * dejaría en catorce y Vercel rechazaría el despliegue con "No more than
- * 12 Serverless Functions". Por eso todo se enruta con `?accion=` desde
- * adentro del handler.
- *
- * Quedan tres funciones de margen. Si alguna vez hay que agregar una, que
- * sea en serio: primero se mira de fusionar con otra.
- *
- * AUTORIZACIÓN
- *
- * Se verifica el ID token de Firebase con `verifyIdToken` y el super-admin
- * se reconoce por DOS vías, no por una sola:
- *
- *   a) el custom claim `admin == true`, que es lo mismo que miran las
- *      reglas de Firestore (ver `esSuperAdmin()` en firestore.rules), y
- *   b) el UID igual a `SUPER_ADMIN_UID`.
- *
- * Que antes sólo aceptara (b) dejaba el sistema partido en dos: un admin
- * con el claim pasaba las reglas pero se comía un 403 en el panel, y un
- * admin por env podía operar la API sin poder escribir por las reglas. Los
- * dos mecanismos sonLegítimos, así que se acepta cualquiera de los dos.
- *
- * (b) se queda como break-glass a propósito: las reglas de Firestore NO
- * pueden leer variables de entorno, así que el claim es la única vía que
- * ambos lados comparten. Y si algún día se pierde el acceso por un token
- * viejo, `SUPER_ADMIN_UID` sigue siendo la puerta de atrás sin depender de
- * que nadie pueda reemitir el token.
- *
- * Antes se aceptaba además un header `x-user-uid` que mandaba el cliente, y
- * eso no autorizaba nada: un header es una afirmación del cliente, no una
- * credencial. Con sólo conocer el UID del super-admin —que es público,
- * viaja en la URL del panel— cualquiera se autopromovía.
+ * Autorización por DOS vías (las dos legítimas): custom claim
+ * `admin == true` (la única que comparten las reglas, que no leen env)
+ * o UID igual a `SUPER_ADMIN_UID` (break-glass). Antes sólo valía (b) y
+ * un admin con claim pasaba las reglas pero comía 403 en el panel.
+ * El viejo header `x-user-uid` del cliente no autorizaba nada.
  */
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID
@@ -87,21 +58,13 @@ function esEstadoSuscripcion(valor: unknown): valor is EstadoSuscripcion {
 }
 
 /**
- * Exige un super-admin real.
- *
- * Devuelve `null` y ya respondió cuando no hay token válido o el token no
- * es del super-admin. "Sin token" y "token de otro" devuelven el mismo
- * 401 a propósito: distinguirlos le diría a un atacante si el UID existe.
+ * Exige un super-admin real. "Sin token" y "token de otro" dan el mismo
+ * 401: distinguirlos filtraría si el UID existe.
  */
 async function autenticar(req: VercelRequest, res: VercelResponse): Promise<AdminAutenticado | null> {
   if (!SUPER_ADMIN_UID) {
-    // Sin la variable de entorno NO se corta: el claim `admin` por sí solo
-    // alcanza, que es el mecanismo que comparten las reglas de Firestore.
-    // Antes esto cortaba el panel entero si faltaba la variable, y como
-    // `scripts/asignar-admin.mjs` es lo que asigna el claim, un entorno
-    // nuevo sin `SUPER_ADMIN_UID` se quedaba sin panel y sin pista de por
-    // qué. Se avisa igual, porque si el claim existe y la variable no, el
-    // break-glass no está.
+    // No se corta: el claim alcanza solo. Se avisa porque sin la variable
+    // no hay break-glass.
     console.warn('[admin] falta SUPER_ADMIN_UID: sólo funciona el custom claim admin')
   }
 
@@ -112,22 +75,11 @@ async function autenticar(req: VercelRequest, res: VercelResponse): Promise<Admi
   }
 
   try {
-    // `getAdminAuth()` y no `getAuth()` a secas, por dos razones. La primera es
-    // el import dinámico: `firebase-admin/auth` estático no lo empaqueta el
-    // builder de Vercel y la función moría al importar con
-    // `FUNCTION_INVOCATION_FAILED`. La segunda es la que costó encontrar: sin
-    // un app `[DEFAULT]` inicializado, `verifyIdToken` tira `app/no-app` y el
-    // `catch` de abajo respondía 401 "Token inválido o expirado" con un token
-    // perfectamente válido. El primer `getDb()` de este archivo está en la
-    // línea 185, muy después de acá. El import dinámico sigue viviendo
-    // adentro de `getAdminAuth()`; este comentario es el que hay que leer si
-    // alguien vuelve a llamar `getAuth()` directo.
+    // `getAdminAuth()` y no `getAuth()` directo: el import estático no lo
+    // empaqueta Vercel (FUNCTION_INVOCATION_FAILED) y sin app inicializado
+    // `verifyIdToken` tira `app/no-app` (ver `getAdminAuth()`).
     const decodificado = await (await getAdminAuth()).verifyIdToken(cabecera.slice(7))
 
-    // El claim manda, y el UID por variable es el break-glass. Ojo con
-    // `decodificado.admin` a secas: cuando el claim no existe no es
-    // `undefined`, es una excepción al acceder, y la excepción se
-    // convierte en un 500 en vez de un 403.
     const esAdminPorClaim = decodificado.admin === true
     const esAdminPorUid = Boolean(SUPER_ADMIN_UID) && decodificado.uid === SUPER_ADMIN_UID
 

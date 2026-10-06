@@ -207,6 +207,13 @@ export interface Registro {
    * reenviado el mismo. `null` significa "el del alta, nunca reenviado".
    */
   tokenEmitidoEn?: Date | null
+  /**
+   * Lápida de rotación: si existe, este documento ya no es una entrada
+   * sino un puntero al documento nuevo. La validación busca por ID
+   * (= hash del token), así que rotar sólo el campo `qrHash` no rota
+   * nada: hay que crear un documento nuevo y dejar acá a dónde mudarse.
+   */
+  reemplazadoPor?: string
   estado: EstadoRegistro
   pago: Pago
   usado: boolean

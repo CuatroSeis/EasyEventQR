@@ -1,21 +1,9 @@
 import { salir } from '../../../services/auth'
 
 /**
- * Pantalla de "no sos super-admin", en vez de expulsar en silencio.
- *
- * Antes, `AdminPanel` hacía `return null` y un `navigate('/panel')` cuando
- * `/api/me` contestaba `isAdmin: false`. El usuario veía el panel un
- * instante y volvía atrás, sin una palabra. Lo más frustrante de un bug de
- * permisos es justamente que no dice *qué* permiso falta: "no tengo
- * permisos para editar eventos" no te dice si tenés que reactivar la cuenta,
- * cambiar el plan, cargar el saldo o iniciar sesión con otra cuenta.
- *
- * Acá cada motivo tiene su texto y, sobre todo, su salida. El caso real que
- * trajo este proyecto: un super-admin al que le pusieron el claim `admin: true`
- * seguía siendo expulsado porque `/api/me` miraba sólo la variable de
- * entorno y no el claim. Con el mensaje, la diferencia entre "mi claim no
- * llegó", "falta la variable de entorno" y "no tenés claim" queda a la vista
- * sin tener que abrir las herramientas de red.
+ * "No sos super-admin" con motivo y salida, en vez de expulsar en silencio.
+ * Un rechazo sin motivo ("no tengo permisos") no dice QUÉ falta: claim,
+ * variable o sesión. Cada `porQue` de `/api/me` tiene su texto acá.
  */
 const MOTIVOS: Record<string, { titulo: string; cuerpo: string; pasos: string[] }> = {
   'falta-var': {
