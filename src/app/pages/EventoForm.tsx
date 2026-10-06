@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { t } from '../../shared/toast'
 import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, duplicarEvento, eliminarEvento, obtenerEvento } from '../../services/eventos'
 import { validarBorrador, type BorradorEvento, type ProblemaDeValidacion } from '../../services/documentoEvento'
+import { PRESETS } from '../../shared/theming'
 
 /**
  * Crear y editar un evento. Es el mismo formulario para los dos casos:
@@ -69,6 +70,7 @@ export default function EventoForm() {
           precioEntrada: evento.precioEntrada,
           bannerUrl: evento.personalizacion?.bannerUrl ?? null,
           visibilidad: evento.visibilidad,
+          tema: evento.personalizacion?.tema ?? null,
         })
       })
       .catch(() => {
@@ -261,6 +263,44 @@ export default function EventoForm() {
           autoComplete="off"
         />
       </Campo>
+
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
+        <legend className="px-1 text-sm font-medium text-texto">Estilo de la landing</legend>
+        <p className="text-xs text-texto-suave">
+          Un estilo predefinido pinta la página del evento. Si después elegís
+          colores propios en Marca, esos mandan.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => cambiar('tema', null)}
+            aria-pressed={borrador.tema == null}
+            className={`rounded-lg border px-3 py-2 text-xs font-medium ${borrador.tema == null ? 'border-primario bg-primario/10 text-texto' : 'border-borde text-texto-suave'}`}
+          >
+            Sin estilo
+          </button>
+          {(Object.keys(PRESETS) as Array<keyof typeof PRESETS>).map((clave) => (
+            <button
+              key={clave}
+              type="button"
+              onClick={() => cambiar('tema', clave)}
+              aria-pressed={borrador.tema === clave}
+              title={PRESETS[clave].descripcion}
+              className={`rounded-lg border px-3 py-2 text-left ${borrador.tema === clave ? 'border-primario' : 'border-borde'}`}
+            >
+              <span
+                className="mb-1 flex h-6 overflow-hidden rounded"
+                style={{ background: PRESETS[clave].paleta.superficie, border: `1px solid ${PRESETS[clave].paleta.borde}` }}
+              >
+                <span className="h-full w-1/2" style={{ background: PRESETS[clave].paleta.colorPrimario }} />
+                <span className="h-full w-1/2" style={{ background: PRESETS[clave].paleta.colorSecundario }} />
+              </span>
+              <span className="block text-xs font-medium text-texto">{PRESETS[clave].nombre}</span>
+            </button>
+          ))}
+        </div>
+        {mensaje('tema') ? <p className="text-xs text-red-600">{mensaje('tema')}</p> : null}
+      </fieldset>
 
       <Campo
         etiqueta="Cupo"

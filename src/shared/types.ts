@@ -104,7 +104,19 @@ export interface PersonalizacionEvento {
   colorSecundario: string | null
   textoBienvenida: string | null
   textoConfirmacion: string | null
+  /**
+   * Estilo predefinido de la landing (`null` = default del sistema).
+   *
+   * Es sólo una llave a `PRESETS` en theming.ts: la landing y el widget
+   * resuelven los colores con `resolverColores()`, que ignora cualquier
+   * valor desconocido. Un cliente modificado puede escribir lo que
+   * quiera acá y lo peor que pasa es que se ve el default.
+   */
+  tema: TemaPreset | null
 }
+
+/** Estilos predefinidos elegibles por el organizador (Fase 9). */
+export type TemaPreset = 'neon' | 'corporativo' | 'festival'
 
 export interface Evento {
   organizadorId: string

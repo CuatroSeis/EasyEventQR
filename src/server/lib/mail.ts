@@ -1,28 +1,34 @@
-import { construirMensajeBrevo, type EntradaDelMail } from './email.js'
+import nodemailer, { type Transporter } from 'nodemailer'
+
+import { construirMensaje, type EntradaDelMail } from './email.js'
 
 /**
- * El transporte: el único lugar del proyecto que habla con Brevo.
+ * El transporte: el único lugar del proyecto que manda mail, por SMTP de
+ * Gmail con App Password.
  *
- * Acá hay un fetch y una variable de entorno, que es justo lo que
- * `api/lib/email.ts` no tiene. La división deja el contenido del mail
- * testeable sin red y deja este archivo, que no se puede probar sin
- * mandar un mail de verdad, reducido a una llamada HTTP.
+ * Acá hay una conexión SMTP y dos variables de entorno, que es justo lo
+ * que `email.ts` no tiene. La división deja el contenido del mail
+ * testeable sin red y deja este archivo reducido a un `sendMail`.
+ *
+ * Antes fueron Brevo y Resend (fetch a sus APIs). Se sacaron porque
+ * Brevo no entregaba y Resend exige dominio verificado para escribirle
+ * a invitados. Gmail SMTP no pide dominio: el remitente es la propia
+ * cuenta, con una App Password (requiere verificación en 2 pasos).
  *
  * LA REGLA DE ESTE ARCHIVO: NUNCA TIRA.
  *
  * `enviarMail` devuelve un resultado, no lanza. La razón es el orden de
  * las operaciones en el alta: la reserva se escribe en Firestore DENTRO
  * de una transacción, y el mail se manda DESPUÉS, porque no se puede
- * meter un fetch a otro servicio dentro de una transacción de Firestore
- * sin holdear los locks. Entonces, si mandar el mail explota, la reserva
- * ya quedó escrita.
+ * meter red dentro de una transacción de Firestore sin holdear los
+ * locks. Entonces, si mandar el mail explota, la reserva ya quedó
+ * escrita.
  *
  * Hay dos salidas y son malas las dos:
  *
  *   - Tirar: el endpoint devuelve 500 y el usuario cree que no se
  *     registró, pero SÍ se registró. Reintenta, entra el segundo
- *     registro, y la persona termina con dos entradas cobradas o con
- *     dos mails.
+ *     registro, y la persona termina con dos entradas o dos mails.
  *   - Devolver el error y responder 201: el usuario cree que se
  *     registró y efectivamente se registró, pero no tiene el mail y no
  *     puede avisar porque no tiene el token.
@@ -35,127 +41,80 @@ import { construirMensajeBrevo, type EntradaDelMail } from './email.js'
  */
 
 export type ResultadoEnvio =
-  | { enviado: true; transporte: 'brevo' | 'resend' | 'consola' }
+  | { enviado: true; transporte: 'smtp' | 'consola' }
   | { enviado: false; transporte: 'ninguno'; motivo: string }
 
-const URL_BREVO = 'https://api.brevo.com/v3/smtp/email'
-
 /** Lo que hay que tener para mandar de verdad. */
-export function brevoConfigurado(): boolean {
-  return Boolean(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL)
+export function smtpConfigurado(): boolean {
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)
+}
+
+let transporte: Transporter | null = null
+
+function obtenerTransporte(): Transporter {
+  if (!transporte) {
+    transporte = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.GMAIL_USER,
+        // Google la muestra con espacios ("xxxx xxxx xxxx xxxx"): acá no
+        // van, y si el usuario los pega con espacios igual anda.
+        pass: (process.env.GMAIL_APP_PASSWORD ?? '').replace(/\s+/g, ''),
+      },
+      // El alta no puede quedar colgada esperando a Gmail. Si Gmail está
+      // lento, la reserva ya está escrita y el usuario igual está
+      // esperando una respuesta: mejor un timeout y un reenvío después
+      // que una request que muere a los 30 segundos del lado del
+      // navegador.
+      connectionTimeout: 8_000,
+      socketTimeout: 8_000,
+    })
+  }
+  return transporte
 }
 
 /**
  * Manda el mail, o lo registra en la consola.
  *
- * Sin `BREVO_API_KEY` no tira: imprime el HTML en el log y dice que
- * salió. Es lo que permite probar el alta entera en local sin gastar un
- * envío de la cuota de Brevo ni tener la cuenta configurada, y es
- * también lo que evita que un deploy sin la variable configurada rompa el
+ * Sin `GMAIL_USER` + `GMAIL_APP_PASSWORD` no tira: imprime en el log y
+ * dice que salió. Es lo que permite probar el alta entera en local sin
+ * credenciales, y lo que evita que un deploy sin variables rompa el
  * alta: la reserva se guarda igual y el mail queda pendiente de reenvío.
  */
 export async function enviarMail(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
-  // Orden: Brevo primero (es el transporte histórico); si falla o no está
-  // configurado, Resend como respaldo. Si ninguno está, consola.
-  if (brevoConfigurado()) {
-    const resultado = await enviarPorBrevo(entrada)
-    if (resultado.enviado) return resultado
-    if (resendConfigurado()) {
-      const respaldo = await enviarPorResend(entrada)
-      if (respaldo.enviado) return respaldo
-    }
-    return resultado
+  if (!smtpConfigurado()) {
+    return registrarEnConsola(entrada)
   }
 
-  if (resendConfigurado()) {
-    return enviarPorResend(entrada)
-  }
-
-  return registrarEnConsola(entrada)
-}
-
-function resendConfigurado(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && (process.env.RESEND_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL))
-}
-
-async function enviarPorBrevo(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
-  const mensaje = construirMensajeBrevo(
+  // De `construirMensaje` sólo se usan subject y htmlContent: el
+  // resto del objeto tiene forma de la API de Brevo y acá no sirve.
+  const mensaje = construirMensaje(
     entrada,
-    process.env.BREVO_SENDER_EMAIL!,
-    process.env.BREVO_SENDER_NAME,
+    process.env.GMAIL_USER!,
+    process.env.GMAIL_SENDER_NAME ?? 'EasyEventQR',
   )
 
   try {
-    const respuesta = await fetch(URL_BREVO, {
-      method: 'POST',
-      headers: {
-        // OJO: la API key va en el header `api-key`, no en un Bearer y
-        // no en el body. Es lo que espera /v3/smtp/email.
-        'api-key': process.env.BREVO_API_KEY!,
-        'Content-Type': 'application/json',
-        accept: 'application/json',
-      },
-      body: JSON.stringify(mensaje),
-      signal: AbortSignal.timeout(8_000),
+    await obtenerTransporte().sendMail({
+      from: `"${process.env.GMAIL_SENDER_NAME ?? 'EasyEventQR'}" <${process.env.GMAIL_USER}>`,
+      to: mensaje.to[0].email,
+      subject: mensaje.subject,
+      html: mensaje.htmlContent,
     })
-
-    if (!respuesta.ok) {
-      const cuerpo = await respuesta.text().catch(() => '')
-      console.error(
-        `[mail] Brevo respondió ${respuesta.status} para ${entrada.destinatario}: ${cuerpo.slice(0, 500)}`,
-      )
-      return { enviado: false, transporte: 'ninguno', motivo: `Brevo ${respuesta.status}` }
-    }
-
-    return { enviado: true, transporte: 'brevo' }
+    return { enviado: true, transporte: 'smtp' }
   } catch (error) {
+    // Auth mal ( App Password inválida o 2FA apagado), red caída, Gmail
+    // caído. Mismo criterio que antes: se registra y se sigue, la
+    // reserva ya está escrita. El texto del error de nodemailer dice
+    // la causa real (EAUTH, ETIMEDOUT, ESOCKET...).
     console.error(
       `[mail] no se pudo mandar a ${entrada.destinatario}: ${
         error instanceof Error ? error.message : 'error desconocido'
       }`,
     )
-    return { enviado: false, transporte: 'ninguno', motivo: 'red' }
-  }
-}
-
-/**
- * Resend como transporte alternativo/de respaldo.
- *
- * Manda lo mismo que Brevo: subject, HTML y remitente verificado. La API
- * de Resend acepta Authorization: Bearer. Sin clave, no configura esta
- * rama y se usa Brevo/consola.
- */
-async function enviarPorResend(entrada: EntradaDelMail): Promise<ResultadoEnvio> {
-  const remitente = process.env.RESEND_SENDER_EMAIL ?? process.env.BREVO_SENDER_EMAIL!
-  const nombreRemitente = process.env.RESEND_SENDER_NAME ?? process.env.BREVO_SENDER_NAME ?? 'EasyEventQR'
-  const mensaje = construirMensajeBrevo(entrada, remitente, nombreRemitente)
-
-  try {
-    const respuesta = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY!}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `${nombreRemitente} <${remitente}>`,
-        to: [mensaje.to[0].email],
-        subject: mensaje.subject,
-        html: mensaje.htmlContent,
-      }),
-      signal: AbortSignal.timeout(8_000),
-    })
-
-    if (!respuesta.ok) {
-      const cuerpo = await respuesta.text().catch(() => '')
-      console.error(`[mail] Resend respondió ${respuesta.status}: ${cuerpo.slice(0, 500)}`)
-      return { enviado: false, transporte: 'ninguno', motivo: `Resend ${respuesta.status}` }
-    }
-
-    return { enviado: true, transporte: 'resend' }
-  } catch (error) {
-    console.error(`[mail] Resend no se pudo mandar: ${error instanceof Error ? error.message : 'error'}`)
-    return { enviado: false, transporte: 'ninguno', motivo: 'red' }
+    return { enviado: false, transporte: 'ninguno', motivo: 'smtp' }
   }
 }
 

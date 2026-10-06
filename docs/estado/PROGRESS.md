@@ -1,5 +1,36 @@
 # EasyEventQR - Progress Report
 
+## Sesión del 6 Oct 2026 (5ª parte) — Mail por Gmail SMTP, chau Brevo/Resend
+
+**Motivo:** Brevo no entregaba y Resend exige dominio verificado para
+escribirle a invitados (`onboarding@resend.dev` sólo llega a la propia
+cuenta). Gmail SMTP no pide dominio: el remitente es la propia cuenta.
+
+**Cambios:**
+- `src/server/lib/mail.ts` reescrito: único transporte SMTP
+  (`nodemailer@^10`, `smtp.gmail.com:465`, timeouts 8s, App Password sin
+  espacios). Mismo contrato: nunca tira, fallback a consola sin
+  credenciales. Env: `GMAIL_USER` + `GMAIL_APP_PASSWORD` (+ opcional
+  `GMAIL_SENDER_NAME`).
+- `construirMensajeBrevo` → `construirMensaje`, `MensajeBrevo` →
+  `MensajeMail` (sólo subject+HTML se usan); comentarios viejos de Brevo
+  actualizados en `email.ts` y `cupo.ts` (cuota: ~500/día).
+- `.env.example`, README, SPEC, CI_CD, GUIA_MANUAL y SIGUIENTE migrados a
+  `GMAIL_*`; `RESEND_*` sacados del ejemplo y del `.env.local`.
+- `tests/unit/mail.test.ts` nuevo (4 casos: compuerta on/off, fallback a
+  consola sin tirar) + `tests/unit/resolver-js.mjs`: hook de resolución
+  para `--import` porque `mail.ts` importa `./email.js` (obligatorio para
+  Vercel) y `node --test` no lo resuelve. Script `test:unit` actualizado.
+
+**Gates:** typecheck 0 errores · lint 0 errores · unit 199/199 · rules
+90/90 · e2e 7/7 · build OK.
+
+**Pendiente del usuario:** crear App Password (2FA primero), cargar
+`GMAIL_USER` + `GMAIL_APP_PASSWORD` en Vercel, borrar `BREVO_*`/`RESEND_*`,
+redeploy y probar con un registro real.
+
+---
+
 ## Sesión del 6 Oct 2026 (2ª parte) — Demo pública + deuda menor
 
 **Demo local** (`scripts/demo-seed.mjs` + `npm run demo:seed`): organizador,
@@ -53,6 +84,33 @@ unit 187/187 · rules 90/90 · e2e 7/7 · build app+widget OK.
 checkout simulado (`MERCADOPAGO_SIMULADO=true` solo para probar, apagar
 después). Rotar `OPERADOR_SECRET` y el service account filtrados sigue
 pendiente (`docs/operacion/GUIA_MANUAL.md` pasos 1 y 2.1).
+
+---
+
+## Sesión del 6 Oct 2026 (4ª parte) — Presets de landing + reglas a prod
+
+**Reglas a producción.** `firebase deploy --only firestore:rules` corrido
+contra `easyeventqr-dev`: las reglas con los campos nuevos de
+organizador (teléfono, descripción, redes, textos de landing) ya rigen
+en prod. Era la causa raíz de que Cuenta/Marca no guardaran: el bundle
+estaba al día pero las reglas viejas denegaban los writes.
+
+**Presets de landing (Neón / Corporativo / Festival).**
+- `PersonalizacionEvento.tema` + `PRESETS` en `theming.ts` (paleta de 6
+  vars por preset) + `resolverColores()`: custom manda, preset después,
+  default si no hay nada; valores desconocidos se ignoran.
+- `aplicarTema` ahora escribe también superficie/texto/borde (opcionales,
+  compatible hacia atrás).
+- Alta por backend persiste `bannerUrl` y `tema` sanitizados (antes el
+  banner del formulario se perdía al crear); update por
+  `personalizacion.tema`; duplicar arrastra el tema.
+- Picker con preview en `EventoForm`; la landing y el widget resuelven
+  con `resolverColores()`; el endpoint publica `tema` en la whitelist.
+- Sin cambio de reglas (tema no es campo limitado) y 5 tests nuevos en
+  `theming.test.ts`.
+
+**Gates:** typecheck 0 errores · lint 0 errores · unit 195/195 · build
+app+widget OK (preset incluido en `dist/widget/widget.js`).
 
 ---
 
@@ -328,9 +386,9 @@ src/app/pages/admin/
 FIREBASE_SERVICE_ACCOUNT=<json en 1 línea>
 FIREBASE_PROJECT_ID=easyeventqr
 SUPER_ADMIN_UID=<uid de firebase auth>
-BREVO_API_KEY=xkeysib-...
-BREVO_SENDER_EMAIL=remitente@verificado.com
-BREVO_SENDER_NAME=EasyEventQR
+GMAIL_USER=tu-cuenta@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx (App Password, requiere 2FA)
+GMAIL_SENDER_NAME=EasyEventQR
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-...
 MERCADOPAGO_WEBHOOK_SECRET=whsec-...
 OPERADOR_SECRET=<base64 de 32+ chars>

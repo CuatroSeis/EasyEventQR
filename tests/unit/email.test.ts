@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { construirMensajeBrevo, type DatosParaElMail } from '../../src/server/lib/email.ts'
+import { construirMensaje, type DatosParaElMail } from '../../src/server/lib/email.ts'
 
 /**
  * Tests del armado del mail.
@@ -28,8 +28,8 @@ const EVENTO: DatosParaElMail = {
 
 const REMITENTE = 'entradas@easyeventqr.com.ar'
 
-function mensaje(over: Partial<Parameters<typeof construirMensajeBrevo>[0]> = {}, evento: Partial<DatosParaElMail> = {}) {
-  return construirMensajeBrevo(
+function mensaje(over: Partial<Parameters<typeof construirMensaje>[0]> = {}, evento: Partial<DatosParaElMail> = {}) {
+  return construirMensaje(
     {
       destinatario: 'juan@ejemplo.com',
       nombreAsistente: 'Juan Pérez',
@@ -42,7 +42,7 @@ function mensaje(over: Partial<Parameters<typeof construirMensajeBrevo>[0]> = {}
   )
 }
 
-describe('construirMensajeBrevo: a quién y desde quién', () => {
+describe('construirMensaje: a quién y desde quién', () => {
   it('va al asistente, no al organizador', () => {
     const m = mensaje()
     assert.deepEqual(m.to, [{ email: 'juan@ejemplo.com', name: 'Juan Pérez' }])
@@ -64,7 +64,7 @@ describe('construirMensajeBrevo: a quién y desde quién', () => {
   })
 })
 
-describe('construirMensajeBrevo: el token viaja una sola vez', () => {
+describe('construirMensaje: el token viaja una sola vez', () => {
   it('la URL con el token está en el HTML', () => {
     assert.ok(mensaje().htmlContent.includes(URL_QR))
   })
@@ -91,7 +91,7 @@ describe('construirMensajeBrevo: el token viaja una sola vez', () => {
   })
 })
 
-describe('construirMensajeBrevo: nada de lo que no va', () => {
+describe('construirMensaje: nada de lo que no va', () => {
   it('no manda datos del organizador', () => {
     // La función ni los recibe, y el test lo deja fijo: si algún día
     // alguien pasa el evento entero, el mail no puede filtrar el plan
@@ -127,7 +127,7 @@ describe('construirMensajeBrevo: nada de lo que no va', () => {
   })
 })
 
-describe('construirMensajeBrevo: lo que escribe un humano', () => {
+describe('construirMensaje: lo que escribe un humano', () => {
   it('escapa un <script> en el texto de confirmación', () => {
     // El texto lo escribe el organizador y el mail es HTML que renderiza
     // un cliente de correo. Sin escapar, es XSS hacia el asistente.
@@ -173,7 +173,7 @@ describe('construirMensajeBrevo: lo que escribe un humano', () => {
   })
 })
 
-describe('construirMensajeBrevo: la fecha', () => {
+describe('construirMensaje: la fecha', () => {
   it('la escribe en castellano, con el mes en palabras', () => {
     // A propósito no se usa toLocaleDateString: el locale de una
     // función serverless puede no tener los datos de es-AR y el
@@ -190,7 +190,7 @@ describe('construirMensajeBrevo: la fecha', () => {
   })
 })
 
-describe('construirMensajeBrevo: la imagen', () => {
+describe('construirMensaje: la imagen', () => {
   it('va embebida como data URL, no como link a un archivo', () => {
     // Un <img src="https://..."> significa que el cliente de correo
     // descarga de un tercero y le avisa que ese asistente tiene

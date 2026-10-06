@@ -109,7 +109,7 @@ Estado real, verificado con `vercel env ls`:
 | `FIREBASE_SERVICE_ACCOUNT` | Preview, Production | **Development falta** |
 | `OPERADOR_SECRET` | Production | rotar (filtrado en el chat) |
 | `MERCADOPAGO_SIMULADO` | Production | para E2E hace falta `true` |
-| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` | Production | confirmar remitente |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` / `GMAIL_SENDER_NAME` | Production | crear App Password y cargar |
 | `APP_URL` | Production | |
 | `VITE_FIREBASE_*` | Production, Preview | |
 
@@ -117,7 +117,7 @@ Estado real, verificado con `vercel env ls`:
 `project_id` del JSON del service account, y `/api/salud` lo reporta bien.
 
 Si querés que los **previews** funcionen, hay que marcar Preview y Development
-en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `BREVO_*`,
+en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `GMAIL_*`,
 `MERCADOPAGO_SIMULADO` y `FIREBASE_SERVICE_ACCOUNT`.
 
 ### 2.1 Rotar el service account (lo más importante que queda)
@@ -160,7 +160,7 @@ En este orden:
 
 1. **Recorrer los 12 pasos** de [`../arquitectura/ENDPOINTS.md`](../arquitectura/ENDPOINTS.md).
    Es la lista de verificación del MVP y nunca se corrió completa.
-2. **Mail real**: `BREVO_API_KEY` + remitente verificado. Sin esto el flujo
+2. **Mail real**: `GMAIL_USER` + `GMAIL_APP_PASSWORD`. Sin esto el flujo
    anda entero pero el mail sale por consola, y el QR es lo único que separa
    "tener entrada" de "no tenerla".
 3. **`OPERADOR_SECRET`**: rotar el que se pegó en el chat (32+ caracteres).

@@ -3,6 +3,7 @@
 // el type-stripping nativo de Node y resuelven en modo "nodenext", donde
 // un import sin extensión no compila.
 import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
+import { esTemaPreset } from '../shared/theming.ts'
 import { generarCodigoCorto, generarSlug, normalizarTexto } from '../shared/utils.ts'
 
 /**
@@ -27,6 +28,7 @@ export interface BorradorEvento {
   precioEntrada: number | null
   bannerUrl: string | null
   visibilidad: 'publico' | 'privado'
+  tema?: import('../shared/types.ts').TemaPreset | null
 }
 
 /**
@@ -50,6 +52,7 @@ function personalizacionVacia(): PersonalizacionEvento {
     colorSecundario: null,
     textoBienvenida: null,
     textoConfirmacion: null,
+    tema: null,
   }
 }
 
@@ -89,6 +92,9 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
     personalizacion: {
       ...personalizacionVacia(),
       bannerUrl: borrador.bannerUrl?.trim() || null,
+      // Sólo llaves conocidas: un `tema: 'xss'` desde la consola cae a null
+      // y la landing muestra el default en vez de algo inventado.
+      tema: esTemaPreset(borrador.tema ?? null) ? borrador.tema as import('../shared/types.ts').TemaPreset : null,
     },
     // El código corto nace acá con formato válido, pero la UNICIDAD real
     // la garantiza el backend (POST /api/eventos) con transacción: dos
@@ -221,6 +227,10 @@ export function validarBorrador(
     if (precio === null || !Number.isFinite(precio) || precio <= 0) {
       problemas.push({ campo: 'precioEntrada', mensaje: 'Si el evento es pago, el precio tiene que ser mayor a 0.' })
     }
+  }
+
+  if (borrador.tema !== null && borrador.tema !== undefined && !esTemaPreset(borrador.tema)) {
+    problemas.push({ campo: 'tema', mensaje: 'Ese estilo no existe.' })
   }
 
   if (borrador.bannerUrl && borrador.bannerUrl.trim()) {

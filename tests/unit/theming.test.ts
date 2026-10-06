@@ -244,3 +244,58 @@ describe('aplicarTema', () => {
     assert.equal(props.has('--c-secundario'), false)
   })
 })
+
+describe('presets de landing', () => {
+  it('un tema desconocido se ignora (default del sistema)', async () => {
+    const { resolverColores } = await import('../../src/shared/theming.ts')
+    const r = resolverColores({ colorPrimario: null, colorSecundario: null, tema: 'xss' })
+    assert.equal(r.colorPrimario, null)
+    assert.equal(r.superficie, null)
+  })
+
+  it('el preset pinta los 6 vars cuando no hay custom', async () => {
+    const { resolverColores, PRESETS } = await import('../../src/shared/theming.ts')
+    for (const clave of Object.keys(PRESETS) as Array<keyof typeof PRESETS>) {
+      const r = resolverColores({ colorPrimario: null, colorSecundario: null, tema: clave })
+      assert.equal(r.colorPrimario, PRESETS[clave].paleta.colorPrimario)
+      assert.equal(r.superficie, PRESETS[clave].paleta.superficie)
+      assert.equal(r.texto, PRESETS[clave].paleta.texto)
+    }
+  })
+
+  it('el color custom manda sobre el preset', async () => {
+    const { resolverColores, PRESETS } = await import('../../src/shared/theming.ts')
+    const r = resolverColores({ colorPrimario: '#123456', colorSecundario: null, tema: 'neon' })
+    assert.equal(r.colorPrimario, '#123456')
+    assert.equal(r.colorSecundario, PRESETS.neon.paleta.colorSecundario)
+  })
+
+  it('sin preset ni custom no se toca nada (null = default)', async () => {
+    const { resolverColores } = await import('../../src/shared/theming.ts')
+    const r = resolverColores({ colorPrimario: null, colorSecundario: null, tema: null })
+    assert.deepEqual(r, {
+      colorPrimario: null,
+      colorSecundario: null,
+      superficie: null,
+      texto: null,
+      textoSuave: null,
+      borde: null,
+    })
+  })
+
+  it('aplicarTema escribe los vars extra del preset', async () => {
+    const { aplicarTema, resolverColores } = await import('../../src/shared/theming.ts')
+    const escrito: Record<string, string> = {}
+    const raiz = {
+      style: {
+        setProperty: (k: string, v: string) => { escrito[k] = v },
+        removeProperty: (k: string) => { delete escrito[k] },
+      },
+    }
+    aplicarTema(resolverColores({ colorPrimario: null, colorSecundario: null, tema: 'neon' }), raiz)
+    assert.equal(escrito['--c-superficie'], '#0f172a')
+    assert.equal(escrito['--c-primario'], '#e879f9')
+    // El texto sobre el primario neón se calcula, no se hardcodea.
+    assert.ok(escrito['--c-sobre-primario'] === '#0f172a' || escrito['--c-sobre-primario'] === '#ffffff')
+  })
+})

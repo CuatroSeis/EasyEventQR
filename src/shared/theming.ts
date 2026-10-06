@@ -9,7 +9,7 @@
  * (elemento host del Shadow DOM).
  */
 
-import type { PersonalizacionEvento } from './types.js'
+import type { PersonalizacionEvento, TemaPreset } from './types.js'
 
 /**
  * Lo unico que este modulo necesita del elemento donde escribe.
@@ -31,8 +31,93 @@ export interface RaizCss {
 }
 
 /** Un tema parcial: cada campo ausente significa "no lo toques". */
-export type Tema = Partial<Omit<PersonalizacionEvento, 'bannerUrl' | 'logoUrl'>> &
-  Pick<PersonalizacionEvento, 'colorPrimario' | 'colorSecundario'>
+export type Tema = Partial<Omit<PersonalizacionEvento, 'bannerUrl' | 'logoUrl' | 'tema'>> &
+  Pick<PersonalizacionEvento, 'colorPrimario' | 'colorSecundario'> & {
+    superficie?: string | null | undefined
+    texto?: string | null | undefined
+    textoSuave?: string | null | undefined
+    borde?: string | null | undefined
+  }
+
+/** Paleta completa de un preset: los 6 vars que pinta la landing. */
+export interface PaletaPreset {
+  colorPrimario: string
+  colorSecundario: string
+  superficie: string
+  texto: string
+  textoSuave: string
+  borde: string
+}
+
+export const PRESETS: Record<TemaPreset, { nombre: string; descripcion: string; paleta: PaletaPreset }> = {
+  neon: {
+    nombre: 'Concierto neón',
+    descripcion: 'Fondo oscuro con acentos neón. Shows, fiestas, noche.',
+    paleta: {
+      colorPrimario: '#e879f9',
+      colorSecundario: '#22d3ee',
+      superficie: '#0f172a',
+      texto: '#f1f5f9',
+      textoSuave: '#94a3b8',
+      borde: '#1e293b',
+    },
+  },
+  corporativo: {
+    nombre: 'Corporativo',
+    descripcion: 'Claro y sobrio. Cursos, empresas, meetups.',
+    paleta: {
+      colorPrimario: '#2563eb',
+      colorSecundario: '#0f172a',
+      superficie: '#ffffff',
+      texto: '#0f172a',
+      textoSuave: '#64748b',
+      borde: '#e2e8f0',
+    },
+  },
+  festival: {
+    nombre: 'Festival',
+    descripcion: 'Cálido y vivo. Ferias, aire libre, comida.',
+    paleta: {
+      colorPrimario: '#db2777',
+      colorSecundario: '#7c3aed',
+      superficie: '#fffbeb',
+      texto: '#451a03',
+      textoSuave: '#b45309',
+      borde: '#fde68a',
+    },
+  },
+}
+
+/** Sólo las llaves conocidas valen; el resto es default. */
+export function esTemaPreset(valor: unknown): valor is TemaPreset {
+  return valor === 'neon' || valor === 'corporativo' || valor === 'festival'
+}
+
+/**
+ * Resuelve los colores efectivos de una personalización.
+ *
+ * Precedencia: color custom del organizador > preset > default del sistema
+ * (`null` saca el override y la variable vuelve a `:root`, igual que el
+ * cleanup de la landing).
+ * Los custom sólo cubren primario/secundario (son los únicos editables
+ * a mano); el resto sale del preset si hay uno válido, y si no, queda
+ * `undefined` para que `aplicarTema` no toque nada.
+ */
+export function resolverColores(p: {
+  colorPrimario?: string | null
+  colorSecundario?: string | null
+  tema?: TemaPreset | string | null
+}): Tema {
+  const preset = typeof p.tema === 'string' && esTemaPreset(p.tema) ? PRESETS[p.tema].paleta : null
+  return {
+    colorPrimario: esColorValido(p.colorPrimario ?? undefined) ? (p.colorPrimario as string) : (preset?.colorPrimario ?? null),
+    colorSecundario: esColorValido(p.colorSecundario ?? undefined) ? (p.colorSecundario as string) : (preset?.colorSecundario ?? null),
+    superficie: preset?.superficie ?? null,
+    texto: preset?.texto ?? null,
+    textoSuave: preset?.textoSuave ?? null,
+    borde: preset?.borde ?? null,
+  }
+}
 
 /**
  * Aceptamos sólo hexadecimal. El color viene de un formulario de un
@@ -117,6 +202,10 @@ export function aplicarTema(tema: Tema | null | undefined, raiz: RaizCss): void 
 
   escribirColor(raiz, tema.colorPrimario, '--c-primario', '--c-sobre-primario')
   escribirColor(raiz, tema.colorSecundario, '--c-secundario')
+  escribirColor(raiz, tema.superficie, '--c-superficie')
+  escribirColor(raiz, tema.texto, '--c-texto')
+  escribirColor(raiz, tema.textoSuave, '--c-texto-suave')
+  escribirColor(raiz, tema.borde, '--c-borde')
 }
 
 /**

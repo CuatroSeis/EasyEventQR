@@ -8,7 +8,7 @@
  * IMPORTANTE DE LA FASE
  *
  * El mail es la única parte del flujo que nadie puede verificar en un
- * test end-to-end sin gastar un envío de Brevo de verdad, y sin embargo
+ * test end-to-end sin mandar un mail de verdad, y sin embargo
  * es donde se decide si el token en claro llega a su destino. Por eso el
  * armado del mensaje está en una función pura que no tiene ni la clave de
  * la API ni un `fetch`: el test le pasa una imagen QR falsa y mira lo que
@@ -16,8 +16,8 @@
  *
  * Lo que este archivo NO hace, y por qué:
  *
- *   - No manda. `api/registro.ts` llama a `enviarMail()`, que sí habla con
- *     Brevo. La separación es para que un test pueda assertar sobre el
+ *   - No manda. `api/registro.ts` llama a `enviarMail()` (SMTP, en
+ *     `mail.ts`). La separación es para que un test pueda assertar sobre el
  *     contenido sin red.
  *   - No dibuja el QR. Recibe `imagenQr` ya generada en el servidor con
  *     `api/lib/qr.ts`, para no tener aquí una dependencia de `qrcode`.
@@ -50,14 +50,11 @@ export interface EntradaDelMail {
 }
 
 /**
- * El cuerpo del POST a Brevo, con la forma de /v3/smtp/email.
+ * El mensaje listo para mandar: destinatario, asunto y HTML.
  *
- * OJO con el nombre del remitente: Brevo exige que el remitente esté
- * VERIFICADO en Senders & Domains, y si no, la API responde 400 y el
- * mail no sale. La clave va en el header, no acá, y la pone
- * `api/lib/mail.ts`.
+ * El remitente lo pone el transporte (`mail.ts`), no va acá.
  */
-export interface MensajeBrevo {
+export interface MensajeMail {
   sender: { name: string; email: string }
   to: Array<{ email: string; name: string }>
   subject: string
@@ -141,11 +138,11 @@ function fechaLegible(fechaIso: string): string {
  *     mail es la vista pública del evento.
  *  3. No aparece el email de nadie más, porque la función ni siquiera
  *     lo recibe.
- */export function construirMensajeBrevo(
+ */export function construirMensaje(
   entrada: EntradaDelMail,
   remitente: string,
   nombreRemitente: string = NOMBRE_REMITENTE,
-): MensajeBrevo {
+): MensajeMail {
   const { destinatario, nombreAsistente, urlQr, imagenQr, evento } = entrada
 
   const nombre = escapar(evento.nombre)

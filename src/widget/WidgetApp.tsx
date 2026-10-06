@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { aplicarTema } from '../shared/theming'
+import { aplicarTema, resolverColores } from '../shared/theming'
 
 interface EventoPublico {
   eventoId: string
@@ -18,6 +18,7 @@ interface EventoPublico {
     colorSecundario: string | null
     textoBienvenida: string | null
     textoConfirmacion: string | null
+    tema: string | null
   }
 }
 
@@ -51,10 +52,11 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
     const nodo = cajaRef.current
     if (!nodo || !evento) return
     aplicarTema(
-      {
+      resolverColores({
         colorPrimario: evento.personalizacion?.colorPrimario ?? null,
         colorSecundario: evento.personalizacion?.colorSecundario ?? null,
-      },
+        tema: evento.personalizacion?.tema ?? null,
+      }),
       nodo,
     )
     return () => {

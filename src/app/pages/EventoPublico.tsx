@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 
-import { aplicarTema } from '../../shared/theming'
+import { aplicarTema, resolverColores } from '../../shared/theming'
 import { crearPreferenciaPago, abrirCheckoutMP } from '../../services/pagos'
 
 /**
@@ -56,6 +56,7 @@ interface EventoPublico {
     colorSecundario: string | null
     textoBienvenida: string | null
     textoConfirmacion: string | null
+    tema: string | null
   }
   organizador?: {
     nombre: string
@@ -124,9 +125,10 @@ export default function EventoPublico() {
   }, [currentId])
 
   // El tema del evento, y su limpieza. Ver la nota de arriba.
+  // `resolverColores` mete el preset elegido (el custom manda si hay).
   useEffect(() => {
     if (!evento) return
-    aplicarTema(evento.personalizacion, document.documentElement)
+    aplicarTema(resolverColores(evento.personalizacion), document.documentElement)
     return () => aplicarTema(null, document.documentElement)
   }, [evento])
 

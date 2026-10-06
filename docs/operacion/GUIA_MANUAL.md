@@ -145,9 +145,9 @@ En Vercel, confirmá que estén estas, con estos nombres exactos:
 |---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | JSON del service account, **en una sola línea**, sin comillas |
 | `SUPER_ADMIN_UID` | Paso 3 — ya está en Production |
-| `BREVO_API_KEY` | `xkeysib-…` |
-| `BREVO_SENDER_EMAIL` | remitente **verificado** en Brevo |
-| `BREVO_SENDER_NAME` | `EasyEventQR` |
+| `GMAIL_USER` | tu cuenta de Gmail que envía |
+| `GMAIL_APP_PASSWORD` | App Password de 16 letras (Seguridad → Verificación en 2 pasos → Contraseñas de aplicaciones) |
+| `GMAIL_SENDER_NAME` | `EasyEventQR` |
 | `OPERADOR_SECRET` | Paso 1 |
 | `APP_URL` | `https://easyeventqr.vercel.app` |
 | `MERCADOPAGO_SIMULADO` | Paso 4 |
@@ -157,7 +157,7 @@ service account, y `/api/salud` lo reporta como `easyeventqr-dev`.
 
 **Sobre marcar los tres ambientes:** hoy casi todas están en **Production
 solamente**. Si querés que los previews funcionen, hay que marcar Preview y
-Development en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `BREVO_*` y
+Development en `SUPER_ADMIN_UID`, `OPERADOR_SECRET`, `APP_URL`, `GMAIL_*` y
 `MERCADOPAGO_SIMULADO`. `FIREBASE_SERVICE_ACCOUNT` ya está en Preview y
 Production.
 
@@ -169,9 +169,9 @@ JSON entero en **una línea**. Si tiene saltos de línea, Vercel lo guarda pero
 
 ## Paso 6 — Verificar que llega el mail
 
-**Por qué:** el QR viaja **sólo por mail**. Si Brevo no está configurado o el
-remitente no está verificado, la inscripción "funciona" pero el asistente nunca
-recibe su entrada. Es el eslabón más silencioso de la cadena.
+**Por qué:** el QR viaja **sólo por mail**. Si Gmail SMTP no está configurado
+(`GMAIL_USER` + `GMAIL_APP_PASSWORD`), la inscripción "funciona" pero el
+asistente nunca recibe su entrada. Es el eslabón más silencioso de la cadena.
 
 **Cómo probarlo sin gastar el evento:**
 
@@ -182,10 +182,12 @@ recibe su entrada. Es el eslabón más silencioso de la cadena.
 
 **Si no llega:**
 
-- Brevo Console → verifiqué que el remitente esté en la pestaña **Senders**
-- Mirá el log de la función en Vercel: el log dice `[mail] error: …`
-- Verificá que `BREVO_SENDER_EMAIL` sea **exactamente** el remitente
-  verificado, con el mismo dominio
+- Mirá el log de la función en Vercel: el log dice `[mail] …` con la causa
+  (`EAUTH` = App Password mal o 2FA apagado, `ETIMEDOUT` = red)
+- La App Password son 16 letras (van con o sin espacios) y muere si
+  cambiás la contraseña de Google: hay que generar otra
+- Borrá las viejas `BREVO_*` y `RESEND_*` de Vercel si quedaron: ya no se
+  usan y confunden
 
 ---
 

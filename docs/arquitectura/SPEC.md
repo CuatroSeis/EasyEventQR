@@ -8,7 +8,7 @@
 
 **Target**: Organizadores de eventos (cenas, cursos, conciertos) que necesitan venta/registro sin fricción.
 
-**Stack**: Vite + React 19 + Tailwind v4 + Firebase (Auth, Firestore, Admin SDK) + Vercel (Functions) + Brevo (Mail)
+**Stack**: Vite + React 19 + Tailwind v4 + Firebase (Auth, Firestore, Admin SDK) + Vercel (Functions) + Gmail SMTP (Mail, App Password)
 
 ---
 
@@ -138,7 +138,7 @@ interface Registro {
 6. POST /api/registro → transacción:
    - Crea /registros/{qrHash} con dni, fechaNacimiento
    - Incrementa evento.reservas++
-7. Reserva OK → mail Brevo con QR (token en URL)
+7. Reserva OK → mail por Gmail SMTP con QR (token en URL)
 8. Invitado recibe mail → abre /q/{token} → "Entrada válida"
 9. En puerta: escanean QR → mismo /q/{token} → valida
 ```
@@ -186,7 +186,7 @@ interface Registro {
 |-----|-----------|--------|
 | **Firebase** | Admin SDK, Auth, Firestore, Emulators | `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT` |
 | **Vercel** | Deploy, Functions, Env Vars, Logs | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` |
-| **Brevo** | Mail API, Sender management | `BREVO_API_KEY` |
+| **Gmail SMTP** | Envío de mail con App Password | `GMAIL_USER`, `GMAIL_APP_PASSWORD` |
 | **GitHub** | Issues, PRs, Actions, Releases | `GITHUB_TOKEN` |
 
 ### Development

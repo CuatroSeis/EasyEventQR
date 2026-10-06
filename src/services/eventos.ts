@@ -105,6 +105,7 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
       colorSecundario: null,
       textoBienvenida: null,
       textoConfirmacion: null,
+      tema: null,
       ...(typeof datos.personalizacion === 'object' && datos.personalizacion !== null
         ? datos.personalizacion
         : {}),
@@ -218,6 +219,8 @@ export async function crearEventoBackend(borrador: BorradorEvento): Promise<Even
       requierePago: borrador.requierePago,
       precioEntrada: borrador.precioEntrada,
       visibilidad: borrador.visibilidad,
+      bannerUrl: borrador.bannerUrl,
+      tema: borrador.tema,
     }),
   })
   const data = await resp.json().catch(() => null)
@@ -255,6 +258,7 @@ export async function duplicarEvento(evento: EventoConId): Promise<EventoCreado>
     precioEntrada: evento.precioEntrada,
     bannerUrl: evento.personalizacion?.bannerUrl ?? null,
     visibilidad: evento.visibilidad,
+    tema: evento.personalizacion?.tema ?? null,
   })
 }
 
@@ -325,9 +329,12 @@ export async function actualizarEvento(
     limpio.precioEntrada = cambios.precioEntrada
   }
 
-  // bannerUrl va dentro de personalizacion
+  // bannerUrl y tema van dentro de personalizacion
   if (typeof cambios.bannerUrl === 'string') {
     limpio['personalizacion.bannerUrl'] = cambios.bannerUrl.trim() || null
+  }
+  if (cambios.tema === null || (typeof cambios.tema === 'string' && (cambios.tema === 'neon' || cambios.tema === 'corporativo' || cambios.tema === 'festival'))) {
+    limpio['personalizacion.tema'] = cambios.tema
   }
 
   // La visibilidad es un dato operativo (como `estado`), no un dato del

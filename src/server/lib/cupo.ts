@@ -40,9 +40,9 @@ export interface Configuracion {
  * Los números, y por qué son estos y no otros.
  *
  * `enviosPorHora` y `enviosPorDia` son los que protegen la cuota de
- * Brevo, que en el plan gratis son 300 mails por día. Cada reserva
- * aceptada es un envío, así que el número que hay que proteger no es el
- * tráfico: es el correo. Un límite alto de requests no protege nada que
+ * Gmail (unos 500 mails por día por cuenta). Cada reserva aceptada es
+ * un envío, así que el número que hay que proteger no es el tráfico:
+ * es el correo. Un límite alto de requests no protege nada que
  * importe.
  *
  * `pedidosPorMinuto` es deliberadamente alto porque los operadores

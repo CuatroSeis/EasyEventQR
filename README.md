@@ -109,9 +109,9 @@ En Vercel (`Settings → Environment Variables`):
 | Variable | Para qué | ¿Secreta? |
 |---|---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | Admin SDK en `/api/` | **Sí** |
-| `BREVO_API_KEY` | envío de mail | **Sí** |
-| `BREVO_SENDER_EMAIL` | remitente (tiene que estar verificado en Brevo) | No |
-| `BREVO_SENDER_NAME` | nombre que se ve como remitente | No |
+| `GMAIL_USER` | cuenta que envía el mail | **Sí** |
+| `GMAIL_APP_PASSWORD` | App Password (16 letras, requiere 2FA) | **Sí** |
+| `GMAIL_SENDER_NAME` | nombre que se ve como remitente | No |
 | `APP_URL` | origen público con el que se arma la URL del QR | No |
 | `MERCADOPAGO_*` | Fase 5, vacío en el MVP | **Sí** |
 
@@ -120,7 +120,7 @@ En Vercel (`Settings → Environment Variables`):
 setearla igual, porque el `Host` lo manda el cliente y en producción es la
 única fuente que no se puede falsear.
 
-Sin `BREVO_API_KEY` el registro funciona igual y el mail sale por la consola
+Sin `GMAIL_USER` + `GMAIL_APP_PASSWORD` el registro funciona igual y el mail sale por la consola
 de `vercel dev`. Es el modo en el que se puede probar el circuito entero sin
 gastar un envío de la cuota.
 
