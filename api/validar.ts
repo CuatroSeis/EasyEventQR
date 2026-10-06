@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore'
 import type { Transaction } from 'firebase-admin/firestore'
 import { esFormatoToken, hashearToken } from '../src/server/lib/qr.js'
 import type { Registro } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * La forma en que responde un token inválido.
@@ -190,7 +191,7 @@ async function handleValidarUso(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ ok: false, error: 'La reserva no está confirmada' })
       }
     }
-    console.error('[validar-uso] error:', error)
+    await capturarError(error, { ruta: '[validar-uso]' })
     return res.status(500).json({ ok: false, error: 'Error validando el código' })
   }
 }

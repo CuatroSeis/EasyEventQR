@@ -9,6 +9,7 @@ import { generarToken, hashearToken, imagenQrDe, sha256Hex } from '../src/server
 import { ipDelVisitante, resolverBasePublica, urlQrDe } from '../src/server/lib/url.js'
 import { esTrampa, validarRegistro } from '../src/server/lib/validacion.js'
 import type { Evento, Organizador, Pago, Registro } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * POST /api/registro — la reserva de una entrada.
@@ -297,7 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Esta es la red de seguridad de `enviarMail`, que ya no tira. Si
       // algo se escapa de adentro (por ejemplo, que `qrcode` no esté
       // instalado), la reserva NO se pierde y el log deja rastro.
-      console.error('[registro] falló el envío, la reserva quedó guardada:', error)
+      await capturarError(error, { ruta: '[registro] falló el envío, la reserva quedó guardada:' })
     }
 
     // -----------------------------------------------------------------
@@ -407,7 +408,7 @@ function responderConError(error: unknown, res: VercelResponse) {
     })
   }
 
-  console.error('[registro] error inesperado:', error)
+  void capturarError(error, { ruta: 'registro' })
   return res.status(500).json({ ok: false, error: 'No pudimos completar la reserva.' })
 }
 

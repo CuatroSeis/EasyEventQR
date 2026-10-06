@@ -38,6 +38,22 @@ export function simulacionActiva(): boolean {
   return process.env.MERCADOPAGO_SIMULADO === 'true'
 }
 
+/**
+ * ¿Hay Mercado Pago real configurado?
+ *
+ * Con `MERCADOPAGO_ACCESS_TOKEN` puesto y sin el flag de simulación, los
+ * endpoints de pago salen contra la API de verdad. Sin token ni flag: 501,
+ * porque fingir que hay algo que no hay es peor que negarse.
+ */
+export function modoRealActivo(): boolean {
+  return !simulacionActiva() && Boolean(process.env.MERCADOPAGO_ACCESS_TOKEN)
+}
+
+/** ¿El checkout funciona en cualquiera de los dos modos? */
+export function pagosDisponibles(): boolean {
+  return simulacionActiva() || modoRealActivo()
+}
+
 export interface PreferenceResponse {
   id: string
   init_point: string
@@ -92,10 +108,35 @@ const MOCK_PAYMENTS = new Map<string, {
  */
 export async function crearPreferenceMP(
   externalReference: string,
-  _amount: number,
-  _description: string,
-  _backUrls: { success: string; failure: string; pending: string }
+  amount: number,
+  description: string,
+  backUrls: { success: string; failure: string; pending: string }
 ): Promise<PreferenceResponse> {
+  if (modoRealActivo()) {
+    // Import dinámico: `mercadopago` es pesado y sólo se empaqueta en la
+    // función que lo usa. Mismo patrón que `getAdminAuth()`.
+    const { MercadoPagoConfig, Preference } = await import('mercadopago')
+    const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! })
+    const preference = new Preference(client)
+    const res = await preference.create({
+      body: {
+        items: [{ id: externalReference, title: description, quantity: 1, unit_price: amount }],
+        external_reference: externalReference,
+        back_urls: backUrls,
+        auto_return: 'approved',
+        notification_url: process.env.APP_URL
+          ? `${process.env.APP_URL}/api/pagos/webhook`
+          : undefined,
+      },
+    })
+    return {
+      id: res.id ?? externalReference,
+      init_point: res.init_point ?? '',
+      sandbox_init_point: res.sandbox_init_point ?? '',
+    }
+  }
+
+  // Modo simulado (lo demás de la función, sin cambios).
   const preferenceId = `pref_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
   const paymentId = `pay_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 
@@ -185,7 +226,23 @@ export async function consultarPagoMP(paymentId: string): Promise<{
   status: 'pending' | 'approved' | 'rejected'
   external_reference: string
 } | null> {
-  // Buscar en nuestro mock por paymentId
+  if (modoRealActivo()) {
+    const { MercadoPagoConfig, Payment } = await import('mercadopago')
+    const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! })
+    const payment = new Payment(client)
+    try {
+      const res = await payment.get({ id: paymentId })
+      return {
+        id: String(res.id ?? paymentId),
+        status: (res.status as 'pending' | 'approved' | 'rejected') ?? 'pending',
+        external_reference: res.external_reference ?? '',
+      }
+    } catch {
+      return null
+    }
+  }
+
+  // Modo simulado.
   for (const [, payment] of MOCK_PAYMENTS) {
     if (payment.preferenceId.includes(paymentId.replace('pay_', ''))) {
       return {

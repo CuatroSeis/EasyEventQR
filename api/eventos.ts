@@ -5,6 +5,7 @@ import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 import { normalizarTexto } from '../src/shared/utils.js'
 import { reservarCodigoYSlugEnTransaccion } from '../src/server/lib/codigo.js'
 import type { Evento, Organizador } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * POST /api/eventos — crea un evento con código corto, nombre normalizado y slug en una transacción.
@@ -118,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(201).json({ ok: true, ...resultado! })
   } catch (error) {
-    console.error('[eventos] POST error:', error)
+    await capturarError(error, { ruta: '[eventos] POST error:' })
     return res.status(500).json({ ok: false, error: 'No se pudo crear el evento' })
   }
 }

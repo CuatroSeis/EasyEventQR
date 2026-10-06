@@ -56,6 +56,40 @@ pendiente (`docs/operacion/GUIA_MANUAL.md` pasos 1 y 2.1).
 
 ---
 
+## Sesión del 6 Oct 2026 (3ª parte) — Upgrade de funcionalidades (Fase A-E)
+
+**A. Mercado Pago real.** SDK `mercadopago@^3.6.1` integrado en
+`src/server/lib/mercadopago.ts`: `crearPreferenceMP` crea la preferencia
+real (items, back_urls, external_reference, notification_url),
+`consultarPagoMP` consulta el pago real, `verificarFirmaMP` ya era HMAC
+real (+ ventana de 5 min). Tres modos explícitos:
+
+- `MERCADOPAGO_SIMULADO='true'` → checkout simulado, firma no aplica.
+- `MERCADOPAGO_ACCESS_TOKEN` sin flag → MP real.
+- Ninguno → 501 deliberado.
+
+3 tests nuevos (`modoRealActivo/pagosDisponibles`): 190 unit total.
+
+**B. Sentry.** `src/server/lib/sentry.ts` (`capturarError()`, no-op sin
+DSN, import perezoso, idempotente) cableado en todos los `/api/` que
+logueaban; `@sentry/react` en `src/app/main.tsx` con `VITE_SENTRY_DSN`.
+`.env.example` documenta `SENTRY_DSN` + `VITE_SENTRY_DSN`.
+
+**C. Demo pública.** Hecha en la 2ª parte (`npm run demo:seed` + README).
+
+**D. CI/CD endurecido.** Actions pineadas a SHA (checkout, setup-node,
+setup-java, upload-artifact, github-script) — el comentario del repo
+decía que lo estaban y no era cierto; ahora sí. `test-e2e` ya es job del
+pipeline (2ª parte).
+
+**E. Pulido UI.** Ya hecho en sesiones previas (audit responsive 6
+viewports, 0 issues; tap targets 44px; favicon). Sin cambios nuevos.
+
+**Gates:** typecheck 0 errores · lint 15 warnings preexistentes · unit
+190/190 · rules 90/90 · e2e 7/7 · build OK.
+
+---
+
 ## Estado Actual: ✅ Deploy funcionando, `/admin` abre
 
 ### Sesión del 2 Oct 2026 (2ª parte) — dos bugs, el segundo tapaba al primero
@@ -481,13 +515,18 @@ Los pasos con detalle (dónde se hace, cómo se comprueba) están en
    sesión en vez de la lista, quedó algún `fetch` sin `Authorization`.
 7. **`TOPE_LECTURA = 2000`** en el listado global del panel admin: los filtros
    y el total mienten con más de 2000 registros. No bloquea el MVP.
-8. **Conectar Mercado Pago real.** Hoy `MERCADOPAGO_ACCESS_TOKEN` no lo usa
-   nadie: falta el SDK y la creación de la preferencia real. La simulación
-   cubre el recorrido completo para demo.
+8. ~~**Conectar Mercado Pago real.**~~ Hecho en la sesión del 6 Oct (2ª parte):
+    SDK `mercadopago@^3.6.1` integrado en `src/server/lib/mercadopago.ts`
+    (preferencia real, consulta de pago real, webhook ya validado con HMAC).
+    Activo cuando `MERCADOPAGO_ACCESS_TOKEN` está y `MERCADOPAGO_SIMULADO`
+    no es `'true'`; sin ninguna de las dos, 501. Simulado sigue disponible
+    para demo.
 
 ### Próximas fases
 
-- **Fase 9**: pulido, demo y README
+- **Fase 9**: pulido, demo y README — hecha (demo seed + README en
+  "Demo local").
 - Dominio propio
 - Monitoreo (Sentry / logs estructurados)
-- Mercado Pago real + webhooks reales
+- ~~Mercado Pago real + webhooks reales~~ — hecho: SDK integrado, webhook
+  firmado ya cubierto por tests (Fase A de este upgrade).

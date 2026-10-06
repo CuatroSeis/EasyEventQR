@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore'
 
 import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 const SUPER_ADMIN_UID = process.env.SUPER_ADMIN_UID
 
@@ -161,12 +162,12 @@ async function eliminarMiCuenta(res: VercelResponse, uid: string) {
     try {
       await (await getAdminAuth()).deleteUser(uid)
     } catch (error) {
-      console.error('[me] no se pudo borrar la cuenta de Auth:', error)
+      await capturarError(error, { ruta: '[me] no se pudo borrar la cuenta de Auth:' })
     }
 
     return res.status(200).json({ ok: true, eliminados })
   } catch (error) {
-    console.error('[me] error eliminando cuenta:', error)
+    await capturarError(error, { ruta: '[me] error eliminando cuenta:' })
     return res.status(500).json({ ok: false, error: 'No se pudo eliminar la cuenta.' })
   }
 }

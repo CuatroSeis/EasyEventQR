@@ -7,9 +7,10 @@ import {
   verificarFirmaMP,
   actualizarEstadoPagoMock,
   consultarPagoMP,
-  simulacionActiva,
+  pagosDisponibles as mpDisponibles,
 } from '../src/server/lib/mercadopago.js'
 import type { Registro } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * Por qué los endpoints se niegan cuando `MERCADOPAGO_SIMULADO` no está.
@@ -23,10 +24,10 @@ import type { Registro } from '../src/shared/types.js'
  * existe y está apagada a propósito.
  */
 function pagosDisponibles(res: VercelResponse): boolean {
-  if (simulacionActiva()) return true
+  if (mpDisponibles()) return true
   res.status(501).json({
     ok: false,
-    error: 'Los pagos no están disponibles en este entorno. Mercado Pago real todavía no está integrado.',
+    error: 'Los pagos no están disponibles en este entorno: falta MERCADOPAGO_ACCESS_TOKEN y la simulación está apagada.',
   })
   return false
 }
@@ -97,7 +98,7 @@ async function handlePreference(req: VercelRequest, res: VercelResponse) {
       preferenceId: preference.id,
     })
   } catch (error) {
-    console.error('[pagos/preference] error:', error)
+    await capturarError(error, { ruta: '[pagos/preference]' })
     return res.status(500).json({ ok: false, error: 'No se pudo crear la preferencia de pago' })
   }
 }
@@ -211,7 +212,7 @@ async function handleWebhook(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ ok: true, mensaje: 'Pago aprobado y reserva confirmada' })
   } catch (error) {
-    console.error('[pagos/webhook] error:', error)
+    await capturarError(error, { ruta: '[pagos/webhook]' })
     return res.status(500).json({ ok: false, error: 'Error procesando webhook' })
   }
 }
@@ -255,7 +256,7 @@ async function handleEstado(req: VercelRequest, res: VercelResponse) {
       estado: (snap.data() as Registro).pago?.estado ?? 'no_aplica',
     })
   } catch (error) {
-    console.error('[pagos/estado] error:', error)
+    await capturarError(error, { ruta: '[pagos/estado]' })
     return res.status(500).json({ ok: false, error: 'No pudimos consultar el pago' })
   }
 }
@@ -316,7 +317,7 @@ async function handleResumen(req: VercelRequest, res: VercelResponse) {
       estado: registro.pago.estado,
     })
   } catch (error) {
-    console.error('[pagos/resumen] error:', error)
+    await capturarError(error, { ruta: '[pagos/resumen]' })
     return res.status(500).json({ ok: false, error: 'No pudimos cargar el pago' })
   }
 }

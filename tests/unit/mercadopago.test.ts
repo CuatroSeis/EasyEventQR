@@ -51,6 +51,43 @@ describe('simulacionActiva', () => {
   })
 })
 
+describe('modoRealActivo y pagosDisponibles', () => {
+  const ORIGINAL_SIM = process.env.MERCADOPAGO_SIMULADO
+  const ORIGINAL_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN
+
+  afterEach(() => {
+    if (ORIGINAL_SIM === undefined) delete process.env.MERCADOPAGO_SIMULADO
+    else process.env.MERCADOPAGO_SIMULADO = ORIGINAL_SIM
+    if (ORIGINAL_TOKEN === undefined) delete process.env.MERCADOPAGO_ACCESS_TOKEN
+    else process.env.MERCADOPAGO_ACCESS_TOKEN = ORIGINAL_TOKEN
+  })
+
+  it('sin flag ni token: pagosDisponibles es false (501 a propósito)', async () => {
+    delete process.env.MERCADOPAGO_SIMULADO
+    delete process.env.MERCADOPAGO_ACCESS_TOKEN
+    const { pagosDisponibles, modoRealActivo } = await import('../../src/server/lib/mercadopago.ts')
+    assert.equal(pagosDisponibles(), false)
+    assert.equal(modoRealActivo(), false)
+  })
+
+  it('con token y sin flag: modo real activo, pagos disponibles', async () => {
+    delete process.env.MERCADOPAGO_SIMULADO
+    process.env.MERCADOPAGO_ACCESS_TOKEN = 'APP_USR-prueba'
+    const { pagosDisponibles, modoRealActivo, simulacionActiva } = await import('../../src/server/lib/mercadopago.ts')
+    assert.equal(modoRealActivo(), true)
+    assert.equal(pagosDisponibles(), true)
+    assert.equal(simulacionActiva(), false)
+  })
+
+  it('con el flag prendido el modo real se apaga (simulación gana)', async () => {
+    process.env.MERCADOPAGO_SIMULADO = 'true'
+    process.env.MERCADOPAGO_ACCESS_TOKEN = 'APP_USR-prueba'
+    const { modoRealActivo, simulacionActiva } = await import('../../src/server/lib/mercadopago.ts')
+    assert.equal(modoRealActivo(), false)
+    assert.equal(simulacionActiva(), true)
+  })
+})
+
 describe('verificarFirmaMP', () => {
   const SECRETO = 'whsec_un_secreto_de_prueba_para_firmar'
 

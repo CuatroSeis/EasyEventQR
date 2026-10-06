@@ -13,6 +13,7 @@ import {
   type Organizador,
   type Plan,
 } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * Router del panel super-admin.
@@ -170,7 +171,7 @@ async function auditar(
       creadoEn: new Date(),
     })
   } catch (error) {
-    console.error('[admin] no se pudo auditar:', error)
+    await capturarError(error, { ruta: '[admin] no se pudo auditar:' })
   }
 }
 
@@ -208,7 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ ok: false, error: `Acción desconocida: ${accion}` })
     }
   } catch (error) {
-    console.error(`[admin/${accion}] error:`, error)
+    await capturarError(error, { ruta: `[admin/${accion}] error:` })
     return res.status(500).json({ ok: false, error: 'Error interno del panel.' })
   }
 }
@@ -352,7 +353,7 @@ async function rutasOrganizadores(
     try {
       await (await getAdminAuth()).deleteUser(uid)
     } catch (error) {
-      console.error('[admin] no se pudo borrar la cuenta de Auth:', error)
+      await capturarError(error, { ruta: '[admin] no se pudo borrar la cuenta de Auth:' })
     }
 
     await auditar(db, admin, {

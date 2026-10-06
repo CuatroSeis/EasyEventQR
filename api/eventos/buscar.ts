@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getDb } from '../../src/server/lib/firebase-admin.js'
 import { normalizarTexto } from '../../src/shared/utils.js'
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import { capturarError } from '../../src/server/lib/sentry.js'
 
 /**
  * GET /api/eventos/buscar?q=... — búsqueda pública de eventos.
@@ -96,7 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ ok: true, eventos })
   } catch (error) {
-    console.error('[eventos/buscar] error:', error)
+    await capturarError(error, { ruta: '[eventos/buscar]' })
     return res.status(500).json({ ok: false, error: 'No pudimos buscar el evento.' })
   }
 }

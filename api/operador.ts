@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 import { getAdminAuth, getDb } from '../src/server/lib/firebase-admin.js'
 import { SignJWT, jwtVerify } from 'jose'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 /**
  * Secreto de firma de los links de operador.
@@ -102,7 +103,7 @@ async function handleLink(req: VercelRequest, res: VercelResponse) {
       expiraEn: `${EXPIRACION_HORAS} horas`,
     })
   } catch (error) {
-    console.error('[operador/link] error:', error)
+    await capturarError(error, { ruta: '[operador/link]' })
     return res.status(500).json({ ok: false, error: 'Error generando link' })
   }
 }

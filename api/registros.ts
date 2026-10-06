@@ -8,6 +8,7 @@ import { generarToken, hashearToken, imagenQrDe } from '../src/server/lib/qr.js'
 import { urlQrDe, resolverBasePublica } from '../src/server/lib/url.js'
 import { type EntradaDelMail } from '../src/server/lib/email.js'
 import type { Registro, Evento } from '../src/shared/types.js'
+import { capturarError } from '../src/server/lib/sentry.js'
 
 type FirestoreTimestamp = Timestamp
 
@@ -135,7 +136,7 @@ async function handleListRegistros(req: VercelRequest, res: VercelResponse, db: 
 
     return res.status(200).json({ ok: true, registros, total })
   } catch (error) {
-    console.error('[registros] error:', error)
+    await capturarError(error, { ruta: '[registros]' })
     return res.status(500).json({ ok: false, error: 'Error obteniendo registros' })
   }
 }
@@ -160,7 +161,7 @@ async function handleExportRegistros(res: VercelResponse, db: ReturnType<typeof 
 
     res.send('\uFEFF' + csv)
   } catch (error) {
-    console.error('[registros/export] error:', error)
+    await capturarError(error, { ruta: '[registros/export]' })
     return res.status(500).json({ ok: false, error: 'Error generando CSV' })
   }
 }
@@ -267,7 +268,7 @@ async function handleResendRegistros(req: VercelRequest, res: VercelResponse, db
     // "ya usado" o "no existe" sin explicación.
     return res.status(200).json({ ok: true, enviados, fallidos, tokensRotados: enviados })
   } catch (error) {
-    console.error('[registros/resend] error:', error)
+    await capturarError(error, { ruta: '[registros/resend]' })
     return res.status(500).json({ ok: false, error: 'Error reenviando mails' })
   }
 }
@@ -292,7 +293,7 @@ async function handleRecountRegistros(_req: VercelRequest, res: VercelResponse, 
 
     return res.status(200).json({ ok: true, reservas: resultado.total })
   } catch (error) {
-    console.error('[registros/recount] error:', error)
+    await capturarError(error, { ruta: '[registros/recount]' })
     return res.status(500).json({ ok: false, error: 'Error en reconteo' })
   }
 }
@@ -361,7 +362,7 @@ async function handleActualizarRegistro(
     await ref.update(cambios)
     return res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('[registros/actualizar] error:', error)
+    await capturarError(error, { ruta: '[registros/actualizar]' })
     return res.status(500).json({ ok: false, error: 'No se pudo guardar.' })
   }
 }
@@ -390,7 +391,7 @@ async function handleEliminarRegistro(
     await ref.delete()
     return res.status(200).json({ ok: true })
   } catch (error) {
-    console.error('[registros/eliminar] error:', error)
+    await capturarError(error, { ruta: '[registros/eliminar]' })
     return res.status(500).json({ ok: false, error: 'No se pudo borrar.' })
   }
 }

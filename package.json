@@ -25,10 +25,13 @@
     "auth:admin": "node scripts/asignar-admin.mjs"
   },
   "dependencies": {
+    "@sentry/node": "^11.4.0",
+    "@sentry/react": "^11.4.0",
     "firebase": "^12.19.0",
     "firebase-admin": "^14.5.0",
     "html5-qrcode": "^2.3.8",
     "jose": "^5.10.0",
+    "mercadopago": "^3.6.1",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
