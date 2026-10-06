@@ -97,11 +97,23 @@ export async function enviarMail(entrada: EntradaDelMail): Promise<ResultadoEnvi
   )
 
   try {
+    // El QR va ADJUNTO con CID, no como data URL: Gmail bloquea las
+    // imágenes `data:` y el QR llegaba roto. El botón "Ver mi entrada"
+    // del HTML queda como fallback por si el cliente no muestra el adjunto.
+    const base64 = entrada.imagenQr.includes(',') ? entrada.imagenQr.split(',').slice(1).join(',') : entrada.imagenQr
     await obtenerTransporte().sendMail({
       from: `"${process.env.GMAIL_SENDER_NAME ?? 'EasyEventQR'}" <${process.env.GMAIL_USER}>`,
       to: mensaje.to[0].email,
       subject: mensaje.subject,
       html: mensaje.htmlContent,
+      attachments: [
+        {
+          filename: 'entrada-qr.png',
+          content: Buffer.from(base64, 'base64'),
+          contentType: 'image/png',
+          cid: 'qr-entrada',
+        },
+      ],
     })
     return { enviado: true, transporte: 'smtp' }
   } catch (error) {

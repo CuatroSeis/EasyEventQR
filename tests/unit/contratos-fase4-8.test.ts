@@ -58,7 +58,10 @@ describe('contratos fases 4-8', () => {
     // El token en claro no se guarda: solo su SHA-256, que ES el id del
     // documento. Armar /q/<id> hashea el hash y nunca valida. El QR real
     // viaja solo por mail.
+    // QrPublico dibuja el QR desde el token de la URL (/q/:token): esa
+    // ES la fuente legítima, no un id de documento. Se excluye.
     for (const ruta of [...tsx(join(RAIZ, 'app')), ...tsx(join(RAIZ, 'widget'))]) {
+      if (ruta.endsWith('src/app/pages/QrPublico.tsx')) continue
       const codigo = sinComentarios(readFileSync(ruta, 'utf8'))
       assert.ok(
         !/\/q\/\$\{/.test(codigo),

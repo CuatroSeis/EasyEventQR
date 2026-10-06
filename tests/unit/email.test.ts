@@ -191,12 +191,14 @@ describe('construirMensaje: la fecha', () => {
 })
 
 describe('construirMensaje: la imagen', () => {
-  it('va embebida como data URL, no como link a un archivo', () => {
-    // Un <img src="https://..."> significa que el cliente de correo
-    // descarga de un tercero y le avisa que ese asistente tiene
-    // entrada. El data URL no sale de la máquina del servidor.
+  it('va por CID (adjunto), nunca como data URL ni link externo', () => {
+    // Gmail bloquea imágenes `data:` y el QR llegaba roto. El transporte
+    // (`mail.ts`) adjunta el PNG con `cid:qr-entrada`; acá sólo se fija
+    // la referencia. Un <img src="https://..."> avisaría a un tercero
+    // que ese asistente tiene entrada.
     const html = mensaje({ imagenQr: 'data:image/png;base64,AAAABBBB' }).htmlContent
-    assert.ok(html.includes('data:image/png;base64,AAAABBBB'))
+    assert.ok(html.includes('src="cid:qr-entrada"'), 'el <img> tiene que apuntar al adjunto CID')
+    assert.ok(!html.includes('data:image/png'), 'ningún data URL en el HTML')
     assert.ok(!/<img[^>]+src="https?:/i.test(html), 'la imagen no puede ser un link externo')
   })
 })

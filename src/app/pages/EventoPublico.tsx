@@ -87,6 +87,16 @@ export default function EventoPublico() {
   const [enviando, setEnviando] = useState(false)
   const [reservado, setReservado] = useState(false)
   const [mostrandoForm, setMostrandoForm] = useState(false)
+
+  function irAlFormulario() {
+    setMostrandoForm(true)
+    // El form recién se monta: esperar un tick antes de scrollear.
+    // Con `prefers-reduced-motion` el salto es instantáneo.
+    window.setTimeout(() => {
+      const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      document.getElementById('form-registro')?.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'start' })
+    }, 60)
+  }
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
 
   // El evento de ESTE id, o null. Va antes de los efectos porque los
@@ -192,22 +202,30 @@ export default function EventoPublico() {
         ) : null}
 
         {evento.requierePago && evento.precioEntrada !== null ? (
-          <p className="rounded-lg border border-borde bg-superficie p-3 text-sm font-semibold text-texto">
-            Entrada: ${evento.precioEntrada.toLocaleString('es-AR')}
+          <div className="flex items-baseline gap-2 rounded-xl border border-borde bg-superficie p-4">
+            <p className="text-3xl font-bold text-texto">
+              ${evento.precioEntrada.toLocaleString('es-AR')}
+            </p>
+            <p className="text-sm text-texto-suave">por entrada</p>
+          </div>
+        ) : (
+          <p className="inline-flex items-center rounded-full border border-borde bg-superficie px-3 py-1 text-xs font-bold uppercase tracking-wide text-texto">
+            Entrada gratuita
           </p>
-        ) : null}
+        )}
 
         {!mostrandoForm && !evento.agotado ? (
           <button
             type="button"
-            onClick={() => setMostrandoForm(true)}
-            className="min-h-[56px] w-full rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario"
+            onClick={irAlFormulario}
+            className="min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110"
           >
             Asistir / Comprar entrada
           </button>
         ) : null}
 
         {mostrandoForm ? (
+        <div id="form-registro" className="scroll-mt-4">
         <Formulario
           evento={evento}
           problemas={problemas}
@@ -262,6 +280,22 @@ export default function EventoPublico() {
             }
           }}
         />
+        </div>
+        ) : null}
+        {/* Barra de CTA fija en mobile: el botón siempre al alcance del pulgar. */}
+        {!mostrandoForm && !evento.agotado ? (
+          <>
+            <div aria-hidden="true" className="h-20 sm:hidden" />
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-borde bg-superficie/95 px-4 pb-[env(safe-area-inset-bottom)] pt-3 backdrop-blur sm:hidden">
+              <button
+                type="button"
+                onClick={irAlFormulario}
+                className="min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110"
+              >
+                Asistir / Comprar entrada
+              </button>
+            </div>
+          </>
         ) : null}
       </div>
     </Marco>
@@ -272,26 +306,39 @@ export default function EventoPublico() {
 function Marco({ evento, children }: { evento?: EventoPublico; children: React.ReactNode }) {
   const p = evento?.personalizacion
   return (
-    <main className="min-h-dvh bg-superficie">
+    <main className="min-h-dvh bg-superficie" style={{ fontFamily: "'Source Sans 3', system-ui, sans-serif" }}>
       {p?.bannerUrl ? (
-        <img
-          src={p.bannerUrl}
-          alt=""
-          className="h-40 w-full object-cover sm:h-52"
-          // Una imagen rota no puede romper la landing: el <img> queda
-          // con la altura del banner y nada más.
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
+        <div className="relative">
+          <img
+            src={p.bannerUrl}
+            alt=""
+            className="h-56 w-full object-cover sm:h-72"
+            // Una imagen rota no puede romper la landing: se esconde y
+            // queda el degradado del tema.
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'linear-gradient(to top, var(--c-superficie) 4%, transparent 55%)' }}
+          />
+        </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="h-24 w-full sm:h-32"
+          style={{ background: 'linear-gradient(135deg, var(--c-primario), var(--c-secundario))' }}
         />
-      ) : null}
+      )}
 
-      <div className="mx-auto max-w-lg px-4 py-8 sm:py-12">
+      <div className="mx-auto -mt-10 max-w-lg px-4 pb-8 sm:py-12 sm:pt-0">
         {p?.logoUrl ? (
           <img
             src={p.logoUrl}
             alt=""
-            className="mb-6 h-12 w-auto"
+            className="mb-6 h-12 w-auto rounded-lg bg-white/80 p-1"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}
@@ -318,6 +365,18 @@ function NoDisponible() {
   )
 }
 
+/** Texto corto de cuenta regresiva ("Faltan 3 días", "¡Es mañana!"). */
+function cuentaRegresiva(iso: string): string | null {
+  const ms = new Date(iso).getTime() - Date.now()
+  if (Number.isNaN(ms) || ms <= 0) return null
+  const dias = Math.floor(ms / 86_400_000)
+  if (dias >= 2) return `Faltan ${dias} días`
+  if (dias === 1) return '¡Es mañana!'
+  const horas = Math.floor(ms / 3_600_000)
+  if (horas >= 1) return `¡Es hoy! Faltan ${horas} h`
+  return '¡Empieza en minutos!'
+}
+
 function Encabezado({ evento }: { evento: EventoPublico }) {
   const fecha = new Date(evento.fecha)
   const cuando = Number.isNaN(fecha.getTime())
@@ -331,10 +390,30 @@ function Encabezado({ evento }: { evento: EventoPublico }) {
       })
 
   return (
-    <header className="space-y-3">
-      <h1 className="text-2xl font-bold leading-tight text-texto sm:text-3xl">{evento.nombre}</h1>
-      <p className="text-sm text-texto-suave">{cuando}</p>
-      {evento.lugar ? <p className="text-sm text-texto-suave">{evento.lugar}</p> : null}
+    <header className="space-y-4">
+      {cuentaRegresiva(evento.fecha) ? (
+        <p className="inline-flex items-center rounded-full bg-primario px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
+          {cuentaRegresiva(evento.fecha)}
+        </p>
+      ) : null}
+      <h1
+        className="text-4xl font-bold leading-none tracking-wide text-texto sm:text-5xl"
+        style={{ fontFamily: "'Bebas Neue', 'Source Sans 3', system-ui, sans-serif" }}
+      >
+        {evento.nombre}
+      </h1>
+      <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-texto-suave">
+        <div className="flex items-center gap-1.5">
+          <dt className="sr-only">Fecha</dt>
+          <dd className="font-semibold text-texto">{cuando}</dd>
+        </div>
+        {evento.lugar ? (
+          <div className="flex items-center gap-1.5">
+            <dt className="sr-only">Lugar</dt>
+            <dd>{evento.lugar}</dd>
+          </div>
+        ) : null}
+      </dl>
 
       {evento.personalizacion.textoBienvenida ? (
         <p className="pt-2 text-sm leading-relaxed text-texto">

@@ -1,5 +1,34 @@
 # EasyEventQR - Progress Report
 
+## Sesión del 6 Oct 2026 (6ª parte) — QR visible + rediseño landing
+
+**1. QR del mail roto.** Causa: Gmail bloquea imágenes `data:`. Ahora el
+PNG viaja **adjunto con CID** (`mail.ts` + `cid:qr-entrada` en el HTML);
+el botón "Ver mi entrada" queda de fallback. Test de `email.test.ts`
+actualizado (prohíbe `data:` y links externos).
+
+**2. `/q/:token` sin QR.** La pantalla validaba pero nunca dibujaba nada.
+Ahora dibuja el QR en `<canvas>` con `qrcode.toCanvas()` desde el token
+de la URL (el servidor no puede devolverlo: sólo guarda el hash). El
+token sigue sin mostrarse como texto.
+
+**3. Rediseño landing** (skill `ui-ux-pro-max`, Google Fonts sí).
+Hero con banner + degradado (o degradado del preset si no hay banner),
+badge de cuenta regresiva, título Bebas Neue, fecha/lugar, precio
+destacado o pill "Entrada gratuita", CTA "Asistir / Comprar entrada"
++ barra sticky en mobile con safe-area, tarjeta "Organizado por".
+Checklist de la skill: contraste, targets 44px+, responsive, sin emojis
+como iconos, `prefers-reduced-motion` respetado en el scroll al form.
+
+**4. Escáner visible.** Botones "Escanear" y "Registros" en cada tarjeta
+del Panel (antes sólo existía dentro de registros). Ruta
+`/panel/eventos/:eventoId/escanear` ya existía; faltaba el acceso.
+
+**Gates:** typecheck 0 errores · lint 0 errores · unit 199/199 · rules
+90/90 · e2e 7/7 · build OK.
+
+---
+
 ## Sesión del 6 Oct 2026 (5ª parte) — Mail por Gmail SMTP, chau Brevo/Resend
 
 **Motivo:** Brevo no entregaba y Resend exige dominio verificado para

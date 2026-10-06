@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import QRCode from 'qrcode'
 
 /**
  * La pantalla del QR, en /q/:token.
@@ -17,10 +18,10 @@ import { useParams, useSearchParams } from 'react-router-dom'
  *   2. Nunca pide sesión ni habla con Firebase. Igual que la landing: va
  *      a /api/validar, que es de sólo lectura.
  *
- *   3. No muestra el token en ningún lado. La URL lo tiene, y con
- *      copiar la dirección de la barra ya se comparte. Si la pantalla
- *      lo pusiera en grande, un screenshot a la pantalla del mostrador
- *      del local sería una entrada válida para cualquiera que lo vea.
+ *   3. El QR se dibuja en un <canvas> desde el token de la URL, con la
+ *      misma librería del servidor. El token nunca se muestra como texto:
+ *      un screenshot del QR igual sirve como entrada, pero eso ya pasa
+ *      con el mail; acá al menos no se puede copiar-pegar el código.
  */
 
 type Veredicto =
@@ -43,6 +44,22 @@ export default function QrPublico() {
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const cargando = resultado === null || resultado.token !== token
   const veredicto = cargando ? ({ estado: 'cargando' } as const) : resultado.veredicto
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // El QR se dibuja en cliente desde el token de la URL: el servidor no
+  // puede devolver la imagen (no guarda el token en claro, sólo su hash).
+  useEffect(() => {
+    if (veredicto.estado !== 'valido' || !token || !canvasRef.current) return
+    // Mismo formato que `urlQrDe()`: /q/<token>?eventoId=<id>.
+    const eventoId = busca.get('eventoId')
+    const url =
+      `${window.location.origin}/q/${token}` + (eventoId ? `?eventoId=${encodeURIComponent(eventoId)}` : '')
+    QRCode.toCanvas(canvasRef.current, url, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 240,
+    }).catch(() => {})
+  }, [veredicto.estado, token, busca])
 
   useEffect(() => {
     document.title = 'Mi entrada · EasyEventQR'
@@ -105,6 +122,12 @@ export default function QrPublico() {
             ✓
           </div>
           <h1 className="text-xl font-bold text-texto">Entrada válida</h1>
+          <canvas
+            ref={canvasRef}
+            className="mx-auto rounded-xl border border-borde bg-white p-2"
+            role="img"
+            aria-label="Código QR de tu entrada"
+          />
           <p className="text-sm text-texto-suave">{veredicto.motivo}</p>
           <p className="text-sm text-texto-suave">Mostrala en la puerta, con el brillo alto.</p>
         </>

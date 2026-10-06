@@ -263,6 +263,25 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         </button>
       </div>
 
+      <div className="mt-2 flex gap-2">
+        <Link
+          to={`/panel/eventos/${evento.id}/escanear`}
+          onClick={(e) => { e.stopPropagation(); }}
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primario px-3 py-1.5 text-xs font-semibold text-sobre-primario transition hover:brightness-110"
+          aria-label={`Escanear entradas de ${evento.nombre}`}
+        >
+          Escanear
+        </Link>
+        <Link
+          to={`/panel/eventos/${evento.id}/registros`}
+          onClick={(e) => { e.stopPropagation(); }}
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition"
+          aria-label={`Ver registros de ${evento.nombre}`}
+        >
+          Registros
+        </Link>
+      </div>
+
       <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">
         <dt className="text-texto-suave">Cuándo</dt>
         <dd className="text-texto">{formatearFecha(evento.fecha)}</dd>

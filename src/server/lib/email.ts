@@ -143,7 +143,10 @@ function fechaLegible(fechaIso: string): string {
   remitente: string,
   nombreRemitente: string = NOMBRE_REMITENTE,
 ): MensajeMail {
-  const { destinatario, nombreAsistente, urlQr, imagenQr, evento } = entrada
+  // `imagenQr` (data URL) ya no va en el HTML: Gmail bloquea imágenes
+  // `data:` y el QR llegaba roto. El transporte la adjunta con CID
+  // (`mail.ts`); acá sólo se necesita `urlQr` para el botón fallback.
+  const { destinatario, nombreAsistente, urlQr, evento } = entrada
 
   const nombre = escapar(evento.nombre)
   const lugar = escapar(evento.lugar)
@@ -182,7 +185,7 @@ function fechaLegible(fechaIso: string): string {
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td align="center" style="padding:8px 0 20px;">
-                      <img src="${escapar(imagenQr)}" alt="Tu código de entrada" width="220" height="220" style="display:block;width:220px;height:220px;border:1px solid #e2e8f0;border-radius:12px;" />
+                      <img src="cid:qr-entrada" alt="Tu código de entrada" width="220" height="220" style="display:block;width:220px;height:220px;border:1px solid #e2e8f0;border-radius:12px;" />
                       <p style="margin:8px 0 0;font-size:12px;color:#64748b;">Mostralo en la puerta, con el brillo alto.</p>
                     </td>
                   </tr>
