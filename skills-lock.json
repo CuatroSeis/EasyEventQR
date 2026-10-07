@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "firebase-security-rules-auditor": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
+      "computedHash": "561c8f8ebbb9c2984cfa08cc4ea29ebfe4b2cb9cf524e5fc7d092af0ad208be8"
+    }
+  }
+}

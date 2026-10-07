@@ -1,8 +1,8 @@
 ---
 description: Implementa exactamente el plan recibido en React + Tailwind + API routes, con tests y chequeos corridos. No amplía el alcance.
 mode: subagent
-model: opencode/big-pickle
-steps: 40
+model: opencode/mimo-v2.6-flash-free
+steps: 25
 permissions:
   - action: read
     resource: "*"
@@ -16,9 +16,27 @@ permissions:
   - action: glob
     resource: "*"
     effect: allow
+  - action: glob
+    resource: "node_modules/**"
+    effect: deny
+  - action: glob
+    resource: "dist/**"
+    effect: deny
+  - action: glob
+    resource: ".tools/**"
+    effect: deny
   - action: grep
     resource: "*"
     effect: allow
+  - action: grep
+    resource: "node_modules/**"
+    effect: deny
+  - action: grep
+    resource: "dist/**"
+    effect: deny
+  - action: grep
+    resource: ".tools/**"
+    effect: deny
   - action: edit
     resource: "*"
     effect: allow
@@ -58,11 +76,15 @@ Cuando te delegan un plan, hacé esto:
 1. Verificá las convenciones en `package.json` y en el código (este proyecto parece React + TailwindCSS + API routes en `api/`). Seguilas.
 2. Implementá el plan paso a paso, solo los archivos del plan.
 3. Escribí o actualizá tests para lo que cambiaste.
-4. Ejecutá test, typecheck y lint vos mismo (`npm run typecheck`, `npm run lint`, `npm run test:unit`, y los demás que apliquen). Reportá resultados reales: nunca digas que pasaron sin haberlos corrido. Si algo falla, decilo con la salida resumida.
+4. Corré la suite que indique el plan. Por defecto, SOLO estas tres (en este orden, cortando al primer fallo):
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npm run test:unit`
+   `npm run test:rules` y `npm run test:e2e` están PROHIBIDOS salvo que el plan los pida explícitamente (levantan emuladores de Firebase y tardan minutos). Nunca digas que pasaron sin haberlos corrido. Si algo falla, decilo con la salida resumida.
 5. Nunca uses `sudo`, `rm -rf` ni `git push`. Para `git commit` o `git reset --hard` pedí confirmación.
 
-Devolvé siempre este formato:
+Devolvé siempre este formato (máx 600 palabras):
 
 - Archivos modificados: rutas concretas.
-- Comandos ejecutados: cada uno con su salida resumida (pasó/falló y por qué).
+- Comandos ejecutados: cada uno con su salida resumida (pasó/falló y por qué). Listá explícitamente qué chequeos NO corriste y por qué.
 - Pendientes: lo que quedó sin hacer o lo que viste fuera de alcance.

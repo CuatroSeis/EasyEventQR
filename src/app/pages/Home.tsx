@@ -143,7 +143,7 @@ export default function Home() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="{t('home.buscar.ph')}"
+              placeholder={t('home.buscar.ph')}
               className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
               disabled={buscando}
               autoComplete="off"
