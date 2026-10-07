@@ -3,6 +3,15 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — /admin esperaba la sesión + login auto-continúa
+- Bug: `AdminPanel` leía `auth.currentUser` una sola vez al montar y
+  expulsaba a `/panel` si Auth aún no restauraba (redirect mobile,
+  /admin directo). Ahora espera con `esperarSesion()` (nuevo
+  `src/services/sesion.ts`, sin imports runtime de Firebase) + timeout 8s.
+- Login: al volver del redirect con sesión, navega solo a destino.
+- Tests `sesion.test.ts` (3 casos con observador falso). Imports `.ts`
+  explícitos en `auth.ts`/`firebase.ts` para `node --test`.
+
 ## Sesión actual — Tema oscuro + i18n + 2 bugs
 - Bug CTA duplicado en mobile: botón en flujo solo desktop (`hidden
   sm:block`), barra fija solo mobile.

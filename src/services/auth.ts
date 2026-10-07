@@ -10,9 +10,10 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 
-import { auth, db } from './firebase'
-import { nuevoDocumentoOrganizador } from './organizadores'
-import type { Organizador } from '../shared/types'
+import { auth, db } from './firebase.ts'
+import { nuevoDocumentoOrganizador } from './organizadores.ts'
+import { esMobile } from './sesion.ts'
+import type { Organizador } from '../shared/types.ts'
 
 /**
  * Login de Google y arranque de la cuenta del organizador.
@@ -30,6 +31,16 @@ export function observarSesion(alCambiar: (usuario: User | null) => void) {
 }
 
 /**
+ * Espera a que Firebase diga si hay sesión o no.
+ *
+ * `auth.currentUser` en el mount miente: vale `null` hasta que Auth
+ * restaura la sesión persistida (rápido en desktop, lento o nunca en
+ * Brave mobile con storage bloqueado). Quien lo leía una sola vez
+ * expulsaba a `/panel` a alguien que un segundo después ya estaba
+ * logueado. Esto espera el primer `onAuthStateChanged` de verdad, con
+ * timeout que resuelve `null` (sin sesión) en vez de colgar.
+ *
+/**
  * `prompt=select_account` para que Google no reutilice en silencio la
  * sesión de otro usuario. Sin ese parámetro, en una máquina compartida
  * el siguiente login entra con la cuenta anterior y ni te enterás.
@@ -39,15 +50,10 @@ export function observarSesion(alCambiar: (usuario: User | null) => void) {
  * blanco. El redirect sale y vuelve; al volver, `observarSesion` ya ve
  * la sesión y `consumirRedirect()` rescata el error si lo hubo.
  * Devuelve `null` cuando delegó al redirect (no hay usuario todavía).
+ *
+ * `esperarSesion` vive en `./sesion.ts` (sin imports runtime de Firebase,
+ * testeable bajo `node --test`).
  */
-export function esMobile(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    (window.matchMedia('(pointer: coarse)').matches ||
-      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent))
-  )
-}
-
 export async function entrarConGoogle(): Promise<User | null> {
   const proveedor = new GoogleAuthProvider()
   proveedor.setCustomParameters({ prompt: 'select_account' })

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { consumirRedirect, entrarConGoogle } from '../../services/auth'
+import { consumirRedirect, entrarConGoogle, observarSesion } from '../../services/auth'
+import { esperarSesion } from '../../services/sesion'
 import { useIdioma } from '../components/IdiomaContext'
 import { firebaseConfigurado } from '../../services/config'
 
@@ -45,6 +46,18 @@ export default function Login() {
       vivo = false
     }
   }, [])
+
+  // Al volver del redirect (mobile) la sesión ya existe: seguir solo
+  // a destino sin pedir otro click. Sin sesión no hace nada.
+  useEffect(() => {
+    let vivo = true
+    void esperarSesion(3000, observarSesion).then((usuario) => {
+      if (vivo && usuario) navegar(destino, { replace: true })
+    })
+    return () => {
+      vivo = false
+    }
+  }, [destino, navegar])
 
   async function manejarLogin() {
     setEstado('entrando')

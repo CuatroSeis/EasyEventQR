@@ -2,7 +2,7 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 
-import { config, firebaseConfigurado } from './config'
+import { config, firebaseConfigurado } from './config.ts'
 
 /**
  * Único lugar donde se inicializa Firebase en el frontend.

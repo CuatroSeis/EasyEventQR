@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { auth } from '../../services/firebase'
+import { esperarSesion } from '../../services/sesion'
+import { observarSesion } from '../../services/auth'
 import { DashboardTab } from './admin/DashboardTab'
 import { OrganizadoresTab } from './admin/OrganizadoresTab'
 import { EventosTab } from './admin/EventosTab'
@@ -42,12 +44,15 @@ export default function AdminPanel() {
     let vigente = true
 
     async function verificar() {
-      const actual = auth.currentUser
+      // Esperar la sesión real en vez de leer `auth.currentUser` una vez:
+      // al abrir /admin directo o volver de un redirect, Auth todavía no
+      // restauró y el snapshot daba `null` → expulsión a /panel con sesión
+      // válida un segundo después.
+      const actual = await esperarSesion(8000, observarSesion)
+      if (!vigente) return
       if (!actual) {
-        if (vigente) {
-          setVerificando(false)
-          navegar('/panel', { replace: true })
-        }
+        setVerificando(false)
+        navegar('/panel', { replace: true })
         return
       }
       if (vigente) setUsuario(actual)
