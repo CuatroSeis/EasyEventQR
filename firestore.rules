@@ -471,20 +471,34 @@ service cloud.firestore {
               || request.resource.data.get('slug', null) == resource.data.get('slug', null));
       }
 
+      // La categoría sólo acepta las llaves cerradas del modelo. Es texto
+      // de etiqueta, no HTML, pero igualmente no dejamos que un cliente
+      // guardado por la consola pueda publicar la landing con algo fuera
+      // del vocabulario que el frontend sabe mostrar.
+      function categoriaEsValida() {
+        let categoria = request.resource.data.get('categoria', null);
+        return categoria == null
+          || categoria == 'space-around'
+          || categoria == 'energy-earth'
+          || categoria == 'trigger-ocean';
+      }
+
       allow create: if esSuperAdmin()
                     || (organizacionActiva() && loCreoComoMio()
                         && request.resource.data.estado == 'activo'
                         && request.resource.data.get('reservas', 0) == 0
                         && capacidadDentroDelPlan()
                         && personalizacionAltaValida()
-                        && identidadAltaValida());
+                        && identidadAltaValida()
+                        && categoriaEsValida());
 
       allow update: if esSuperAdmin()
                     || (esMio() && noCambiaDueno()
                         && noCambiaReservas()
                         && noCambiaIdentidad()
                         && subirCapacidadRespetaElPlan()
-                        && respetaLimitesDePersonalizacion());
+                        && respetaLimitesDePersonalizacion()
+                        && categoriaEsValida());
       allow delete: if esSuperAdmin() || esMio();
     }
 

@@ -636,6 +636,10 @@ export const STRINGS = {
     en: 'Paints the landing with the category colors and text. You can change them freely afterwards.',
   },
   'ef.categoria.ninguna': { es: 'Sin categoría', en: 'No category' },
+  'ef.categoria.editar': {
+    es: 'Cambia la etiqueta de la landing sin modificar los colores ni textos que ya personalizaste.',
+    en: 'Changes the landing badge without modifying your existing colors or text.',
+  },
   'cat.space.nombre': { es: 'Space Around', en: 'Space Around' },
   'cat.space.desc': { es: 'Cósmico y nocturno: violetas profundos para shows y fiestas.', en: 'Cosmic and nocturnal: deep violets for shows and parties.' },
   'cat.energy.nombre': { es: 'Energy Earth', en: 'Energy Earth' },

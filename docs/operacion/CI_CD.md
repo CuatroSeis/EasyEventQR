@@ -7,8 +7,8 @@ Pipeline completo que corre en cada push y PR:
 
 1. **TypeCheck** - `npm run typecheck` (tsc -b)
 2. **Lint** - `npm run lint` (oxlint)
-3. **Unit Tests** - `npm run test:unit` (208 tests)
-4. **Rules Tests** - `npm run test:rules` (90 tests contra emulador)
+3. **Unit Tests** - `npm run test:unit` (222 tests)
+4. **Rules Tests** - `npm run test:rules` (94 tests contra emulador)
 5. **E2E Circuit** - `npm run test:e2e` (7 pasos: reserva, cupo, hash, uso atómico)
 6. **Build** - `npm run build` (app + widget)
 

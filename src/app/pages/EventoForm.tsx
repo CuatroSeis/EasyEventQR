@@ -259,7 +259,7 @@ export default function EventoForm() {
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
         <legend className="px-1 text-sm font-medium text-texto">{txt('ef.categoria')}</legend>
-        <p className="text-xs text-texto-suave">{txt('ef.categoria.d')}</p>
+        <p className="text-xs text-texto-suave">{esNuevo ? txt('ef.categoria.d') : txt('ef.categoria.editar')}</p>
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"

@@ -186,6 +186,39 @@ describe('branding: la excepción comercial del super-admin no se pierde', () =>
   })
 })
 
+describe('categoría del evento', () => {
+  it('A crea con una categoría soportada', async () => {
+    const db = comoA().firestore()
+    await assertSucceeds(
+      setDoc(doc(db, 'eventos', 'evento-con-categoria'), {
+        ...datosEvento(ORG_A, 'Evento categorizado'),
+        categoria: 'energy-earth',
+      }),
+    )
+  })
+
+  it('A NO puede crear con una llave inventada', async () => {
+    const db = comoA().firestore()
+    await assertFails(
+      setDoc(doc(db, 'eventos', 'evento-categoria-trampa'), {
+        ...datosEvento(ORG_A, 'Evento inválido'),
+        categoria: 'xss',
+      }),
+    )
+  })
+
+  it('A edita con una categoría válida o null', async () => {
+    const db = comoA().firestore()
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { categoria: 'trigger-ocean' }))
+    await assertSucceeds(updateDoc(doc(db, 'eventos', EVENTO_A), { categoria: null }))
+  })
+
+  it('A NO edita con una llave inventada', async () => {
+    const db = comoA().firestore()
+    await assertFails(updateDoc(doc(db, 'eventos', EVENTO_A), { categoria: 'xss' }))
+  })
+})
+
 describe('capacidad: el evento no puede exceder lo que da el plan', () => {
   it('A SÍ crea un evento con la capacidad exacta del plan gratis', async () => {
     // El límite de borde: 100 con un tope de 100 tiene que pasar. Si la

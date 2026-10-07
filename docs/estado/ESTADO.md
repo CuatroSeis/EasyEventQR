@@ -7,7 +7,7 @@ que cambie cualquiera de las tres cosas.
 
 ✅ Deploy funcionando (`https://easyeventqr.vercel.app`), `/admin` abre.
 Fases 0–9 + upgrades (MP real, Sentry, presets, SMTP, rotación) hechos.
-Gates en verde: typecheck · lint · unit (208) · rules (90) · e2e (7) · build.
+Gates en verde: typecheck · lint · unit (222) · rules (94) · e2e (7) · build.
 
 ## Pendiente (requiere al operador, no sale del repo)
 
@@ -39,8 +39,8 @@ Gates en verde: typecheck · lint · unit (208) · rules (90) · e2e (7) · buil
 ```bash
 npm run typecheck
 npm run lint          # warnings conocidos, exit 0
-npm run test:unit     # 208 tests
-npm run test:rules    # 90 tests (JRE de .tools/)
+npm run test:unit     # 222 tests
+npm run test:rules    # 94 tests (JRE de .tools/)
 npm run test:e2e      # 7 pasos contra emulador
 npm run build         # app + widget
 ```

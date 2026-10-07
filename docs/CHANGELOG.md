@@ -3,6 +3,17 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — Categoría editable + rules duras
+- Bug: `EventoForm` dejaba cambiar la categoría pero `actualizarEvento()`
+  no la incluía, así que al editar se perdía. Ahora la sanitización vive
+  en `src/services/cambiosEvento.ts` y persiste `categoria`/`null`.
+- `firestore.rules` exige una categoría cerrada (`space-around`,
+  `energy-earth`, `trigger-ocean` o `null`) al crear y al editar.
+- En edición, la categoría solo cambia la insignia; no toca colores ni
+  textos personalizados.
+- Tests: +5 unitarios de limpieza y +4 de reglas.
+- Gates: 222 unit · 94 rules · e2e 7/7 · build OK.
+
 ## Sesión actual — Plantillas por categoría + banner blur
 - `Evento.categoria` (`space-around` | `energy-earth` | `trigger-ocean` |
   null) con tabla curada en `src/shared/categorias.ts`: al crear se

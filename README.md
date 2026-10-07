@@ -141,7 +141,7 @@ node scripts/preparar-service-account.mjs ~/Descargas/proyecto.json --write  # a
 | `npm run build` | Widget primero, después la app (así el widget entra en `dist/`) |
 | `npm run typecheck` | `tsc -b` sobre `src/`, `api/`, `tests/` y las configs |
 | `npm run lint` | oxlint |
-| `npm run test:rules` | Emulador + 90 tests de reglas de seguridad |
+| `npm run test:rules` | Emulador + 94 tests de reglas de seguridad |
 | `npm run test:e2e` | Circuito reserva → cupo → validación → uso atómico contra emulador |
 | `npm run emuladores` | Emuladores de Firestore y Auth a mano (UI en `:4000`) |
 | `npm run test` | typecheck + lint + reglas + e2e, en un comando |
