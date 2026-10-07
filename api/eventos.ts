@@ -6,6 +6,7 @@ import { normalizarTexto } from '../src/shared/utils.js'
 import { reservarCodigoYSlugEnTransaccion } from '../src/server/lib/codigo.js'
 import type { Evento, Organizador } from '../src/shared/types.js'
 import { capturarError } from '../src/server/lib/sentry.js'
+import { CATEGORIAS, esCategoria } from '../src/shared/categorias.js'
 
 /**
  * POST /api/eventos — crea un evento con código corto, nombre normalizado y slug en una transacción.
@@ -59,6 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       precioEntrada: number | null
       visibilidad: 'publico' | 'privado'
       bannerUrl: string | null
+      categoria: string | null
     }>
 
     if (!cuerpo.nombre || !cuerpo.fecha || !cuerpo.lugar) {
@@ -86,6 +88,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof cuerpo.bannerUrl === 'string' && /^https:\/\//.test(cuerpo.bannerUrl.trim())
         ? cuerpo.bannerUrl.trim().slice(0, 500)
         : null
+    // La categoría pre-rellena colores y bienvenida (valores, no un modo:
+    // después se editan libremente). Los colores sólo si el plan deja
+    // customizarlos, o las reglas rechazan el alta.
+    const categoria = esCategoria(cuerpo.categoria) ? cuerpo.categoria : null
+    const sugerencia = categoria ? CATEGORIAS[categoria] : null
+    const conColor = organizador.limitesPersonalizacion.colorPersonalizadoPermitido === true
     const nombreNormalizado = normalizarTexto(nombreLimpio)
     const autorId = uid
 
@@ -111,15 +119,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         personalizacion: {
           bannerUrl,
           logoUrl: null,
-          colorPrimario: null,
-          colorSecundario: null,
-          textoBienvenida: null,
+          colorPrimario: conColor ? (sugerencia?.colorPrimario ?? null) : null,
+          colorSecundario: conColor ? (sugerencia?.colorSecundario ?? null) : null,
+          textoBienvenida: sugerencia?.textoBienvenida ?? null,
           textoConfirmacion: null,
         },
         codigoCorto,
         nombreNormalizado,
         slug,
         visibilidad,
+        categoria,
       }
 
       tx.create(refEvento, eventoData)

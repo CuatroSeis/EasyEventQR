@@ -25,6 +25,8 @@ interface EventoPublico {
   agotado: boolean
   requierePago: boolean
   precioEntrada: number | null
+  /** Categoría estética, o null. La landing la muestra como badge. */
+  categoria: string | null
   personalizacion: {
     bannerUrl: string | null
     logoUrl: string | null
@@ -152,6 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       agotado: lugaresRestantes === 0,
       requierePago: Boolean(evento.requierePago),
       precioEntrada: evento.precioEntrada ?? null,
+      categoria: typeof evento.categoria === 'string' ? evento.categoria : null,
       personalizacion: {
         bannerUrl: limites.bannerPermitido ? p?.bannerUrl ?? null : null,
         logoUrl: limites.logoPermitido ? p?.logoUrl ?? null : null,

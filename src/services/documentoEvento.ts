@@ -1,6 +1,13 @@
 // Extensión explícita: los tests de reglas resuelven en modo "nodenext".
 import type { Evento, PersonalizacionEvento } from '../shared/types.ts'
+import { esCategoria, CATEGORIAS } from '../shared/categorias.ts'
 import { generarCodigoCorto, generarSlug, normalizarTexto } from '../shared/utils.ts'
+
+/** Texto sugerido de la categoría, o null si no hay. */
+function sugerenciaTexto(categoria: unknown): string | null {
+  if (!esCategoria(categoria)) return null
+  return CATEGORIAS[categoria].textoBienvenida
+}
 
 /**
  * La forma del formulario, y el único lugar donde nace un evento.
@@ -24,6 +31,7 @@ export interface BorradorEvento {
   precioEntrada: number | null
   bannerUrl: string | null
   visibilidad: 'publico' | 'privado'
+  categoria: import('../shared/types.ts').CategoriaEvento | null
 }
 
 /**
@@ -86,12 +94,16 @@ export function nuevoDocumentoEvento(organizadorId: string, borrador: BorradorEv
     personalizacion: {
       ...personalizacionVacia(),
       bannerUrl: borrador.bannerUrl?.trim() || null,
+      // Texto sugerido de la categoría (sin límite de plan). Los colores
+      // sugeridos los pone el backend, que sí conoce los límites.
+      textoBienvenida: sugerenciaTexto(borrador.categoria),
     },
     // La unicidad real la garantiza el backend en transacción.
     codigoCorto: generarCodigoCorto(),
     nombreNormalizado: normalizarTexto(nombre),
     slug: generarSlug(nombre),
     visibilidad: borrador.visibilidad,
+    categoria: esCategoria(borrador.categoria) ? borrador.categoria : null,
   }
 }
 
@@ -214,6 +226,10 @@ export function validarBorrador(
     if (precio === null || !Number.isFinite(precio) || precio <= 0) {
       problemas.push({ campo: 'precioEntrada', mensaje: 'Si el evento es pago, el precio tiene que ser mayor a 0.' })
     }
+  }
+
+  if (borrador.categoria !== null && borrador.categoria !== undefined && !esCategoria(borrador.categoria)) {
+    problemas.push({ campo: 'categoria', mensaje: 'Esa categoría no existe.' })
   }
 
   if (borrador.bannerUrl && borrador.bannerUrl.trim()) {

@@ -7,6 +7,16 @@ import { t } from '../../shared/toast'
 import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, duplicarEvento, eliminarEvento, obtenerEvento } from '../../services/eventos'
 import { validarBorrador, type BorradorEvento, type ProblemaDeValidacion } from '../../services/documentoEvento'
 import { useIdioma } from '../components/IdiomaContext'
+import { CATEGORIAS } from '../../shared/categorias'
+import type { CategoriaEvento } from '../../shared/types'
+import type { ClaveTexto } from '../../shared/i18n'
+
+/** Nombres públicos de las categorías (los colores viven en CATEGORIAS). */
+const CAT_NOMBRES: Record<CategoriaEvento, { nombre: ClaveTexto; descripcion: ClaveTexto }> = {
+  'space-around': { nombre: 'cat.space.nombre', descripcion: 'cat.space.desc' },
+  'energy-earth': { nombre: 'cat.energy.nombre', descripcion: 'cat.energy.desc' },
+  'trigger-ocean': { nombre: 'cat.trigger.nombre', descripcion: 'cat.trigger.desc' },
+}
 
 /**
  * Crear y editar un evento. Es el mismo formulario para los dos casos:
@@ -31,6 +41,7 @@ function borradorDesdeFecha(fecha: Date): BorradorEvento {
     precioEntrada: null,
     bannerUrl: null,
     visibilidad: 'privado',
+    categoria: null,
   }
 }
 
@@ -71,6 +82,7 @@ export default function EventoForm() {
           precioEntrada: evento.precioEntrada,
           bannerUrl: evento.personalizacion?.bannerUrl ?? null,
           visibilidad: evento.visibilidad,
+          categoria: evento.categoria ?? null,
         })
       })
       .catch(() => {
@@ -244,6 +256,38 @@ export default function EventoForm() {
           onChange={(e) => cambiar('descripcion', e.target.value)}
         />
       </Campo>
+
+      <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
+        <legend className="px-1 text-sm font-medium text-texto">{txt('ef.categoria')}</legend>
+        <p className="text-xs text-texto-suave">{txt('ef.categoria.d')}</p>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => cambiar('categoria', null)}
+            aria-pressed={borrador.categoria == null}
+            className={`rounded-lg border px-3 py-2 text-xs font-medium ${borrador.categoria == null ? 'border-primario bg-primario/10 text-texto' : 'border-borde text-texto-suave'}`}
+          >
+            {txt('ef.categoria.ninguna')}
+          </button>
+          {(Object.keys(CATEGORIAS) as Array<CategoriaEvento>).map((clave) => (
+            <button
+              key={clave}
+              type="button"
+              onClick={() => cambiar('categoria', clave)}
+              aria-pressed={borrador.categoria === clave}
+              title={txt(CAT_NOMBRES[clave].descripcion)}
+              className={`rounded-lg border px-3 py-2 text-left ${borrador.categoria === clave ? 'border-primario' : 'border-borde'}`}
+            >
+              <span
+                className="mb-1 flex h-6 overflow-hidden rounded"
+                style={{ background: `linear-gradient(135deg, ${CATEGORIAS[clave].colorPrimario}, ${CATEGORIAS[clave].colorSecundario})` }}
+              />
+              <span className="block text-xs font-medium text-texto">{txt(CAT_NOMBRES[clave].nombre)}</span>
+            </button>
+          ))}
+        </div>
+        {mensaje('categoria') ? <p className="text-xs text-red-600">{mensaje('categoria')}</p> : null}
+      </fieldset>
 
       <Campo
         etiqueta={txt('ef.banner')}

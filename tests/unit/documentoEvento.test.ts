@@ -35,6 +35,7 @@ function borradorValido(extra: Partial<BorradorEvento> = {}): BorradorEvento {
     precioEntrada: null,
     bannerUrl: null,
     visibilidad: 'privado',
+    categoria: null,
     ...extra,
   }
 }
@@ -279,5 +280,30 @@ describe('texto libre del evento', () => {
       validarBorrador(borradorValido({ descripcion: 'c'.repeat(1001) }), 100).some((p) => p.campo === 'descripcion'),
       'descripcion debería tener tope de 1000',
     )
+  })
+})
+
+describe('categoria', () => {
+  it('acepta las tres llaves y null', () => {
+    for (const categoria of ['space-around', 'energy-earth', 'trigger-ocean', null] as const) {
+      assert.deepEqual(validarBorrador(borradorValido({ categoria }), 100), [])
+    }
+  })
+
+  it('rechaza una llave inventada', () => {
+    const problemas = validarBorrador(borradorValido({ categoria: 'xss' as never }), 100)
+    assert.ok(problemas.some((p) => p.campo === 'categoria'))
+  })
+
+  it('escribe la categoría y el texto sugerido', () => {
+    const doc = nuevoDocumentoEvento('org-real', borradorValido({ categoria: 'trigger-ocean' }))
+    assert.equal(doc.categoria, 'trigger-ocean')
+    assert.equal(doc.personalizacion.textoBienvenida, 'Zambullite: tu entrada te espera en la puerta.')
+  })
+
+  it('categoría inválida cae a null en el documento', () => {
+    const doc = nuevoDocumentoEvento('org-real', borradorValido({ categoria: 'xss' as never }))
+    assert.equal(doc.categoria, null)
+    assert.equal(doc.personalizacion.textoBienvenida, null)
   })
 })

@@ -112,6 +112,7 @@ export function datosEvento(
       precioEntrada: null,
       bannerUrl: null,
       visibilidad: 'privado',
+      categoria: null,
     }),
     ...extra,
   }

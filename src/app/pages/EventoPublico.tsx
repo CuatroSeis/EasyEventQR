@@ -24,6 +24,7 @@ interface EventoPublico {
   agotado: boolean
   requierePago: boolean
   precioEntrada: number | null
+  categoria: string | null
   personalizacion: {
     bannerUrl: string | null
     logoUrl: string | null
@@ -261,28 +262,38 @@ export default function EventoPublico() {
   )
 }
 
-/** El marco: banner, logo, y el ancho de lectura en el centro. */
+/** El marco: fondo con blur, logo, y el ancho de lectura en el centro. */
 function Marco({ evento, children }: { evento?: EventoPublico; children: React.ReactNode }) {
   const p = evento?.personalizacion
+  // Con banner, el main va transparente para que se vea el fondo con
+  // blur; el overlay lo funde a superficie donde va el contenido.
   return (
-    <main className="min-h-dvh bg-superficie" style={{ fontFamily: "'Source Sans 3', system-ui, sans-serif" }}>
+    <main className={p?.bannerUrl ? 'min-h-dvh' : 'min-h-dvh bg-superficie'} style={{ fontFamily: "'Source Sans 3', system-ui, sans-serif" }}>
       {p?.bannerUrl ? (
-        <div className="relative">
-          <img
-            src={p.bannerUrl}
-            alt=""
-            className="h-56 w-full object-cover sm:h-72"
-            // Imagen rota = se esconde, queda el degradado.
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{ background: 'linear-gradient(to top, var(--c-superficie) 4%, transparent 55%)' }}
-          />
-        </div>
+        <>
+          {/* Fondo con blur grande: se intuye pero no se distingue. Capa
+              fija para que el contenido la recorra con el scroll. Sin
+              animación (el blur fijo ya pesa en gama baja). */}
+          <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+            <img
+              src={p.bannerUrl}
+              alt=""
+              className="h-full w-full scale-110 object-cover"
+              style={{ filter: 'blur(32px) brightness(.65)' }}
+              onError={(e) => {
+                const capa = e.currentTarget.parentElement
+                if (capa) capa.style.display = 'none'
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(to bottom, color-mix(in srgb, var(--c-superficie) 55%, transparent), var(--c-superficie) 70%)',
+              }}
+            />
+          </div>
+        </>
       ) : (
         <div
           aria-hidden="true"
@@ -291,7 +302,7 @@ function Marco({ evento, children }: { evento?: EventoPublico; children: React.R
         />
       )}
 
-      <div className="mx-auto -mt-10 max-w-lg px-4 pb-8 sm:py-12 sm:pt-0">
+      <div className="relative mx-auto -mt-10 max-w-lg px-4 pb-8 sm:py-12 sm:pt-0">
         {p?.logoUrl ? (
           <img
             src={p.logoUrl}
@@ -321,6 +332,16 @@ function NoDisponible({ t }: { t: Texto }) {
   )
 }
 
+/** Llave i18n del nombre público de la categoría (desconocida = sin badge). */
+function nombreCategoria(
+  categoria: string,
+): 'cat.space.nombre' | 'cat.energy.nombre' | 'cat.trigger.nombre' | null {
+  if (categoria === 'space-around') return 'cat.space.nombre'
+  if (categoria === 'energy-earth') return 'cat.energy.nombre'
+  if (categoria === 'trigger-ocean') return 'cat.trigger.nombre'
+  return null
+}
+
 /** Texto corto de cuenta regresiva. */
 function cuentaRegresiva(iso: string, t: Texto): string | null {
   const ms = new Date(iso).getTime() - Date.now()
@@ -347,11 +368,18 @@ function Encabezado({ evento, t }: { evento: EventoPublico; t: Texto }) {
 
   return (
     <header className="space-y-4">
-      {cuentaRegresiva(evento.fecha, t) ? (
-        <p className="inline-flex items-center rounded-full bg-primario px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
-          {cuentaRegresiva(evento.fecha, t)}
-        </p>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {cuentaRegresiva(evento.fecha, t) ? (
+          <p className="inline-flex items-center rounded-full bg-primario px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
+            {cuentaRegresiva(evento.fecha, t)}
+          </p>
+        ) : null}
+        {evento.categoria && nombreCategoria(evento.categoria) ? (
+          <p className="inline-flex items-center rounded-full border border-borde bg-superficie/80 px-3 py-1 text-xs font-bold uppercase tracking-wide text-texto backdrop-blur">
+            {t(nombreCategoria(evento.categoria)!)}
+          </p>
+        ) : null}
+      </div>
       <h1
         className="text-4xl font-bold leading-none tracking-wide text-texto sm:text-5xl"
         style={{ fontFamily: "'Bebas Neue', 'Source Sans 3', system-ui, sans-serif" }}

@@ -146,7 +146,16 @@ export interface Evento {
   slug: string
   /** Si es 'publico', aparece en búsqueda por nombre. Si es 'privado', solo por link directo. */
   visibilidad: 'publico' | 'privado'
+  /**
+   * Categoría estética (valores iniciales, no un modo). Al crear, si el
+   * organizador no tocó colores ni textos, se escriben los sugeridos de
+   * la categoría; después edita libremente. `null` = sin categoría.
+   */
+  categoria: CategoriaEvento | null
 }
+
+/** Categorías flasheras elegibles. Llaves estables, nombres en i18n. */
+export type CategoriaEvento = 'space-around' | 'energy-earth' | 'trigger-ocean'
 
 export type EstadoRegistro = 'pendiente' | 'aprobado' | 'rechazado'
 export type EstadoPago = 'no_aplica' | 'pendiente' | 'pagado' | 'rechazado'

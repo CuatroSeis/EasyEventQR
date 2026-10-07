@@ -16,6 +16,7 @@ import { db } from './firebase'
 import { nuevoDocumentoEvento, type BorradorEvento } from './documentoEvento'
 import { explicarErrorFirestore } from './errores'
 import { normalizarTexto } from '../shared/utils'
+import { esCategoria } from '../shared/categorias'
 import type { EstadoEvento, Evento, Organizador } from '../shared/types'
 
 /** CRUD de eventos desde el navegador (las reglas ya autorizan al dueño; sin Admin SDK). */
@@ -88,6 +89,7 @@ function aEvento(id: string, datos: Record<string, unknown>): EventoConId {
     nombreNormalizado: String(datos.nombreNormalizado ?? ''),
     slug: String(datos.slug ?? ''),
     visibilidad: datos.visibilidad === 'publico' ? 'publico' : 'privado',
+    categoria: esCategoria(datos.categoria) ? datos.categoria : null,
   }
 }
 
@@ -188,6 +190,7 @@ export async function crearEventoBackend(borrador: BorradorEvento): Promise<Even
       precioEntrada: borrador.precioEntrada,
       visibilidad: borrador.visibilidad,
       bannerUrl: borrador.bannerUrl,
+      categoria: borrador.categoria,
     }),
   })
   const data = await resp.json().catch(() => null)
@@ -221,6 +224,7 @@ export async function duplicarEvento(evento: EventoConId): Promise<EventoCreado>
     precioEntrada: evento.precioEntrada,
     bannerUrl: evento.personalizacion?.bannerUrl ?? null,
     visibilidad: evento.visibilidad,
+    categoria: evento.categoria ?? null,
   })
 }
 

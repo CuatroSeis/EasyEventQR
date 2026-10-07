@@ -3,6 +3,17 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — Plantillas por categoría + banner blur
+- `Evento.categoria` (`space-around` | `energy-earth` | `trigger-ocean` |
+  null) con tabla curada en `src/shared/categorias.ts`: al crear se
+  escriben colores y bienvenida sugeridos (custom manda; colores sólo si
+  el plan deja customizar). Valores, no un modo: después se edita libre.
+- Selector en `EventoForm`, badge en la landing, whitelist en
+  `api/evento-publico`, i18n `cat.*` + `ef.categoria*`. Sin cambio de
+  reglas ni migración (viejos = `null`).
+- Banner como fondo fijo con blur(32px) + overlay a superficie; el
+  contenido la recorre con el scroll. Sin banner: degradado actual.
+
 ## Sesión actual — Presets eliminados
 - Fuera `tema`/`TemaPreset`/`PRESETS`/`resolverColores`: modelo, alta,
   edición, lectura, picker y tests. `aplicarTema` vuelve a primario/
