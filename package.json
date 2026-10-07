@@ -17,6 +17,7 @@
     "preview": "vite preview",
     "emuladores": "node scripts/emuladores.mjs",
     "demo:seed": "node scripts/demo-seed.mjs",
+    "limpiar:tema": "node scripts/limpiar-tema.mjs",
     "test:rules": "node scripts/emuladores.mjs test:rules",
     "test:e2e": "node scripts/emuladores.mjs e2e",
     "test:unit": "node --test --test-reporter=spec --import ./tests/unit/resolver-js.mjs \"tests/unit/*.test.ts\"",

@@ -59,7 +59,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       precioEntrada: number | null
       visibilidad: 'publico' | 'privado'
       bannerUrl: string | null
-      tema: string | null
     }>
 
     if (!cuerpo.nombre || !cuerpo.fecha || !cuerpo.lugar) {
@@ -79,17 +78,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const visibilidad = cuerpo.visibilidad === 'publico' ? 'publico' : 'privado'
-    // bannerUrl y tema viajan en el alta para que no se pierdan: antes el
-    // backend los ignoraba y el banner del formulario nacía en null.
-    // Sanitizados acá: sólo http(s) y sólo llaves de preset conocidas.
-    // El límite del plan (bannerPermitido) lo siguen validando las reglas.
+    // bannerUrl viaja en el alta para que no se pierda: antes el
+    // backend lo ignoraba y el banner del formulario nacía en null.
+    // Sanitizado acá: sólo http(s). El límite del plan (bannerPermitido)
+    // lo siguen validando las reglas.
     const bannerUrl =
       typeof cuerpo.bannerUrl === 'string' && /^https:\/\//.test(cuerpo.bannerUrl.trim())
         ? cuerpo.bannerUrl.trim().slice(0, 500)
-        : null
-    const tema =
-      cuerpo.tema === 'neon' || cuerpo.tema === 'corporativo' || cuerpo.tema === 'festival'
-        ? cuerpo.tema
         : null
     const nombreNormalizado = normalizarTexto(nombreLimpio)
     const autorId = uid
@@ -120,7 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           colorSecundario: null,
           textoBienvenida: null,
           textoConfirmacion: null,
-          tema,
         },
         codigoCorto,
         nombreNormalizado,

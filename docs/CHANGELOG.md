@@ -3,6 +3,13 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — Presets eliminados
+- Fuera `tema`/`TemaPreset`/`PRESETS`/`resolverColores`: modelo, alta,
+  edición, lectura, picker y tests. `aplicarTema` vuelve a primario/
+  secundario (+sobre-primario); el modo claro/oscuro de la app no se toca.
+- `scripts/limpiar-tema.mjs` (+ `npm run limpiar:tema`): borra el campo
+  en documentos viejos (dry-run por defecto, `--apply` con credencial).
+
 ## Sesión actual — /admin esperaba la sesión + login auto-continúa
 - Bug: `AdminPanel` leía `auth.currentUser` una sola vez al montar y
   expulsaba a `/panel` si Auth aún no restauraba (redirect mobile,

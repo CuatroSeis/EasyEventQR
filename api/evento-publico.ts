@@ -32,7 +32,6 @@ interface EventoPublico {
     colorSecundario: string | null
     textoBienvenida: string | null
     textoConfirmacion: string | null
-    tema: string | null
   }
   organizador?: {
     nombre: string
@@ -161,9 +160,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // El evento manda; si no definió, caen los defaults de la cuenta.
         textoBienvenida: p?.textoBienvenida ?? organizador.textoBienvenida ?? null,
         textoConfirmacion: p?.textoConfirmacion ?? organizador.textoConfirmacion ?? null,
-        // La llave del preset viaja tal cual: la landing la resuelve con
-        // `resolverColores()`, que ignora valores desconocidos.
-        tema: typeof p?.tema === 'string' ? p.tema : null,
       },
       // Lo público del organizador: la landing lo usa para "Organizado por".
       organizador: {

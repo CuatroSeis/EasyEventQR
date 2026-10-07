@@ -642,12 +642,6 @@ export const STRINGS = {
   'ef.desc.d': { es: 'Opcional. Sale en la página del evento.', en: 'Optional. Shows on the event page.' },
   'ef.banner': { es: 'Banner (URL)', en: 'Banner (URL)' },
   'ef.banner.d': { es: 'Opcional. Link a una imagen (jpg, png, webp) en Imgur, Drive, Cloudinary, etc.', en: 'Optional. Image link (jpg, png, webp) on Imgur, Drive, Cloudinary, etc.' },
-  'ef.estilo': { es: 'Estilo de la landing', en: 'Landing style' },
-  'ef.estilo.d': {
-    es: 'Un estilo predefinido pinta la página del evento. Si después elegís colores propios en Marca, esos mandan.',
-    en: 'A preset paints the event page. Custom brand colors override it.',
-  },
-  'ef.sinEstilo': { es: 'Sin estilo', en: 'No style' },
   'ef.cupo': { es: 'Cupo', en: 'Capacity' },
   'ef.cupo.d': { es: 'Tu plan permite hasta {n} entradas por evento.', en: 'Your plan allows up to {n} tickets per event.' },
   'ef.quien': { es: 'Quién lo puede encontrar', en: 'Who can find it' },

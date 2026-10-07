@@ -63,7 +63,6 @@ function evento(): Evento {
       colorSecundario: null,
       textoBienvenida: null,
       textoConfirmacion: null,
-      tema: null,
     },
     codigoCorto: 'FEST-1',
     nombreNormalizado: 'fiesta',
