@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { extraerTokenQr, useEscanerQr } from '../components/useEscanerQr'
+import { useIdioma } from '../components/IdiomaContext'
 
 interface OperadorPayload {
   eventoId: string
@@ -13,6 +14,7 @@ type EstadoEscaneo = 'verificando' | 'valido' | 'invalido' | 'ya_usado' | 'error
 
 export default function Operador() {
   const { token } = useParams<{ token: string }>()
+  const { t } = useIdioma()
   const navegar = useNavigate()
   const [estado, setEstado] = useState<EstadoEscaneo>('verificando')
   const [resultado, setResultado] = useState<{
@@ -130,7 +132,7 @@ export default function Operador() {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 animate-pulse">🔍</div>
-        <h1 className="text-xl font-bold text-texto">Verificando credenciales…</h1>
+        <h1 className="text-xl font-bold text-texto">{t('scan.verificando')}</h1>
       </main>
     )
   }
@@ -139,10 +141,10 @@ export default function Operador() {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">✕</div>
-        <h1 className="text-xl font-bold text-texto">Link inválido o expirado</h1>
-        <p className="text-sm text-texto-suave">El link de operador ha expirado o no es válido.</p>
+        <h1 className="text-xl font-bold text-texto">{t('scan.link.malo.t')}</h1>
+        <p className="text-sm text-texto-suave">{t('scan.link.malo.d')}</p>
         <button onClick={volver} className="rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario">
-          Volver al panel
+          {t('comun.volverPanel')}
         </button>
       </main>
     )
@@ -152,10 +154,10 @@ export default function Operador() {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">📷</div>
-        <h1 className="text-xl font-bold text-texto">No se pudo acceder a la c\u00E1mara</h1>
-        <p className="text-sm text-texto-suave">Concede permisos de c\u00E1mara en el navegador e int\u00E9ntalo de nuevo.</p>
+        <h1 className="text-xl font-bold text-texto">{t('scan.camara.t')}</h1>
+        <p className="text-sm text-texto-suave">{t('scan.camara.d')}</p>
         <button onClick={reiniciarEscaneo} className="rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario">
-          Reintentar
+          {t('scan.reintentar')}
         </button>
       </main>
     )
@@ -165,10 +167,10 @@ export default function Operador() {
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col p-6">
       {/* Header */}
       <header className="mb-6">
-        <h1 className="text-lg font-bold text-texto">Control de Acceso</h1>
-        <p className="text-sm text-texto-suave">Evento: {payload?.eventoId}</p>
+        <h1 className="text-lg font-bold text-texto">{t('scan.control')}</h1>
+        <p className="text-sm text-texto-suave">{t('scan.evento')}: {payload?.eventoId}</p>
         <p className="text-xs text-texto-suave mt-1">
-          Link válido hasta: {payload ? new Date(payload.exp * 1000).toLocaleString('es-AR') : '—'}
+          {t('scan.valido.hasta')}: {payload ? new Date(payload.exp * 1000).toLocaleString('es-AR') : '—'}
         </p>
       </header>
 
@@ -188,11 +190,11 @@ export default function Operador() {
         {estado === 'valido' && (
           <div className="rounded-xl border-2 border-green-500 bg-green-50 p-6 text-center animate-bounce-in">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500 mx-auto mb-4 text-3xl text-white">✓</div>
-            <h2 className="text-xl font-bold text-green-800">{resultado.mensaje}</h2>
+            <h2 className="text-xl font-bold text-green-800">{t('scan.ok')}</h2>
             <p className="text-green-700 mt-1"><strong>{resultado.asistente}</strong></p>
             <p className="text-green-600 text-sm">{resultado.evento}</p>
             <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-green-600 px-6 py-2 text-sm font-semibold text-white">
-              Escanear siguiente
+              {t('scan.op.siguiente')}
             </button>
           </div>
         )}
@@ -200,10 +202,10 @@ export default function Operador() {
         {estado === 'ya_usado' && (
           <div className="rounded-xl border-2 border-yellow-500 bg-yellow-50 p-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500 mx-auto mb-4 text-3xl text-white">⚠</div>
-            <h2 className="text-xl font-bold text-yellow-800">Ya fue usado</h2>
+            <h2 className="text-xl font-bold text-yellow-800">{t('scan.usado')}</h2>
             <p className="text-yellow-700 mt-1">{resultado.mensaje}</p>
             <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-yellow-600 px-6 py-2 text-sm font-semibold text-white">
-              Escanear siguiente
+              {t('scan.op.siguiente')}
             </button>
           </div>
         )}
@@ -211,26 +213,26 @@ export default function Operador() {
         {estado === 'invalido' && (
           <div className="rounded-xl border-2 border-red-500 bg-red-50 p-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 mx-auto mb-4 text-3xl text-white">✕</div>
-            <h2 className="text-xl font-bold text-red-800">Código no válido</h2>
+            <h2 className="text-xl font-bold text-red-800">{t('scan.no')}</h2>
             <p className="text-red-700 mt-1">{resultado.mensaje}</p>
             <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-red-600 px-6 py-2 text-sm font-semibold text-white">
-              Intentar de nuevo
+              {t('scan.op.reintentar2')}
             </button>
           </div>
         )}
 
         {estado === 'verificando' && (
           <div className="rounded-xl border border-borde bg-superficie p-6 text-center">
-            <p className="text-texto-suave">Apunta la cámara al código QR de la entrada</p>
+            <p className="text-texto-suave">{t('scan.op.apunta')}</p>
           </div>
         )}
 
         <div className="mt-4 flex gap-3">
           <button onClick={reiniciarEscaneo} className="flex-1 rounded-lg border border-borde px-4 py-2 text-sm font-medium text-texto">
-            Reiniciar escaneo
+            {t('scan.op.reiniciar')}
           </button>
           <button onClick={volver} className="flex-1 rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-sobre-primario">
-            Volver al panel
+            {t('comun.volverPanel')}
           </button>
         </div>
       </div>

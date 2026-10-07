@@ -58,6 +58,19 @@
   --touch-min: 44px;
 }
 
+/* Tema oscuro: mismos nombres, otros valores. Los colores inline que
+   escribe `aplicarTema` (marca del organizador o preset del evento)
+   van por encima, así que el custom sigue mandando en ambos temas. */
+:root[data-theme='oscuro'] {
+  --c-primario: #60a5fa;
+  --c-secundario: #e2e8f0;
+  --c-superficie: #0f172a;
+  --c-texto: #e2e8f0;
+  --c-texto-suave: #94a3b8;
+  --c-borde: #1e293b;
+  --c-sobre-primario: #0f172a;
+}
+
 @layer base {
   html {
     /* Sin esto, iOS agranda el texto solo en los inputs al hacer zoom

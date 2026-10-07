@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import QRCode from 'qrcode'
+import { useIdioma } from '../components/IdiomaContext'
 
 /**
  * La pantalla del QR, en /q/:token.
@@ -35,6 +36,7 @@ type Resultado = { token: string; veredicto: Veredicto }
 
 export default function QrPublico() {
   const { token } = useParams<{ token: string }>()
+  const { t } = useIdioma()
   const [busca] = useSearchParams()
   // Token adentro del estado: el "cargando" se deriva y no se muestra el veredicto anterior.
   const [resultado, setResultado] = useState<Resultado | null>(null)
@@ -57,7 +59,7 @@ export default function QrPublico() {
   }, [veredicto.estado, token, busca])
 
   useEffect(() => {
-    document.title = 'Mi entrada · EasyEventQR'
+    document.title = t('qr.titulo')
   }, [])
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function QrPublico() {
             token,
             veredicto: {
               estado: 'error',
-              motivo: cuerpo?.error ?? 'No pudimos validar el código.',
+              motivo: cuerpo?.error ?? t('qr.error') + '.',
             },
           })
           return
@@ -93,7 +95,7 @@ export default function QrPublico() {
       })
       .catch(() => {
         if (vigente) {
-          setResultado({ token, veredicto: { estado: 'error', motivo: 'No pudimos conectarnos.' } })
+          setResultado({ token, veredicto: { estado: 'error', motivo: t('qr.conexion') } })
         }
       })
 
@@ -107,13 +109,13 @@ export default function QrPublico() {
       <meta name="robots" content="noindex, nofollow" />
 
       {veredicto.estado === 'cargando' ? (
-        <p className="text-sm text-texto-suave">Validando tu código…</p>
+        <p className="text-sm text-texto-suave">{t('qr.cargando')}</p>
       ) : veredicto.estado === 'valido' ? (
         <>
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primario text-4xl text-sobre-primario">
             ✓
           </div>
-          <h1 className="text-xl font-bold text-texto">Entrada válida</h1>
+          <h1 className="text-xl font-bold text-texto">{t('qr.valida')}</h1>
           <canvas
             ref={canvasRef}
             className="mx-auto rounded-xl border border-borde bg-white p-2"
@@ -121,7 +123,7 @@ export default function QrPublico() {
             aria-label="Código QR de tu entrada"
           />
           <p className="text-sm text-texto-suave">{veredicto.motivo}</p>
-          <p className="text-sm text-texto-suave">Mostrala en la puerta, con el brillo alto.</p>
+          <p className="text-sm text-texto-suave">{t('qr.brillo')}</p>
         </>
       ) : (
         <>
@@ -129,14 +131,11 @@ export default function QrPublico() {
             ✕
           </div>
           <h1 className="text-xl font-bold text-texto">
-            {veredicto.estado === 'error' ? 'No pudimos validar' : 'Código no válido'}
+            {veredicto.estado === 'error' ? t('qr.error') : t('qr.no')}
           </h1>
           <p className="text-sm text-texto-suave">{veredicto.motivo}</p>
           {veredicto.estado === 'invalido' ? (
-            <p className="text-xs text-texto-suave">
-              Si recién te registraste, el correo puede tardar un minuto en llegar. Revisá también
-              la carpeta de spam.
-            </p>
+            <p className="text-xs text-texto-suave">{t('qr.spam')}</p>
           ) : null}
         </>
       )}

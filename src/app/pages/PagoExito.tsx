@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { verificarEstadoPago } from '../../services/pagos'
+import { useIdioma } from '../components/IdiomaContext'
 
 /**
  * Página de éxito de pago: /pago/exito?registroId=xxx
  * Verifica el estado y muestra confirmación.
  */
 export default function PagoExito() {
+  const { t } = useIdioma()
   const [busca] = useSearchParams()
   const registroId = busca.get('registroId')
   const [estado, setEstado] = useState<'verificando' | 'aprobado' | 'pendiente' | 'error'>('verificando')
@@ -50,8 +52,8 @@ export default function PagoExito() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 animate-pulse">
           ⏳
         </div>
-        <h1 className="text-xl font-bold text-texto">Verificando tu pago…</h1>
-        <p className="text-sm text-texto-suave">Esto puede tardar unos segundos.</p>
+        <h1 className="text-xl font-bold text-texto">{t('pago.ok.verificando')}</h1>
+        <p className="text-sm text-texto-suave">{t('pago.ok.verificando.d')}</p>
       </main>
     )
   }
@@ -62,13 +64,9 @@ export default function PagoExito() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl text-green-600">
           ✓
         </div>
-        <h1 className="text-xl font-bold text-texto">¡Pago confirmado!</h1>
-        <p className="text-sm text-texto-suave">
-          Tu entrada está confirmada.
-        </p>
-        <p className="text-sm text-texto-suave">
-          Te enviamos el código QR por correo. Revisa tu bandeja de entrada (y spam).
-        </p>
+        <h1 className="text-xl font-bold text-texto">{t('pago.ok.t')}</h1>
+        <p className="text-sm text-texto-suave">{t('pago.ok.d')}</p>
+        <p className="text-sm text-texto-suave">{t('pago.ok.mail')}</p>
         <p className="text-xs text-texto-suave">
           El código viaja en el mail porque el token en claro no se guarda en
           ningún lado: ningún link de esta pantalla puede rearmarlo.
@@ -83,10 +81,8 @@ export default function PagoExito() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 text-3xl text-yellow-600 animate-pulse">
           ⏳
         </div>
-        <h1 className="text-xl font-bold text-texto">Pago pendiente</h1>
-        <p className="text-sm text-texto-suave">
-          El pago está siendo procesado. Recibirás la confirmación por correo en breve.
-        </p>
+        <h1 className="text-xl font-bold text-texto">{t('pago.pend.t')}</h1>
+        <p className="text-sm text-texto-suave">{t('pago.pend.d')}</p>
       </main>
     )
   }
@@ -96,11 +92,8 @@ export default function PagoExito() {
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">
         ✕
       </div>
-      <h1 className="text-xl font-bold text-texto">No pudimos verificar el pago</h1>
-      <p className="text-sm text-texto-suave">
-        Si completaste el pago, revisa tu correo en unos minutos.
-        Si el problema persiste, contacta al organizador.
-      </p>
+      <h1 className="text-xl font-bold text-texto">{t('pago.err.t')}</h1>
+      <p className="text-sm text-texto-suave">{t('pago.err.d')}</p>
     </main>
   )
 }

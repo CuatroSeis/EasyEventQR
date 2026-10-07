@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
+import TemaToggle from '../components/TemaToggle'
+import { useIdioma, IdiomaToggle } from '../components/IdiomaContext'
+
 export default function Home() {
+  const { t } = useIdioma()
   const [query, setQuery] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [resultados, setResultados] = useState<EventoResultado[]>([])
@@ -34,10 +38,10 @@ export default function Home() {
       if (data.eventos && data.eventos.length > 0) {
         setResultados(data.eventos)
       } else {
-        setError('Evento no encontrado. Verificá el código o el nombre.')
+        setError(t('home.buscar.no'))
       }
     } catch {
-      setError('No pudimos buscar. Revisá la conexión.')
+      setError(t('home.buscar.red'))
     } finally {
       setBuscando(false)
     }
@@ -47,10 +51,14 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-10 p-4 pb-12">
+      <div className="flex items-center justify-end gap-2 pt-2">
+        <IdiomaToggle />
+        <TemaToggle />
+      </div>
       {/* Hero: qué es, para quién, qué hacer. */}
-      <header className="pt-10 text-center">
+      <header className="text-center">
         <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
-          Entradas con QR
+          {t('app.tagline')}
         </p>
         <h1
           className="mt-3 text-5xl font-bold leading-none tracking-wide text-texto sm:text-6xl"
@@ -59,35 +67,34 @@ export default function Home() {
           EasyEventQR
         </h1>
         <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
-          Creá tu evento, compartí el link y validá entradas con el celular.
-          Sin apps que instalar, sin vueltas en la puerta.
+          {t('home.hero.bajada')}
         </p>
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
           <Link
             to="/entrar"
             className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition hover:brightness-110"
           >
-            Crear mi evento
+            {t('home.hero.crear')}
           </Link>
           <a
             href="#buscar"
             className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario transition hover:bg-primario/5"
           >
-            Tengo un código
+            {t('home.hero.codigo')}
           </a>
         </div>
       </header>
 
-      {/* Cómo funciona: 3 pasos. */}
+      {/* {t('home.como.titulo')}: 3 pasos. */}
       <section aria-labelledby="como-funciona" className="space-y-4">
         <h2 id="como-funciona" className="text-center text-xl font-bold text-texto">
-          Cómo funciona
+          {t('home.como.titulo')}
         </h2>
         <ol role="list" className="grid gap-3 sm:grid-cols-3">
           {[
-            { n: '1', t: 'Creá tu evento', d: 'Nombre, fecha, lugar, cupo y precio. Te damos un link y un código para compartir.' },
-            { n: '2', t: 'Compartí el link', d: 'El invitado se anota en 1 minuto y recibe su QR por mail. Sin cuentas ni apps.' },
-            { n: '3', t: 'Escaneá en puerta', d: 'Con tu celular o un link para tu equipo. Cada QR vale una sola vez.' },
+            { n: '1', t: t('home.como.1t'), d: t('home.como.1d') },
+            { n: '2', t: t('home.como.2t'), d: t('home.como.2d') },
+            { n: '3', t: t('home.como.3t'), d: t('home.como.3d') },
           ].map((p) => (
             <li key={p.n} className="rounded-xl border border-borde bg-superficie p-4">
               <p aria-hidden="true" className="text-2xl font-bold text-primario">{p.n}</p>
@@ -102,28 +109,28 @@ export default function Home() {
       <section aria-labelledby="para-quien" className="grid gap-3 sm:grid-cols-2">
         <h2 id="para-quien" className="sr-only">Para quién es</h2>
         <div className="rounded-xl border border-borde bg-superficie p-5">
-          <h3 className="font-bold text-texto">Si organizás</h3>
+          <h3 className="font-bold text-texto">{t('home.quien.org.t')}</h3>
           <p className="mt-1 text-sm text-texto-suave">
-            Cursos, cenas, shows, torneos: panel con registros, CSV, reenvío de mails y control de puerta.
+            {t('home.quien.org.d')}
           </p>
           <Link to="/entrar" className="mt-3 inline-block text-sm font-semibold text-primario">
-            Entrar al panel →
+            {t('home.quien.org.link')}
           </Link>
         </div>
         <div className="rounded-xl border border-borde bg-superficie p-5">
-          <h3 className="font-bold text-texto">Si te invitaron</h3>
+          <h3 className="font-bold text-texto">{t('home.quien.inv.t')}</h3>
           <p className="mt-1 text-sm text-texto-suave">
-            Buscá tu evento con el código, anotate y guardá el QR que llega a tu mail.
+            {t('home.quien.inv.d')}
           </p>
           <a href="#buscar" className="mt-3 inline-block text-sm font-semibold text-primario">
-            Buscar mi evento →
+            {t('home.quien.inv.link')}
           </a>
         </div>
       </section>
 
       <section id="buscar" aria-labelledby="invitado-heading" className="scroll-mt-4 space-y-4">
         <h2 id="invitado-heading" className="text-center text-xl font-bold text-texto">
-          Encontrá tu evento
+          {t('home.buscar.titulo')}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto" noValidate>
@@ -136,7 +143,7 @@ export default function Home() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Código (FEST-8K2P) o nombre del evento"
+              placeholder="{t('home.buscar.ph')}"
               className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
               disabled={buscando}
               autoComplete="off"
@@ -153,7 +160,7 @@ export default function Home() {
             disabled={buscando || !query.trim()}
             className="w-full min-h-[56px] rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {buscando ? 'Buscando…' : 'Buscar evento'}
+            {buscando ? t('home.buscar.buscando') : t('home.buscar.boton')}
           </button>
         </form>
 
@@ -187,12 +194,12 @@ export default function Home() {
         )}
 
         <p className="text-center text-xs text-texto-suave">
-          El código es algo como <code className="font-mono">FEST-8K2P</code>.
+          {t('home.buscar.ayuda')} <code className="font-mono">FEST-8K2P</code>.
         </p>
       </section>
 
       <footer className="mt-auto text-center text-xs text-texto-suave">
-        <p>EasyEventQR · La forma simple de gestionar entradas</p>
+        <p>{t('home.pie')}</p>
       </footer>
     </main>
   )

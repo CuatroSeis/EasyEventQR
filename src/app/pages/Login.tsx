@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { entrarConGoogle } from '../../services/auth'
+import { consumirRedirect, entrarConGoogle } from '../../services/auth'
+import { useIdioma } from '../components/IdiomaContext'
 import { firebaseConfigurado } from '../../services/config'
 
 /**
@@ -13,6 +14,7 @@ import { firebaseConfigurado } from '../../services/config'
  * la cuenta de Google.
  */
 export default function Login() {
+  const { t } = useIdioma()
   const [estado, setEstado] = useState<'inicial' | 'entrando' | 'error'>('inicial')
   const [mensaje, setMensaje] = useState('')
   const navegar = useNavigate()
@@ -22,11 +24,35 @@ export default function Login() {
   const destino =
     (ubicacion.state as { desde?: string } | null)?.desde ?? '/panel'
 
+  // Al volver del redirect (mobile) puede haber un error pendiente:
+  // sin esto, una falla queda como pantalla en blanco.
+  useEffect(() => {
+    let vivo = true
+    consumirRedirect().catch((error: unknown) => {
+      if (!vivo) return
+      const codigo = (error as { code?: string }).code ?? ''
+      setEstado('error')
+      setMensaje(
+        codigo === 'auth/account-exists-with-different-credential'
+          ? t('login.duplicada')
+          : codigo === 'auth/unauthorized-domain'
+            ? t('login.noDominio')
+            : t('login.error'),
+      )
+      setEstado('inicial')
+    })
+    return () => {
+      vivo = false
+    }
+  }, [])
+
   async function manejarLogin() {
     setEstado('entrando')
     setMensaje('')
     try {
-      await entrarConGoogle()
+      const usuario = await entrarConGoogle()
+      // `null` = se delegó al redirect: el navegador sale y vuelve solo.
+      if (usuario === null) return
       navegar(destino, { replace: true })
     } catch (error) {
       setEstado('error')
@@ -34,8 +60,10 @@ export default function Login() {
       const codigo = (error as { code?: string }).code ?? ''
       setMensaje(
         codigo === 'auth/popup-closed-by-user'
-          ? 'Cerraste la ventana de Google. Podés intentarlo de nuevo.'
-          : 'No se pudo iniciar sesión. Revisá tu conexión o probá de nuevo.',
+          ? t('login.cerrado')
+          : codigo === 'auth/popup-blocked'
+            ? t('login.bloqueado')
+            : t('login.error'),
       )
       setEstado('inicial')
     }
@@ -44,10 +72,8 @@ export default function Login() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-slate-900">EasyEventQR</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Entrá para gestionar tus eventos y las reservas de tus invitados.
-        </p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('login.titulo')}</h1>
+          <p className="mt-2 text-sm text-slate-600">{t('login.bajada')}</p>
       </div>
 
       <button
@@ -56,7 +82,7 @@ export default function Login() {
         disabled={estado === 'entrando' || !firebaseConfigurado}
         className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario transition disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {estado === 'entrando' ? 'Entrando…' : 'Continuar con Google'}
+          {estado === 'entrando' ? t('login.entrando') : t('login.boton')}
       </button>
 
       {estado === 'error' && mensaje && (
@@ -67,10 +93,9 @@ export default function Login() {
 
       {!firebaseConfigurado && (
         // Errores con paleta fija (no del tema): si no, se confunden con la marca.
-        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-center text-xs text-slate-700">
-          Falta configurar Firebase. Completá el <code>.env</code> y reiniciá{' '}
-          <code>npm run dev</code>. Está todo en el README.
-        </p>
+          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-center text-xs text-slate-700">
+            {t('login.sinFirebase.titulo')}
+          </p>
       )}
 
       {/* `min-h-11` son 44px: el texto sigue siendo de 12px, pero el
@@ -81,7 +106,7 @@ export default function Login() {
         to="/"
         className="inline-flex min-h-11 items-center px-2 text-xs text-slate-500 underline"
       >
-        Volver al inicio
+        {t('login.volver')}
       </Link>
     </main>
   )

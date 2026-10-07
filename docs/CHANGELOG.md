@@ -3,6 +3,19 @@
 Bitácora comprimida por sesión. El detalle vive en el historial de git;
 acá queda qué cambió y por qué, en pocas líneas por sesión.
 
+## Sesión actual — Tema oscuro + i18n + 2 bugs
+- Bug CTA duplicado en mobile: botón en flujo solo desktop (`hidden
+  sm:block`), barra fija solo mobile.
+- Bug login Brave mobile: `signInWithPopup` se cuelga sin popup/cookies;
+  en mobile va por `signInWithRedirect` + `consumirRedirect()` al volver,
+  con mensajes para `popup-blocked`/`unauthorized-domain`.
+- Tema claro/oscuro: vars `[data-theme='oscuro']`, default del sistema,
+  toggle con SVG en panel y home, antiflicker inline en `index.html`;
+  customs de eventos siguen por encima. Tests puros en `tema-idioma`.
+- i18n Es/En: diccionario tipado (`src/shared/i18n.ts`), default del
+  navegador, toggle persistido, pantallas migradas (Home, Login, panel,
+  registros, escáner, cuenta, marca, eventos, admin, pagos, widget).
+
 ## Sesión actual — Deploy único + onboarding
 - CI: fuera los jobs de deploy de Actions; dueña única Vercel Git.
   `VERCEL_*` a borrar de Secrets. Docs (CI_CD, GUIA_MANUAL, ESTADO) al día.

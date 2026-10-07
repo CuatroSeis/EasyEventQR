@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { cerrarEvento, pedirEventos, type EventoAdmin } from '../../../services/admin'
 import { Cargando } from './Cargando'
 import { MensajeError } from './MensajeError'
+import { useIdioma } from '../../components/IdiomaContext'
 
 /**
  * Listado global de eventos con cierre y reapertura.
@@ -13,6 +14,7 @@ import { MensajeError } from './MensajeError'
  * organizador y de las reglas de Firestore.
  */
 export function EventosTab() {
+  const { t } = useIdioma()
   const [eventos, setEventos] = useState<EventoAdmin[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,8 +43,8 @@ export function EventosTab() {
     const destino = evento.estado === 'activo' ? 'cerrado' : 'activo'
     const pregunta =
       destino === 'cerrado'
-        ? `¿Cerrar "${evento.nombre}"? Deja de admitir nuevas reservas.`
-        : `¿Reabrir "${evento.nombre}"? Vuelve a admitir reservas.`
+        ? t('adm.ev.cerrar.q', { nombre: evento.nombre })
+        : t('adm.ev.reabrir.q', { nombre: evento.nombre })
     if (!window.confirm(pregunta)) return
 
     setOcupado(evento.id)
@@ -51,7 +53,7 @@ export function EventosTab() {
       await cerrarEvento(evento.id, destino)
       setEventos((prev) => prev.map((e) => (e.id === evento.id ? { ...e, estado: destino } : e)))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cambiar el estado del evento.')
+      setError(e instanceof Error ? e.message : t('adm.ev.err.estado'))
       await cargar()
     } finally {
       setOcupado(null)
@@ -71,12 +73,12 @@ export function EventosTab() {
 
   const activos = eventos.filter((e) => e.estado === 'activo').length
 
-  if (cargando) return <Cargando etiqueta="Cargando eventos…" />
+  if (cargando) return <Cargando etiqueta={t('adm.ev.cargando')} />
 
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-lg font-bold text-texto">Eventos</h1>
+        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.ev')}</h1>
         <p className="text-sm text-texto-suave">
           {eventos.length} eventos · {activos} activos
         </p>
@@ -87,7 +89,7 @@ export function EventosTab() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, lugar, organizador o id"
+          placeholder={t('adm.ev.buscar')}
           className="campo flex-1"
           aria-label="Buscar evento"
         />
@@ -97,9 +99,9 @@ export function EventosTab() {
           className="campo sm:w-36"
           aria-label="Filtrar por estado"
         >
-          <option value="">Todos</option>
-          <option value="activo">Activos</option>
-          <option value="cerrado">Cerrados</option>
+          <option value="">{t('adm.ev.todos')}</option>
+          <option value="activo">{t('adm.ev.activos')}</option>
+          <option value="cerrado">{t('adm.ev.cerrados')}</option>
         </select>
         <label className="flex items-center gap-2 text-sm text-texto">
           <input
@@ -122,13 +124,13 @@ export function EventosTab() {
           <table className="w-full text-sm">
             <thead className="bg-superficie text-left text-xs text-texto-suave">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Evento</th>
-                <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">Organizador</th>
-                <th scope="col" className="px-3 py-2 font-medium">Fecha</th>
-                <th scope="col" className="px-3 py-2 font-medium">Reservas</th>
-                <th scope="col" className="px-3 py-2 font-medium">Pago</th>
-                <th scope="col" className="px-3 py-2 font-medium">Estado</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">Acciones</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.evento')}</th>
+                <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">{t('adm.th.org')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.fecha')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.reservas')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.pago')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.estado')}</th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -162,7 +164,7 @@ export function EventosTab() {
                       disabled={ocupado === e.id}
                       className="rounded px-2 py-1 text-xs text-texto-suave hover:bg-superficie disabled:opacity-50"
                     >
-                      {e.estado === 'activo' ? 'Cerrar' : 'Reabrir'}
+                      {e.estado === 'activo' ? t('adm.ev.cerrar') : t('adm.ev.reabrir')}
                     </button>
                   </td>
                 </tr>

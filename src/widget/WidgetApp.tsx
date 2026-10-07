@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { leerIdioma, traducir, type ClaveTexto } from '../shared/i18n'
 import { aplicarTema, resolverColores } from '../shared/theming'
 
 interface EventoPublico {
@@ -30,6 +31,8 @@ interface WidgetAppProps {
 }
 
 export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
+  const idioma = leerIdioma()
+  const t = (clave: ClaveTexto, vars?: Record<string, string | number>) => traducir(idioma, clave, vars)
   const [evento, setEvento] = useState<EventoPublico | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -153,11 +156,11 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
           }
           setFieldErrors(newErrors)
         } else {
-          setError(data.error || 'No se pudo completar la reserva')
+          setError(data.error || t('w.err.reserva'))
         }
       }
     } catch {
-      setError('No pudimos conectarnos. Revisá la conexión e intentá de nuevo.')
+      setError(t('w.err.red'))
     } finally {
       setSubmitting(false)
     }
@@ -166,7 +169,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
   if (loading) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>
-        Cargando evento…
+        {t('w.cargando')}
       </div>
     )
   }
@@ -174,7 +177,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
   if (error && !evento) {
     return (
       <div style={{ padding: 24, textAlign: 'center', color: '#dc2626', background: '#fef2f2', borderRadius: 12 }}>
-        No se pudo cargar el evento.<br />
+        {t('w.noCarga')}<br />
         <code>{(error)}</code>
       </div>
     )
@@ -189,14 +192,13 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 16px', fontSize: 28, color: 'white'
         }}>✓</div>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>¡Tu lugar está reservado!</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>{t('w.ok.t')}</h2>
         <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5, marginBottom: 16 }}>
-          Te enviamos el código de entrada a tu correo. Ábrelo, y si no te llega,
-          revisá la carpeta de spam antes de volver a reservar: registrarte dos veces gasta dos lugares.
+          {t('pub.ok.d')}
         </p>
         <div style={{ padding: 12, background: '#f8fafc', borderRadius: 10, fontSize: 13, color: '#475569' }}>
-          <strong>Mostralo en la puerta con el brillo alto.</strong><br />
-          El código es único y personal. No lo compartas.
+          <strong>{t('w.ok.puerta')}</strong><br />
+          {t('w.ok.unico')}
         </div>
       </div>
     )
@@ -247,18 +249,18 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
 
       {evento.requierePago && evento.precioEntrada && (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#fef3c7', borderRadius: 9999, fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 16 }}>
-          La entrada cuesta ${evento.precioEntrada.toLocaleString('es-AR')}. Te enviaremos el link de pago por correo.
+          {t('w.precio', { monto: `$${evento.precioEntrada.toLocaleString('es-AR')}` })}
         </div>
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }} aria-hidden="true">
-          <label htmlFor="sitioWeb">No completar</label>
+          <label htmlFor="sitioWeb">{t('w.trampa')}</label>
           <input id="sitioWeb" name="sitioWeb" type="text" tabIndex={-1} autoComplete="off" />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="nombre">Tu nombre</label>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="nombre">{t('pub.form.nombre')}</label>
           <input
             id="nombre" name="nombre" type="text" required minLength={2} maxLength={80} autoComplete="name"
             placeholder="Juan Pérez"
@@ -273,7 +275,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="email">Tu correo</label>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="email">{t('pub.form.email')}</label>
           <input
             id="email" name="email" type="email" required maxLength={254} autoComplete="email"
             placeholder="juan@ejemplo.com"
@@ -288,7 +290,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="dni">Tu DNI (sin puntos ni guiones)</label>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="dni">{t('pub.form.dni')}</label>
           <input
             id="dni" name="dni" type="text" required pattern="[0-9]{7,8}" maxLength={8} inputMode="numeric"
             placeholder="12345678"
@@ -303,7 +305,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="fechaNacimiento">Fecha de nacimiento</label>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="fechaNacimiento">{t('pub.form.nac')}</label>
           <input
             id="fechaNacimiento" name="fechaNacimiento" type="date" required max={getMaxBirthDate()}
             style={{
@@ -317,7 +319,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="telefono">Tu teléfono (opcional)</label>
+          <label style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }} htmlFor="telefono">{t('pub.form.tel')}</label>
           <input
             id="telefono" name="telefono" type="tel" maxLength={32} autoComplete="tel"
             placeholder="+54 9 11 0000 0000"
@@ -338,7 +340,7 @@ export function WidgetApp({ eventoId, theme }: WidgetAppProps) {
             transition: 'opacity 0.2s'
           }}
         >
-          {submitting ? 'Reservando…' : 'Reservar mi lugar'}
+          {submitting ? t('pub.form.enviando') : t('pub.form.enviar')}
         </button>
 
         <p style={{ fontSize: 12, color: '#64748b', textAlign: 'center', margin: 0 }}>

@@ -2,12 +2,15 @@ import { useState, type FormEvent } from 'react'
 
 import { useOrganizadorEditable } from '../ContextoOrganizador'
 import { guardarBranding, type ColorElegido } from '../../services/branding'
+import { useIdioma } from '../components/IdiomaContext'
+import type { ClaveTexto } from '../../shared/i18n'
 import { colorDeTextoSobre, esColorValido } from '../../shared/theming'
 
 /** Editor de marca: colores, copy de landing y estado del logo (se sube en Cuenta). Los límites los aplica la regla, no esta pantalla. */
 /** Formulario de marca y landing. Vive como sección de Cuenta (misma pantalla, guardados separados por sección). */
 export function SeccionMarca() {
   const { organizador, actualizar } = useOrganizadorEditable()
+  const { t } = useIdioma()
   const [primario, setPrimario] = useState<ColorElegido>(organizador.brandingPanel.colorPrimario)
   const [secundario, setSecundario] = useState<ColorElegido>(
     organizador.brandingPanel.colorSecundario,
@@ -38,7 +41,7 @@ export function SeccionMarca() {
         const { actualizarPerfil } = await import('../../services/perfil')
         await actualizarPerfil(organizador.uid, { textoBienvenida, textoConfirmacion })
       } catch (falloPerfil) {
-        setError(falloPerfil instanceof Error ? falloPerfil.message : 'No se pudo guardar la landing.')
+        setError(falloPerfil instanceof Error ? falloPerfil.message : t('marca.err.landing'))
         return
       }
       setPrimario(actualizado.brandingPanel.colorPrimario)
@@ -50,7 +53,7 @@ export function SeccionMarca() {
       actualizar(actualizado)
       setGuardado(true)
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo guardar.')
+      setError(fallo instanceof Error ? fallo.message : t('marca.err.guardar'))
     } finally {
       setGuardando(false)
     }
@@ -63,11 +66,11 @@ export function SeccionMarca() {
       noValidate
       aria-busy={guardando}
     >
-      <h2 id="marca-heading" className="text-xl font-bold text-texto">Marca y landing</h2>
+      <h2 id="marca-heading" className="text-xl font-bold text-texto">{t('marca.titulo')}</h2>
 
       {guardado ? (
         <p role="status" className="rounded-xl border border-borde p-3 text-sm text-texto">
-          Guardado. El panel ya se ve con esos colores.
+          {t('marca.guardado')}
         </p>
       ) : null}
 
@@ -78,62 +81,64 @@ export function SeccionMarca() {
       ) : null}
 
       <SelectorColor
-        etiqueta="Color principal"
-        ayuda="El color de los botones y las acciones."
+        etiqueta={t('marca.color1')}
+        ayuda={t('marca.color1.d')}
         valor={primario}
         deshabilitado={!colorPermitido}
-        motivo={!colorPermitido ? 'Tu plan no incluye color personalizado.' : undefined}
+        motivo={!colorPermitido ? t('marca.nocolor') : undefined}
         onChange={setPrimario}
+        t={t}
       />
 
       <SelectorColor
-        etiqueta="Color secundario"
-        ayuda="Se usa para los acentos."
+        etiqueta={t('marca.color2')}
+        ayuda={t('marca.color2.d')}
         valor={secundario}
         deshabilitado={!colorPermitido}
-        motivo={!colorPermitido ? 'Tu plan no incluye color personalizado.' : undefined}
+        motivo={!colorPermitido ? t('marca.nocolor') : undefined}
         onChange={setSecundario}
+        t={t}
       />
 
       <fieldset
         disabled
         className="flex flex-col gap-2 rounded-xl border border-dashed border-borde p-4"
       >
-        <legend className="px-1 text-sm font-medium text-texto-suave">Logo</legend>
+        <legend className="px-1 text-sm font-medium text-texto-suave">{t('marca.logo')}</legend>
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-borde text-xs text-texto-suave">
-            {logoPermitido ? organizador.brandingPanel.logoUrl ? '✓' : '—' : 'Bloqueado'}
+            {logoPermitido ? organizador.brandingPanel.logoUrl ? '✓' : '—' : t('marca.logo.bloq')}
           </div>
           <p className="text-xs text-texto-suave">
             {logoPermitido
-              ? 'Subilo desde Mi cuenta → Logo de tu marca.'
-              : 'El logo está disponible en el plan pro+.'}
+              ? t('marca.logo.subir')
+              : t('marca.logo.pro')}
           </p>
         </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
-        <legend className="px-1 text-sm font-medium text-texto">Landing pública</legend>
+        <legend className="px-1 text-sm font-medium text-texto">{t('marca.landing')}</legend>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-texto">Texto de bienvenida (default)</span>
+          <span className="text-sm font-medium text-texto">{t('marca.bienv')}</span>
           <textarea
             className="campo min-h-20"
             value={textoBienvenida}
             onChange={(e) => setTextoBienvenida(e.target.value)}
-            placeholder="Lo primero que lee quien abre el link del evento."
+            placeholder={t('marca.bienv.ph')}
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-texto">Texto de confirmación (default)</span>
+          <span className="text-sm font-medium text-texto">{t('marca.conf')}</span>
           <textarea
             className="campo min-h-16"
             value={textoConfirmacion}
             onChange={(e) => setTextoConfirmacion(e.target.value)}
-            placeholder="Lo que confirmaste al reservar (también va en el mail)."
+            placeholder={t('marca.conf.ph')}
           />
         </label>
         <p className="text-xs text-texto-suave">
-          El evento puede sobreescribir estos textos desde su edición. El banner se sube por evento.
+          {t('marca.landing.d')}
         </p>
       </fieldset>
 
@@ -142,7 +147,7 @@ export function SeccionMarca() {
         disabled={guardando}
         className="min-h-[var(--touch-min)] rounded-xl bg-primario px-4 text-sm font-semibold text-sobre-primario disabled:opacity-60"
       >
-        {guardando ? 'Guardando…' : 'Guardar'}
+        {guardando ? t('marca.guardando') : t('marca.guardar')}
       </button>
     </form>
   )
@@ -156,6 +161,7 @@ function SelectorColor({
   onChange,
   deshabilitado,
   motivo,
+  t,
 }: {
   etiqueta: string
   ayuda: string
@@ -163,6 +169,7 @@ function SelectorColor({
   onChange: (valor: ColorElegido) => void
   deshabilitado: boolean
   motivo?: string
+  t: (clave: ClaveTexto) => string
 }) {
   // type=color no acepta null: mientras tanto se muestra el default.
   const efectivo = valor ?? '#2563eb'
@@ -183,7 +190,7 @@ function SelectorColor({
         <input
           className="campo font-mono"
           value={valor ?? ''}
-          placeholder="Sin personalizar"
+          placeholder={t('marca.sincolor')}
           disabled={deshabilitado}
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!valido}
@@ -194,7 +201,7 @@ function SelectorColor({
             onClick={() => onChange(null)}
             className="min-h-[var(--touch-min)] shrink-0 rounded-lg border border-borde px-3 text-xs text-texto"
           >
-            Quitar
+            {t('marca.quitar')}
           </button>
         )}
       </div>
@@ -204,23 +211,23 @@ function SelectorColor({
         <span className="text-xs text-texto-suave">{ayuda}</span>
       ) : (
         <span role="alert" className="text-xs text-texto-suave">
-          Eso no es un color. Va algo como #2563eb.
+          {t('marca.malcolor')}
         </span>
       )}
-      <MuestraContraste color={valor} />
+      <MuestraContraste color={valor} t={t} />
     </div>
   )
 }
 
 /** Preview del contraste: muestra el problema antes de guardar. */
-function MuestraContraste({ color }: { color: ColorElegido }) {
+function MuestraContraste({ color, t }: { color: ColorElegido; t: (clave: ClaveTexto) => string }) {
   if (color === null || !esColorValido(color)) return null
   return (
     <div
       className="mt-1 flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold"
       style={{ backgroundColor: color, color: colorDeTextoSobre(color) }}
     >
-      Así se va a ver
+      {t('marca.preview')}
     </div>
   )
 }

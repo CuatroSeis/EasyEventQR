@@ -9,17 +9,18 @@ import { RegistrosTab } from './admin/RegistrosTab'
 import { ExcepcionesTab } from './admin/ExcepcionesTab'
 import { AuditoriaTab } from './admin/AuditoriaTab'
 import { Cargando } from './admin/Cargando'
+import { useIdioma } from '../components/IdiomaContext'
 import AccesoDenegado from './admin/AccesoDenegado'
 
 type TabId = 'dashboard' | 'organizadores' | 'eventos' | 'registros' | 'excepciones' | 'auditoria'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'organizadores', label: 'Organizadores' },
-  { id: 'eventos', label: 'Eventos' },
-  { id: 'registros', label: 'Registros' },
-  { id: 'excepciones', label: 'Excepciones' },
-  { id: 'auditoria', label: 'Auditoría' },
+const TABS: { id: TabId; clave: 'adm.tabs.dash' | 'adm.tabs.org' | 'adm.tabs.ev' | 'adm.tabs.reg' | 'adm.tabs.exc' | 'adm.tabs.aud' }[] = [
+  { id: 'dashboard', clave: 'adm.tabs.dash' },
+  { id: 'organizadores', clave: 'adm.tabs.org' },
+  { id: 'eventos', clave: 'adm.tabs.ev' },
+  { id: 'registros', clave: 'adm.tabs.reg' },
+  { id: 'excepciones', clave: 'adm.tabs.exc' },
+  { id: 'auditoria', clave: 'adm.tabs.aud' },
 ]
 
 /** Panel super-admin. El permiso lo decide `/api/me` en el servidor (nunca una bandera del navegador); el token va explícito en `Authorization`. */
@@ -31,6 +32,7 @@ export default function AdminPanel() {
   // leyera el contexto, `organizador` sería null y el header reventaría
   // en `.nombre` al bloquearse la pantalla de suspensión.
   const [usuario, setUsuario] = useState(auth.currentUser)
+  const { t } = useIdioma()
   const [tabActiva, setTabActiva] = useState<TabId>('dashboard')
   const [esSuperAdmin, setEsSuperAdmin] = useState(false)
   const [motivo, setMotivo] = useState<string | null>(null)
@@ -76,16 +78,16 @@ export default function AdminPanel() {
     }
   }, [navegar])
 
-  if (verificando) return <Cargando etiqueta="Verificando permisos…" />
+  if (verificando) return <Cargando etiqueta={t('adm.cargando.permisos')} />
   if (!esSuperAdmin) return <AccesoDenegado motivo={motivo} onSalir={() => navegar('/entrar', { replace: true })} />
 
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex items-center justify-between gap-3 border-b border-borde bg-superficie px-4 py-3">
         <div>
-          <h1 className="text-lg font-bold text-texto">Super-admin</h1>
+          <h1 className="text-lg font-bold text-texto">{t('adm.panel')}</h1>
           <p className="text-xs text-texto-suave">
-            {usuario?.displayName ?? 'Super-admin'} · {usuario?.email ?? ''}
+            {usuario?.displayName ?? t('adm.panel')} · {usuario?.email ?? ''}
           </p>
         </div>
         <button
@@ -93,7 +95,7 @@ export default function AdminPanel() {
           onClick={() => navegar('/panel')}
           className="rounded-lg border border-borde px-3 py-1.5 text-sm text-texto hover:bg-superficie"
         >
-          Volver al panel
+          {t('adm.volver')}
         </button>
       </header>
 
@@ -115,7 +117,7 @@ export default function AdminPanel() {
                 : 'text-texto-suave hover:bg-superficie'
             }`}
           >
-            {tab.label}
+            {t(tab.clave)}
           </button>
         ))}
       </nav>

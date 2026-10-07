@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { aplicarTema, resolverColores } from '../../shared/theming'
+import { useIdioma } from '../components/IdiomaContext'
+import type { ClaveTexto } from '../../shared/i18n'
 import { crearPreferenciaPago, abrirCheckoutMP } from '../../services/pagos'
 
 /** Landing pública /e/:eventoId. Sin SDK de Firebase (bundle chico y las reglas no dejan leer sin sesión): todo sale de /api. El cleanup del tema con `aplicarTema(null)` evita que el color de un evento se pegue al siguiente. */
@@ -56,6 +58,7 @@ export default function EventoPublico() {
   const [enviando, setEnviando] = useState(false)
   const [reservado, setReservado] = useState(false)
   const [mostrandoForm, setMostrandoForm] = useState(false)
+  const { t } = useIdioma()
 
   function irAlFormulario() {
     setMostrandoForm(true)
@@ -118,14 +121,14 @@ export default function EventoPublico() {
 
   // Sin-datos primero (narrowing sin casts); "reservado" después para que
   // sobreviva a un reload.
-  if (fallo) return <Marco><NoDisponible /></Marco>
-  if (!evento) return <Marco><Cargando /></Marco>
+  if (fallo) return <Marco><NoDisponible t={t} /></Marco>
+  if (!evento) return <Marco><Cargando t={t} /></Marco>
 
   if (reservado) {
     return (
       <Marco evento={evento}>
         <div className="space-y-4 text-center">
-          <Confirmacion evento={evento} />
+          <Confirmacion evento={evento} t={t} />
         </div>
       </Marco>
     )
@@ -134,7 +137,7 @@ export default function EventoPublico() {
   return (
     <Marco evento={evento}>
       <div className="space-y-8">
-        <Encabezado evento={evento} />
+        <Encabezado evento={evento} t={t} />
 
         {evento.organizador ? (
           <section className="rounded-xl border border-borde bg-superficie p-4 space-y-2" aria-label="Organizador">
@@ -148,7 +151,7 @@ export default function EventoPublico() {
                 />
               ) : null}
               <div>
-                <p className="text-sm font-semibold text-texto">Organizado por {evento.organizador.nombre}</p>
+                <p className="text-sm font-semibold text-texto">{t('pub.org.por')} {evento.organizador.nombre}</p>
                 {evento.organizador.descripcion ? (
                   <p className="text-xs text-texto-suave">{evento.organizador.descripcion}</p>
                 ) : null}
@@ -166,11 +169,11 @@ export default function EventoPublico() {
             <p className="text-3xl font-bold text-texto">
               ${evento.precioEntrada.toLocaleString('es-AR')}
             </p>
-            <p className="text-sm text-texto-suave">por entrada</p>
+            <p className="text-sm text-texto-suave">{t('pub.precio.entrada')}</p>
           </div>
         ) : (
           <p className="inline-flex items-center rounded-full border border-borde bg-superficie px-3 py-1 text-xs font-bold uppercase tracking-wide text-texto">
-            Entrada gratuita
+            {t('pub.gratis')}
           </p>
         )}
 
@@ -178,9 +181,9 @@ export default function EventoPublico() {
           <button
             type="button"
             onClick={irAlFormulario}
-            className="min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110"
+            className="hidden min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110 sm:block"
           >
-            Asistir / Comprar entrada
+            {t('pub.cta')}
           </button>
         ) : null}
 
@@ -188,6 +191,7 @@ export default function EventoPublico() {
         <div id="form-registro" className="scroll-mt-4">
         <Formulario
           evento={evento}
+          t={t}
           problemas={problemas}
           enviando={enviando}
           errorEnvio={errorEnvio}
@@ -225,14 +229,14 @@ export default function EventoPublico() {
                   abrirCheckoutMP(pref.init_point)
                   return
                 }
-                setErrorEnvio('No se pudo iniciar el pago. Intentá de nuevo.')
+                setErrorEnvio(t('pub.error.pago'))
                 setEnviando(false)
                 return
               }
 
               setReservado(true)
             } catch {
-              setErrorEnvio('No pudimos conectarnos. Revisá la conexión e intentá de nuevo.')
+              setErrorEnvio(t('pub.error.red'))
               setEnviando(false)
             }
           }}
@@ -249,7 +253,7 @@ export default function EventoPublico() {
                 onClick={irAlFormulario}
                 className="min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110"
               >
-                Asistir / Comprar entrada
+                {t('pub.cta')}
               </button>
             </div>
           </>
@@ -306,34 +310,32 @@ function Marco({ evento, children }: { evento?: EventoPublico; children: React.R
   )
 }
 
-function Cargando() {
-  return <p className="py-16 text-center text-sm text-texto-suave">Cargando el evento…</p>
+function Cargando({ t }: { t: Texto }) {
+  return <p className="py-16 text-center text-sm text-texto-suave">{t('pub.cargando')}</p>
 }
 
-function NoDisponible() {
+function NoDisponible({ t }: { t: Texto }) {
   return (
     <div className="space-y-3 py-16 text-center">
-      <h1 className="text-lg font-semibold text-texto">No encontramos este evento</h1>
-      <p className="text-sm text-texto-suave">
-        Puede que el link tenga un error, o que el organizador ya lo haya cerrado.
-      </p>
+      <h1 className="text-lg font-semibold text-texto">{t('pub.noexiste.t')}</h1>
+      <p className="text-sm text-texto-suave">{t('pub.noexiste.d')}</p>
     </div>
   )
 }
 
-/** Texto corto de cuenta regresiva ("Faltan 3 días", "¡Es mañana!"). */
-function cuentaRegresiva(iso: string): string | null {
+/** Texto corto de cuenta regresiva. */
+function cuentaRegresiva(iso: string, t: Texto): string | null {
   const ms = new Date(iso).getTime() - Date.now()
   if (Number.isNaN(ms) || ms <= 0) return null
   const dias = Math.floor(ms / 86_400_000)
-  if (dias >= 2) return `Faltan ${dias} días`
-  if (dias === 1) return '¡Es mañana!'
+  if (dias >= 2) return t('pub.cd.dias', { n: dias })
+  if (dias === 1) return t('pub.cd.manana')
   const horas = Math.floor(ms / 3_600_000)
-  if (horas >= 1) return `¡Es hoy! Faltan ${horas} h`
-  return '¡Empieza en minutos!'
+  if (horas >= 1) return t('pub.cd.hoy', { n: horas })
+  return t('pub.cd.minutos')
 }
 
-function Encabezado({ evento }: { evento: EventoPublico }) {
+function Encabezado({ evento, t }: { evento: EventoPublico; t: Texto }) {
   const fecha = new Date(evento.fecha)
   const cuando = Number.isNaN(fecha.getTime())
     ? evento.fecha
@@ -347,9 +349,9 @@ function Encabezado({ evento }: { evento: EventoPublico }) {
 
   return (
     <header className="space-y-4">
-      {cuentaRegresiva(evento.fecha) ? (
+      {cuentaRegresiva(evento.fecha, t) ? (
         <p className="inline-flex items-center rounded-full bg-primario px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
-          {cuentaRegresiva(evento.fecha)}
+          {cuentaRegresiva(evento.fecha, t)}
         </p>
       ) : null}
       <h1
@@ -360,12 +362,12 @@ function Encabezado({ evento }: { evento: EventoPublico }) {
       </h1>
       <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-texto-suave">
         <div className="flex items-center gap-1.5">
-          <dt className="sr-only">Fecha</dt>
+          <dt className="sr-only">{t('pub.f.fecha')}</dt>
           <dd className="font-semibold text-texto">{cuando}</dd>
         </div>
         {evento.lugar ? (
           <div className="flex items-center gap-1.5">
-            <dt className="sr-only">Lugar</dt>
+            <dt className="sr-only">{t('pub.f.lugar')}</dt>
             <dd>{evento.lugar}</dd>
           </div>
         ) : null}
@@ -379,14 +381,12 @@ function Encabezado({ evento }: { evento: EventoPublico }) {
 
       {evento.agotado ? (
         <div className="rounded-lg border border-borde bg-superficie p-4 text-sm text-texto">
-          <p className="font-semibold">Se agotaron los lugares</p>
-          <p className="mt-1 text-texto-suave">
-            Si queda algún lugar, se suele liberar en el momento. Probá de nuevo más tarde.
-          </p>
+          <p className="font-semibold">{t('pub.agotado.t')}</p>
+          <p className="mt-1 text-texto-suave">{t('pub.agotado.d')}</p>
         </div>
       ) : evento.lugaresRestantes <= 20 ? (
         <p className="rounded-lg border border-borde bg-superficie p-3 text-sm font-semibold text-texto">
-          Últimos {evento.lugaresRestantes} lugares
+          {t('pub.ultimos', { n: evento.lugaresRestantes })}
         </p>
       ) : null}
     </header>
@@ -409,12 +409,14 @@ function Formulario({
   enviando,
   errorEnvio,
   onEnviar,
+  t,
 }: {
   evento: EventoPublico
   problemas: ProblemasDelFormulario
   enviando: boolean
   errorEnvio: string | null
   onEnviar: (datos: Record<string, string>) => void
+  t: Texto
 }) {
   if (evento.agotado) return null
 
@@ -441,7 +443,7 @@ function Formulario({
         </p>
       ) : null}
 
-      <Campo nombre="nombre" etiqueta="Tu nombre" problemas={problemas}>
+      <Campo nombre="nombre" etiqueta={t('pub.form.nombre')} problemas={problemas}>
         <input
           id="nombre"
           name="nombre"
@@ -455,7 +457,7 @@ function Formulario({
         />
       </Campo>
 
-      <Campo nombre="email" etiqueta="Tu correo" problemas={problemas}>
+      <Campo nombre="email" etiqueta={t('pub.form.email')} problemas={problemas}>
         <input
           id="email"
           name="email"
@@ -469,7 +471,7 @@ function Formulario({
         />
       </Campo>
 
-      <Campo nombre="telefono" etiqueta="Tu teléfono (opcional)" problemas={problemas}>
+      <Campo nombre="telefono" etiqueta={t('pub.form.tel')} problemas={problemas}>
         <input
           id="telefono"
           name="telefono"
@@ -481,7 +483,7 @@ function Formulario({
         />
       </Campo>
 
-      <Campo nombre="dni" etiqueta="Tu DNI (sin puntos ni guiones)" problemas={problemas}>
+      <Campo nombre="dni" etiqueta={t('pub.form.dni')} problemas={problemas}>
         <input
           id="dni"
           name="dni"
@@ -497,7 +499,7 @@ function Formulario({
         />
       </Campo>
 
-      <Campo nombre="fechaNacimiento" etiqueta="Fecha de nacimiento" problemas={problemas}>
+      <Campo nombre="fechaNacimiento" etiqueta={t('pub.form.nac')} problemas={problemas}>
         <input
           id="fechaNacimiento"
           name="fechaNacimiento"
@@ -511,44 +513,41 @@ function Formulario({
       {/* La trampa. Hidden a la vista, presente en el DOM: los bots que
           completan forms recorren los inputs y lo llenan. */}
       <div className="sr-only" aria-hidden="true">
-        <label htmlFor="sitioWeb">No completar</label>
+        <label htmlFor="sitioWeb">{t('pub.form.trampa')}</label>
         <input id="sitioWeb" name="sitioWeb" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
       {evento.requierePago && evento.precioEntrada ? (
         <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
-          La entrada cuesta ${evento.precioEntrada.toFixed(0)}. Te vamos a mandar el link de pago
-          por correo.
+          {t('pub.form.pago', { monto: `$${evento.precioEntrada.toFixed(0)}` })}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={enviando}
-        className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
-      >
-        {enviando ? 'Reservando…' : 'Reservar mi lugar'}
-      </button>
+        <button
+          type="submit"
+          disabled={enviando}
+          className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
+        >
+          {enviando ? t('pub.form.enviando') : t('pub.form.enviar')}
+        </button>
 
-      <p className="text-center text-xs text-texto-suave">
-        Te mandamos el código por correo. Guardalo: es tu entrada.
-      </p>
+        <p className="text-center text-xs text-texto-suave">{t('pub.form.aviso')}</p>
     </form>
   )
 }
 
+/** Función de texto compartida por las subsecciones de esta pantalla. */
+type Texto = (clave: ClaveTexto, vars?: Record<string, string | number>) => string
+
 /** La pantalla de "listo". No muestra el token, no muestra el email. */
-function Confirmacion({ evento }: { evento: EventoPublico }) {
+function Confirmacion({ evento, t }: { evento: EventoPublico; t: Texto }) {
   return (
     <>
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primario text-2xl text-sobre-primario">
         ✓
       </div>
-      <h1 className="text-xl font-bold text-texto">¡Listo, tu lugar está reservado!</h1>
-      <p className="text-sm leading-relaxed text-texto-suave">
-        Te mandamos el código de entrada a tu correo. Abrilo, y si no te llega, revisá la carpeta de
-        spam antes de volver a reservar: registrarte dos veces gasta dos lugares.
-      </p>
+      <h1 className="text-xl font-bold text-texto">{t('pub.ok.t')}</h1>
+      <p className="text-sm leading-relaxed text-texto-suave">{t('pub.ok.d')}</p>
       {evento.personalizacion.textoConfirmacion ? (
         <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
           {evento.personalizacion.textoConfirmacion}

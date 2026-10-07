@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 
 import { useOrganizador } from '../ContextoOrganizador'
+import { useIdioma } from '../components/IdiomaContext'
 import ConfirmModal from '../components/ConfirmModal'
 import EmptyState from '../components/EmptyState'
 import {
@@ -19,10 +20,8 @@ import {
 type EstadoRegistro = RegistroUI['estado']
 type EstadoPago = RegistroUI['pago']['estado']
 
-const ESTADO_LABELS: Record<EstadoRegistro, string> = {
-  pendiente: 'Pendiente',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
+function etiquetasEstado(t: (c: 'reg.est.pendiente' | 'reg.est.aprobado' | 'reg.est.rechazado') => string): Record<EstadoRegistro, string> {
+  return { pendiente: t('reg.est.pendiente'), aprobado: t('reg.est.aprobado'), rechazado: t('reg.est.rechazado') }
 }
 
 const ESTADO_COLORS: Record<EstadoRegistro, string> = {
@@ -31,11 +30,8 @@ const ESTADO_COLORS: Record<EstadoRegistro, string> = {
   rechazado: 'bg-red-100 text-red-700',
 }
 
-const PAGO_LABELS: Record<EstadoPago, string> = {
-  no_aplica: 'Gratis',
-  pendiente: 'Pendiente',
-  pagado: 'Pagado',
-  rechazado: 'Rechazado',
+function etiquetasPago(t: (c: 'reg.pago.gratis' | 'reg.pago.pendiente' | 'reg.pago.pagado' | 'reg.pago.rechazado') => string): Record<EstadoPago, string> {
+  return { no_aplica: t('reg.pago.gratis'), pendiente: t('reg.pago.pendiente'), pagado: t('reg.pago.pagado'), rechazado: t('reg.pago.rechazado') }
 }
 
 const PAGO_COLORS: Record<EstadoPago, string> = {
@@ -46,6 +42,7 @@ const PAGO_COLORS: Record<EstadoPago, string> = {
 }
 
 export default function PanelRegistros() {
+  const { t } = useIdioma()
   const { eventoId } = useParams<{ eventoId: string }>()
   const [busca, setBusca] = useSearchParams()
   const organizador = useOrganizador()
@@ -97,7 +94,7 @@ export default function PanelRegistros() {
       setLinkOperador(await crearLinkOperador(eventoId!))
       setCopiado(false)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo generar el link de operador')
+      setError(e instanceof Error ? e.message : t('reg.err.link'))
     } finally {
       setGenerandoLink(false)
     }
@@ -110,7 +107,7 @@ export default function PanelRegistros() {
       setCopiado(true)
     } catch {
       // Sin HTTPS ni permiso el copiado falla: el link queda visible para copiar a mano.
-      avisar('No se pudo copiar automático. Copiá el link seleccionándolo.', true)
+      avisar(t('reg.err.copiar'), true)
     }
   }
 
@@ -131,7 +128,7 @@ export default function PanelRegistros() {
       setRegistros(lista)
       setTotal(cuantos)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error cargando registros')
+      setError(e instanceof Error ? e.message : t('reg.err.cargar'))
     } finally {
       setCargando(false)
     }
@@ -145,13 +142,10 @@ export default function PanelRegistros() {
     setAcciones((prev) => ({ ...prev, [registroId]: 'enviando' }))
     try {
       const r = await reenviarMails(eventoId!, [registroId])
-      avisar(
-        `Reenviado a ${r.enviados}. Ojo: el QR anterior dejó de servir, el mail lleva uno nuevo.`,
-        r.tokensRotados > 0,
-      )
+      avisar(t('reg.reenviar.uno', { n: r.enviados }), r.tokensRotados > 0)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error reenviando')
+      setError(e instanceof Error ? e.message : t('reg.err.reenviar'))
     } finally {
       setAcciones((prev) => ({ ...prev, [registroId]: undefined }))
     }
@@ -160,14 +154,12 @@ export default function PanelRegistros() {
   async function handleReenviarTodos() {
     const ids = registros.filter((r) => r.pago.requerido && r.pago.estado === 'pagado').map((r) => r.id)
     if (ids.length === 0) {
-      setError('No hay reservas pagadas para reenviar.')
+      setError(t('reg.err.sinPagadas'))
       return
     }
     if (
       !confirm(
-        `Reenviar el mail a ${ids.length} asistentes?\n\n` +
-          'OJO: reenviar rota el token de cada QR. Los códigos de los mails anteriores ' +
-          'dejan de validar y los nuevos son los que sirven.',
+        t('reg.reenviar.todos.q', { n: ids.length }),
       )
     ) {
       return
@@ -180,14 +172,10 @@ export default function PanelRegistros() {
     })
     try {
       const r = await reenviarMails(eventoId!, ids)
-      avisar(
-        `Reenviados ${r.enviados} de ${ids.length}. Los QR anteriores dejaron de servir: ` +
-          `los mails llevan tokens nuevos.`,
-        r.tokensRotados > 0,
-      )
+      avisar(t('reg.reenviar.todos.ok', { ok: r.enviados, n: ids.length }), r.tokensRotados > 0)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error reenviando')
+      setError(e instanceof Error ? e.message : t('reg.err.reenviar'))
     } finally {
       setAcciones((prev) => {
         const n = { ...prev }
@@ -206,19 +194,19 @@ export default function PanelRegistros() {
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error exportando CSV')
+      setError(e instanceof Error ? e.message : t('reg.err.exportar'))
     }
   }
 
   async function handleRecount() {
-    if (!confirm('Recalcular cupo real desde las reservas? Esto actualiza el contador del evento.')) return
+    if (!confirm(t('reg.reconteo.q'))) return
     setRecontando(true)
     try {
       const reservas = await recountRegistros(eventoId!)
-      avisar(`Reconteo hecho: ${reservas} reservas reales.`, false)
+      avisar(t('reg.reconteo.ok', { n: reservas }), false)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error en reconteo')
+      setError(e instanceof Error ? e.message : t('reg.err.reconteo'))
     } finally {
       setRecontando(false)
     }
@@ -242,10 +230,10 @@ export default function PanelRegistros() {
         telefono: borradorEdicion.telefono,
       })
       setEditandoId(null)
-      avisar('Reserva actualizada.', false)
+      avisar(t('reg.edit.ok'), false)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo guardar')
+      setError(e instanceof Error ? e.message : t('reg.err.guardar'))
     } finally {
       setGuardandoEdicion(false)
     }
@@ -258,10 +246,10 @@ export default function PanelRegistros() {
     setError(null)
     try {
       await eliminarRegistro(eventoId!, r.id)
-      avisar('Reserva borrada. Si el cupo quedó mentiroso, usá "Recalcular cupo".', false)
+      avisar(t('reg.borrar.ok'), false)
       cargar()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo borrar')
+      setError(e instanceof Error ? e.message : t('reg.err.borrar'))
     }
   }
   function formatearFecha(fecha: Date | string): string {
@@ -277,52 +265,52 @@ export default function PanelRegistros() {
     <div className="flex flex-col gap-4">
       {eliminaReserva ? (
         <ConfirmModal
-          titulo="¿Borrar esta reserva?"
-          mensaje={`Se borra la reserva de ${eliminaReserva.nombre}. No se puede deshacer.`}
-          confirmar="Borrar reserva"
+          titulo={t('reg.borrar.t')}
+          mensaje={t('reg.borrar.de', { nombre: eliminaReserva.nombre })}
+          confirmar={t('reg.borrar.confirmar')}
           onConfirmar={() => void handleEliminar()}
           onCerrar={() => setEliminaReserva(null)}
         />
       ) : null}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-lg font-bold text-texto">Registros</h1>
+        <h1 className="text-lg font-bold text-texto">{t('reg.titulo')}</h1>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleGenerarLinkOperador}
             disabled={generandoLink}
             className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie disabled:opacity-60"
           >
-            {generandoLink ? 'Generando…' : 'Link para 3ro (puerta)'}
+{generandoLink ? t('reg.generando') : t('reg.linkOp')}
           </button>
           <a
             href={`/panel/eventos/${eventoId}/escanear`}
             className="inline-flex items-center rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie"
           >
-            Escanear QR
+            {t('reg.escanearQR')}
           </a>
           <button onClick={handleExport} className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie">
-            Exportar CSV
+            {t('reg.exportar')}
           </button>
           <button onClick={handleReenviarTodos} disabled={cargando} className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie">
-            Reenviar mails pagados
+            {t('reg.reenviarPagados')}
           </button>
           <button onClick={handleRecount} disabled={recontando} className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie">
-            {recontando ? 'Recalculando…' : 'Recalcular cupo'}
+{recontando ? t('reg.recontando') : t('reg.recontar')}
           </button>
         </div>
       </header>
 
       <div className="flex flex-wrap gap-4 text-sm text-texto-suave">
-        <span>Total: <strong>{total}</strong></span>
-        <span>Reservados: <strong>{reservados}</strong> / {LIMITE}</span>
-        <span>Usados: <strong>{usados}</strong></span>
-        <span>Disponibles: <strong>{LIMITE - reservados}</strong></span>
+        <span>{t('reg.total')}: <strong>{total}</strong></span>
+        <span>{t('reg.reservados')}: <strong>{reservados}</strong> / {LIMITE}</span>
+        <span>{t('reg.usados')}: <strong>{usados}</strong></span>
+        <span>{t('reg.disponibles')}: <strong>{LIMITE - reservados}</strong></span>
       </div>
 
       <form
         className="flex flex-col gap-2 sm:flex-row"
         role="search"
-        aria-label="Buscar y filtrar reservas"
+        aria-label={t('reg.buscar.form.aria')}
         onSubmit={(e) => {
           e.preventDefault()
           actualizarFiltros({})
@@ -336,8 +324,8 @@ export default function PanelRegistros() {
             setSearch(e.target.value)
             actualizarFiltros({ search: e.target.value })
           }}
-          placeholder="Buscar por nombre, email, DNI o ID"
-          aria-label="Buscar reserva"
+          placeholder={t('reg.buscar.ph')}
+          aria-label={t('reg.buscar.aria')}
           className="campo flex-1"
         />
         <select
@@ -346,13 +334,13 @@ export default function PanelRegistros() {
             setEstadoFiltro(e.target.value)
             actualizarFiltros({ estado: e.target.value })
           }}
-          aria-label="Filtrar por estado"
+          aria-label={t('reg.filtrar.estado')}
           className="campo sm:w-40"
         >
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="aprobado">Aprobado</option>
-          <option value="rechazado">Rechazado</option>
+          <option value="">{t('reg.f.estado')}</option>
+          <option value="pendiente">{t('reg.est.pendiente')}</option>
+          <option value="aprobado">{t('reg.est.aprobado')}</option>
+          <option value="rechazado">{t('reg.est.rechazado')}</option>
         </select>
         <select
           value={pagoFiltro}
@@ -360,14 +348,14 @@ export default function PanelRegistros() {
             setPagoFiltro(e.target.value)
             actualizarFiltros({ pagoEstado: e.target.value })
           }}
-          aria-label="Filtrar por pago"
+          aria-label={t('reg.filtrar.pago')}
           className="campo sm:w-40"
         >
-          <option value="">Todos los pagos</option>
-          <option value="no_aplica">Gratis</option>
-          <option value="pendiente">Pago pendiente</option>
-          <option value="pagado">Pagado</option>
-          <option value="rechazado">Pago rechazado</option>
+          <option value="">{t('reg.f.pago')}</option>
+          <option value="no_aplica">{t('reg.pago.gratis')}</option>
+          <option value="pendiente">{t('reg.pago.pendiente')}</option>
+          <option value="pagado">{t('reg.pago.pagado')}</option>
+          <option value="rechazado">{t('reg.pago.rechazado')}</option>
         </select>
         {(search || estadoFiltro || pagoFiltro) && (
           <button
@@ -381,24 +369,21 @@ export default function PanelRegistros() {
             }}
             className="min-h-11 rounded-lg border border-borde px-4 text-sm text-texto-suave"
           >
-            Limpiar
+            {t('reg.limpiar')}
           </button>
         )}
       </form>
 
       {linkOperador && (
         <section
-          aria-label="Link del operador de puerta"
+          aria-label={t('reg.op.panel.aria')}
           className="rounded-xl border-2 border-primario bg-superficie p-4"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-semibold text-texto">Link del operador de puerta</h2>
-            <span className="text-xs text-texto-suave">Vence en {linkOperador.expiraEn}</span>
+            <h2 className="text-sm font-semibold text-texto">{t('reg.op.titulo')}</h2>
+            <span className="text-xs text-texto-suave">{t('reg.op.vence')} {linkOperador.expiraEn}</span>
           </div>
-          <p className="mt-1 text-xs text-texto-suave">
-            Pasáselo a quien atiende la puerta. Le deja escanear los QR de este evento
-            y marcar cada entrada como usada. Sirve para un solo evento.
-          </p>
+          <p className="mt-1 text-xs text-texto-suave">{t('reg.op.ayuda')}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <code className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-superficie-2 p-2 text-xs">
               {linkOperador.url}
@@ -407,13 +392,13 @@ export default function PanelRegistros() {
               onClick={handleCopiarLink}
               className="rounded-lg bg-primario px-3 py-2 text-xs font-semibold text-sobre-primario"
             >
-              {copiado ? 'Copiado' : 'Copiar'}
+              {copiado ? t('reg.op.copiado') : t('reg.op.copiar')}
             </button>
             <button
               onClick={() => setLinkOperador(null)}
               className="rounded-lg border border-borde px-3 py-2 text-xs text-texto"
             >
-              Cerrar
+              {t('reg.op.cerrar')}
             </button>
           </div>
         </section>
@@ -446,8 +431,8 @@ export default function PanelRegistros() {
         </div>
       ) : registros.length === 0 ? (
         <EmptyState
-          titulo="No hay reservas para este evento"
-          ayuda="Compartí el link o el código del evento para que empiecen a llegar. Cuando alguien se registre, lo vas a ver acá con su estado y su pago."
+          titulo={t('reg.vacio')}
+          ayuda={t('reg.vacio.d')}
         />
       ) : (
         <>
@@ -455,14 +440,14 @@ export default function PanelRegistros() {
             <table className="w-full text-sm" role="grid">
               <thead className="bg-superficie">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-texto-suave">Asistente</th>
+                  <th className="px-3 py-2 text-left font-medium text-texto-suave">{t('reg.tab.asistente')}</th>
                   <th className="px-3 py-2 text-left font-medium text-texto-suave">DNI</th>
                   <th className="px-3 py-2 text-left font-medium text-texto-suave hidden md:table-cell">Email</th>
-                  <th className="px-3 py-2 text-left font-medium text-texto-suave">Estado</th>
-                  <th className="px-3 py-2 text-left font-medium text-texto-suave">Pago</th>
-                  <th className="px-3 py-2 text-left font-medium text-texto-suave hidden lg:table-cell">Registrado</th>
-                  <th className="px-3 py-2 text-left font-medium text-texto-suave">Usado</th>
-                  <th className="px-3 py-2 text-right font-medium text-texto-suave">Acciones</th>
+                  <th className="px-3 py-2 text-left font-medium text-texto-suave">{t('reg.tab.estado')}</th>
+                  <th className="px-3 py-2 text-left font-medium text-texto-suave">{t('reg.tab.pago')}</th>
+                  <th className="px-3 py-2 text-left font-medium text-texto-suave hidden lg:table-cell">{t('reg.tab.registrado')}</th>
+                  <th className="px-3 py-2 text-left font-medium text-texto-suave">{t('reg.tab.usado')}</th>
+                  <th className="px-3 py-2 text-right font-medium text-texto-suave">{t('reg.tab.acciones')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-borde">
@@ -477,18 +462,18 @@ export default function PanelRegistros() {
                     <td className="px-3 py-2 hidden md:table-cell text-texto-suave truncate max-w-xs">{r.email}</td>
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[r.estado]}`}>
-                        {ESTADO_LABELS[r.estado]}
+                        {etiquetasEstado(t)[r.estado]}
                       </span>
                     </td>
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${PAGO_COLORS[r.pago.estado]}`}>
-                        {PAGO_LABELS[r.pago.estado]}
+                        {etiquetasPago(t)[r.pago.estado]}
                       </span>
                     </td>
                     <td className="px-3 py-2 hidden lg:table-cell text-texto-suave">{formatearFecha(r.fechaRegistro)}</td>
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.usado ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-                        {r.usado ? 'Sí' : 'No'}
+                        {r.usado ? t('reg.si') : t('reg.no')}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -506,16 +491,16 @@ export default function PanelRegistros() {
                         <button
                           onClick={() => (editandoId === r.id ? setEditandoId(null) : empezarEdicion(r))}
                           className="px-2 py-1 rounded text-xs text-texto hover:bg-superficie"
-                          title="Editar reserva"
-                          aria-label={`Editar reserva de ${r.nombre}`}
+                          title={t('reg.editar.t')}
+                          aria-label={`${t('reg.editar.aria')} ${r.nombre}`}
                         >
                           ✏️
                         </button>
                         <button
                           onClick={() => setEliminaReserva(r)}
                           className="px-2 py-1 rounded text-xs text-red-600 hover:bg-red-50"
-                          title="Borrar reserva"
-                          aria-label={`Borrar reserva de ${r.nombre}`}
+                          title={t('reg.borrar.b')}
+                          aria-label={`${t('reg.borrar.aria')} ${r.nombre}`}
                         >
                           🗑️
                         </button>
@@ -540,19 +525,19 @@ export default function PanelRegistros() {
                         >
                           <div className="grid gap-2 sm:grid-cols-2">
                             <label className="flex flex-col gap-1 text-xs text-texto-suave">
-                              Estado
+                              {t('reg.edit.estado')}
                               <select
                                 value={borradorEdicion.estado}
                                 onChange={(e) => setBorradorEdicion((p) => ({ ...p, estado: e.target.value }))}
                                 className="campo py-1.5 text-sm"
                               >
-                                <option value="pendiente">Pendiente</option>
-                                <option value="aprobado">Aprobado</option>
-                                <option value="rechazado">Rechazado</option>
+                                <option value="pendiente">{t('reg.est.pendiente')}</option>
+                                <option value="aprobado">{t('reg.est.aprobado')}</option>
+                                <option value="rechazado">{t('reg.est.rechazado')}</option>
                               </select>
                             </label>
                             <label className="flex flex-col gap-1 text-xs text-texto-suave">
-                              Nombre
+                              {t('reg.edit.nombre')}
                               <input
                                 value={borradorEdicion.nombre}
                                 onChange={(e) => setBorradorEdicion((p) => ({ ...p, nombre: e.target.value }))}
@@ -561,7 +546,7 @@ export default function PanelRegistros() {
                               />
                             </label>
                             <label className="flex flex-col gap-1 text-xs text-texto-suave">
-                              Email
+                              {t('reg.edit.email')}
                               <input
                                 type="email"
                                 value={borradorEdicion.email}
@@ -571,7 +556,7 @@ export default function PanelRegistros() {
                               />
                             </label>
                             <label className="flex flex-col gap-1 text-xs text-texto-suave">
-                              Teléfono
+                              {t('reg.edit.tel')}
                               <input
                                 value={borradorEdicion.telefono}
                                 onChange={(e) => setBorradorEdicion((p) => ({ ...p, telefono: e.target.value }))}
@@ -586,14 +571,14 @@ export default function PanelRegistros() {
                               disabled={guardandoEdicion}
                               className="min-h-11 rounded-lg bg-primario px-4 text-xs font-semibold text-sobre-primario disabled:opacity-50"
                             >
-                              {guardandoEdicion ? 'Guardando…' : 'Guardar'}
+                              {guardandoEdicion ? t('reg.edit.guardando') : t('reg.edit.guardar')}
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditandoId(null)}
                               className="min-h-11 rounded-lg border border-borde px-4 text-xs text-texto"
                             >
-                              Cancelar
+                              {t('reg.edit.cancelar')}
                             </button>
                           </div>
                         </form>
@@ -613,17 +598,17 @@ export default function PanelRegistros() {
                 disabled={pagina === 1}
                 className="px-3 py-1.5 rounded-lg border border-borde text-sm disabled:opacity-50"
               >
-                Anterior
+                {t('reg.anterior')}
               </button>
               <span className="px-3 text-sm text-texto-suave">
-                Página {pagina} de {Math.ceil(total / porPagina)}
+                {t('reg.pagina')} {pagina} {t('reg.de')} {Math.ceil(total / porPagina)}
               </span>
               <button
                 onClick={() => setPagina((p) => Math.min(Math.ceil(total / porPagina), p + 1))}
                 disabled={pagina >= Math.ceil(total / porPagina)}
                 className="px-3 py-1.5 rounded-lg border border-borde text-sm disabled:opacity-50"
               >
-                Siguiente
+                {t('reg.siguiente')}
               </button>
             </nav>
           )}

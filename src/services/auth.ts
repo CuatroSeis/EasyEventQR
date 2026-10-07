@@ -1,8 +1,10 @@
 import {
   GoogleAuthProvider,
   getIdTokenResult,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   type User,
 } from 'firebase/auth'
@@ -31,12 +33,35 @@ export function observarSesion(alCambiar: (usuario: User | null) => void) {
  * `prompt=select_account` para que Google no reutilice en silencio la
  * sesión de otro usuario. Sin ese parámetro, en una máquina compartida
  * el siguiente login entra con la cuenta anterior y ni te enterás.
+ *
+ * En mobile va por redirect y no por popup: Brave y otros navegadores
+ * bloquean el popup o las cookies de terceros y la pantalla queda en
+ * blanco. El redirect sale y vuelve; al volver, `observarSesion` ya ve
+ * la sesión y `consumirRedirect()` rescata el error si lo hubo.
+ * Devuelve `null` cuando delegó al redirect (no hay usuario todavía).
  */
-export async function entrarConGoogle(): Promise<User> {
+export function esMobile(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.matchMedia('(pointer: coarse)').matches ||
+      /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent))
+  )
+}
+
+export async function entrarConGoogle(): Promise<User | null> {
   const proveedor = new GoogleAuthProvider()
   proveedor.setCustomParameters({ prompt: 'select_account' })
+  if (esMobile()) {
+    await signInWithRedirect(auth, proveedor)
+    return null
+  }
   const credencial = await signInWithPopup(auth, proveedor)
   return credencial.user
+}
+
+/** Error del redirect al volver (cuenta duplicada, dominio no autorizado, red). */
+export async function consumirRedirect(): Promise<void> {
+  await getRedirectResult(auth)
 }
 
 export function salir(): Promise<void> {

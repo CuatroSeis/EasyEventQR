@@ -1,9 +1,11 @@
 import { useSearchParams } from 'react-router-dom'
+import { useIdioma } from '../components/IdiomaContext'
 
 /**
  * Página de pago pendiente: /pago/pendiente?registroId=xxx
  */
 export default function PagoPendiente() {
+  const { t } = useIdioma()
   const [busca] = useSearchParams()
   const registroId = busca.get('registroId')
 
@@ -12,20 +14,18 @@ export default function PagoPendiente() {
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100 text-4xl text-yellow-600 animate-pulse">
         ⏳
       </div>
-      <h1 className="text-xl font-bold text-texto">Pago pendiente</h1>
-      <p className="text-sm text-texto-suave">
-        Tu pago está siendo procesado. Recibirás la confirmación por correo en breve.
-      </p>
+      <h1 className="text-xl font-bold text-texto">{t('pago.pend.t')}</h1>
+      <p className="text-sm text-texto-suave">{t('pago.pend.d')}</p>
       {registroId && (
         <p className="text-xs text-texto-suave font-mono">
-          Reserva: {registroId}
+          {t('pago.pend.reserva')}: {registroId}
         </p>
       )}
       <a
         href="/"
         className="rounded-lg border border-borde px-6 py-3 text-sm font-medium text-texto"
       >
-        Volver al inicio
+        {t('pago.volver.inicio')}
       </a>
     </main>
   )

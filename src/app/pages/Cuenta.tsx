@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useOrganizadorEditable } from '../ContextoOrganizador'
 import { SeccionMarca } from './Branding'
 import { t } from '../../shared/toast'
+import { useIdioma } from '../components/IdiomaContext'
 import ConfirmModal from '../components/ConfirmModal'
 
 export default function Cuenta() {
   const { organizador } = useOrganizadorEditable()
+  const { t: txt } = useIdioma()
   const navigate = useNavigate()
 
   const [nombre, setNombre] = useState(organizador.nombre ?? '')
@@ -30,32 +32,32 @@ export default function Cuenta() {
         descripcion,
         redesSociales: { instagram, twitter, linkedin, web },
       })
-      import('../../shared/toast').then(m => m.t.success('Perfil guardado'))
+      import('../../shared/toast').then(m => m.t.success(txt('cuenta.toast.guardado')))
     } catch (e) {
-      import('../../shared/toast').then(m => m.t.error(e instanceof Error ? e.message : 'No se pudo guardar'))
+      import('../../shared/toast').then(m => m.t.error(e instanceof Error ? e.message : txt('cuenta.toast.noguardar')))
     }
   }
 
   async function handleCambiarPassword(e: React.FormEvent) {
     e.preventDefault()
     if (passwordNueva !== passwordConfirm) {
-      t.error('Las contraseñas no coinciden')
+      t.error(txt('cuenta.toast.pass.distintas'))
       return
     }
     if (passwordNueva.length < 6) {
-      t.error('La contraseña debe tener al menos 6 caracteres')
+      t.error(txt('cuenta.toast.pass.corta'))
       return
     }
     try {
       const { auth } = await import('../../services/firebase')
       const { cambiarPassword } = await import('../../services/perfil')
-      if (!auth.currentUser) throw new Error('Sesión no válida')
+      if (!auth.currentUser) throw new Error(txt('cuenta.toast.sesion.no'))
       await cambiarPassword(auth.currentUser, '', passwordNueva)
-      t.success('Contraseña cambiada')
+      t.success(txt('cuenta.toast.pass.ok'))
       setPasswordNueva('')
       setPasswordConfirm('')
     } catch (e) {
-      t.error(e instanceof Error ? e.message : 'No se pudo cambiar la contraseña')
+      t.error(e instanceof Error ? e.message : txt('cuenta.toast.pass.no'))
     }
   }
 
@@ -65,13 +67,13 @@ export default function Cuenta() {
       await import('../../services/perfil').then(m => m.eliminarCuenta())
       const { salir } = await import('../../services/auth')
       await salir()
-      import('../../shared/toast').then(m => m.t.success('Cuenta eliminada'))
+      import('../../shared/toast').then(m => m.t.success(txt('cuenta.toast.eliminada')))
       navigate('/', { replace: true })
     } catch (e) {
       if (e instanceof Error && e.message.includes('popup')) {
-        import('../../shared/toast').then(m => m.t.info('Cerraste la ventana de confirmación'))
+        import('../../shared/toast').then(m => m.t.info(txt('cuenta.toast.popup')))
       } else {
-        import('../../shared/toast').then(m => m.t.error(e instanceof Error ? e.message : 'No se pudo eliminar la cuenta'))
+        import('../../shared/toast').then(m => m.t.error(e instanceof Error ? e.message : txt('cuenta.toast.noeliminar')))
       }
     }
   }
@@ -79,17 +81,17 @@ export default function Cuenta() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-texto">Mi cuenta</h1>
-        <p className="mt-1 text-texto-suave">Gestioná tu perfil, seguridad y datos</p>
+        <h1 className="text-2xl font-bold text-texto">{txt('cuenta.titulo')}</h1>
+        <p className="mt-1 text-texto-suave">{txt('cuenta.bajada')}</p>
       </header>
 
       <section aria-labelledby="perfil-heading" className="space-y-5">
-        <h2 id="perfil-heading" className="text-xl font-bold text-texto">Perfil</h2>
+        <h2 id="perfil-heading" className="text-xl font-bold text-texto">{txt('cuenta.perfil')}</h2>
 
         <form onSubmit={handleGuardarPerfil} className="space-y-4" noValidate>
           <div className="flex flex-col sm:flex-row gap-4">
             <label className="flex flex-col gap-1.5 flex-1">
-              <span className="text-sm font-medium text-texto">Nombre / Razón social</span>
+              <span className="text-sm font-medium text-texto">{txt('cuenta.nombre')}</span>
               <input
                 type="text"
                 value={nombre}
@@ -100,31 +102,31 @@ export default function Cuenta() {
               />
             </label>
             <label className="flex flex-col gap-1.5 flex-1">
-              <span className="text-sm font-medium text-texto">Teléfono</span>
+              <span className="text-sm font-medium text-texto">{txt('cuenta.tel')}</span>
               <input
                 type="tel"
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
                 className="campo"
                 autoComplete="tel"
-                placeholder="+54 9 11 1234-5678"
+                placeholder={txt('cuenta.tel.ph')}
               />
             </label>
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-texto">Descripción</span>
+            <span className="text-sm font-medium text-texto">{txt('cuenta.desc')}</span>
             <textarea
               value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
               className="campo min-h-24"
               rows={3}
-              placeholder="Descripción de tu organización, experiencia, etc."
+              placeholder={txt('cuenta.desc.ph')}
             />
           </label>
 
           <fieldset className="rounded-xl border border-borde p-4 space-y-3">
-            <legend className="px-1 text-sm font-medium text-texto">Redes sociales y web</legend>
+            <legend className="px-1 text-sm font-medium text-texto">{txt('cuenta.redes')}</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-texto">Instagram</span>
@@ -157,13 +159,13 @@ export default function Cuenta() {
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-texto">Sitio web</span>
+                <span className="text-sm font-medium text-texto">{txt('cuenta.web')}</span>
                 <input
                   type="url"
                   value={web}
                     onChange={(e) => setWeb(e.target.value)}
                   className="campo"
-                  placeholder="https://ejemplo.com"
+                  placeholder={txt('cuenta.web.ph')}
                 />
               </label>
             </div>
@@ -173,13 +175,13 @@ export default function Cuenta() {
             type="submit"
             className="min-h-[56px] w-full sm:w-auto rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario"
           >
-            Guardar perfil
+                        {txt('cuenta.guardarPerfil')}
           </button>
         </form>
       </section>
 
       <section aria-labelledby="logo-heading" className="space-y-4 rounded-xl border border-borde p-5">
-        <h2 id="logo-heading" className="text-xl font-bold text-texto">Logo de tu marca</h2>
+        <h2 id="logo-heading" className="text-xl font-bold text-texto">{txt('cuenta.logo.t')}</h2>
         <p className="text-sm text-texto-suave">
           Se usa en tu panel y en la página pública del evento. Máx. 512 KB, se comprime a WebP.
         </p>
@@ -198,21 +200,21 @@ export default function Cuenta() {
                 style={{ display: organizador.brandingPanel?.logoUrl ? 'block' : 'none' }}
               />
               {!organizador.brandingPanel?.logoUrl && (
-                <span className="text-texto-suave text-xs">Sin logo</span>
+                <span className="text-texto-suave text-xs">{txt('cuenta.logo.sin')}</span>
               )}
             </div>
             <div className="space-y-1">
-              <p className="font-medium text-texto">Logo actual</p>
+              <p className="font-medium text-texto">{txt('cuenta.logo.actual')}</p>
               {organizador.brandingPanel?.logoUrl && (
                 <button
                   type="button"
                   onClick={() => {
                     import('../../services/perfil').then(m => m.actualizarLogo(organizador.uid, ''))
-                    import('../../shared/toast').then(m => m.t.success('Logo eliminado'))
+                import('../../shared/toast').then(m => m.t.success(txt('cuenta.toast.logo.del')))
                   }}
                   className="text-sm text-texto-suave underline hover:text-texto"
                 >
-                  Quitar logo
+                  {txt('cuenta.logo.quitar')}
                 </button>
               )}
             </div>
@@ -221,7 +223,7 @@ export default function Cuenta() {
           <div className="flex flex-col gap-2 w-full sm:w-64">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-texto">
-                Subir logo
+                {txt('cuenta.logo.subir')}
               </span>
               <div className="relative">
                 <input
@@ -234,9 +236,9 @@ export default function Cuenta() {
                       const { subirLogo, actualizarLogo } = await import('../../services/perfil')
                       const base64 = await subirLogo(file)
                       await actualizarLogo(organizador.uid, base64)
-                      import('../../shared/toast').then(m => m.t.success('Logo actualizado. Recargá para verlo en el panel.'))
+                      import('../../shared/toast').then(m => m.t.success(txt('cuenta.toast.logo.ok')))
                     } catch (err) {
-                      import('../../shared/toast').then(m => m.t.error(err instanceof Error ? err.message : 'No se pudo subir el logo'))
+                      import('../../shared/toast').then(m => m.t.error(err instanceof Error ? err.message : txt('cuenta.toast.logo.no')))
                     } finally {
                       e.target.value = ''
                     }
@@ -249,11 +251,11 @@ export default function Cuenta() {
                   onClick={() => document.getElementById('logo-input')?.click()}
                   className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-center text-sm font-medium text-texto hover:bg-superficie/50 transition"
                 >
-                  Subir logo
+                  {txt('cuenta.logo.subir')}
                 </button>
               </div>
               <p className="text-xs text-texto-suave">
-                JPG, PNG o WebP · máx. 512 KB · se comprime a WebP 512×512
+                {txt('cuenta.logo.formatos')}
               </p>
             </label>
 
@@ -261,11 +263,11 @@ export default function Cuenta() {
               type="button"
               onClick={() => {
                 import('../../services/perfil').then(m => m.actualizarLogo(organizador.uid, ''))
-                import('../../shared/toast').then(m => m.t.success('Logo eliminado'))
+                import('../../shared/toast').then(m => m.t.success(txt('cuenta.toast.logo.del')))
               }}
               className="w-full min-h-[56px] rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-700 hover:bg-red-100"
             >
-              Eliminar logo
+              {txt('cuenta.logo.eliminar')}
             </button>
           </div>
         </div>
@@ -276,12 +278,12 @@ export default function Cuenta() {
       </section>
 
       <section aria-labelledby="password-heading" className="space-y-4 rounded-xl border border-borde p-5">
-        <h2 id="password-heading" className="text-xl font-bold text-texto">Cambiar contraseña</h2>
-        <p className="text-sm text-texto-suave">Requiere re-autenticación con Google por seguridad.</p>
+        <h2 id="password-heading" className="text-xl font-bold text-texto">{txt('cuenta.pass.t')}</h2>
+        <p className="text-sm text-texto-suave">{txt('cuenta.pass.d')}</p>
 
         <form onSubmit={handleCambiarPassword} className="space-y-3" noValidate>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-texto">Nueva contraseña</span>
+            <span className="text-sm font-medium text-texto">{txt('cuenta.pass.nueva')}</span>
             <input
               type="password"
               value={passwordNueva}
@@ -293,7 +295,7 @@ export default function Cuenta() {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-texto">Confirmar nueva contraseña</span>
+            <span className="text-sm font-medium text-texto">{txt('cuenta.pass.conf')}</span>
             <input
               type="password"
               value={passwordConfirm}
@@ -307,32 +309,31 @@ export default function Cuenta() {
             type="submit"
             className="min-h-[56px] w-full sm:w-auto rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario"
           >
-            Cambiar contraseña
+            {txt('cuenta.pass.boton')}
           </button>
         </form>
       </section>
 
       <section aria-labelledby="danger-heading" className="space-y-4 rounded-xl border-2 border-red-300 bg-red-50 p-5">
         <h2 className="text-xl font-bold text-red-700 flex items-center gap-2">
-          ⚠️ Zona de peligro
+          ⚠️ {txt('cuenta.danger.t')}
         </h2>
         <p className="text-sm text-red-800">
-          Eliminar tu cuenta borra <strong>todo</strong>: tus eventos, las reservas de tus asistentes,
-          tu logo, tu perfil y tu usuario de acceso. <strong>No se puede deshacer.</strong>
+          {txt('cuenta.danger.d1')} <strong>{txt('cuenta.danger.todo')}</strong>: {txt('cuenta.danger.d2')} <strong>{txt('cuenta.danger.no')}</strong>
         </p>
         <button
           type="button"
           onClick={() => setConfirmaEliminar(true)}
           className="w-full sm:w-auto min-h-[56px] rounded-xl bg-red-600 px-6 py-3 text-lg font-semibold text-white"
         >
-          Eliminar mi cuenta definitivamente
+          {txt('cuenta.danger.boton')}
         </button>
       </section>
       {confirmaEliminar ? (
         <ConfirmModal
-          titulo="¿Eliminar tu cuenta definitivamente?"
-          mensaje="Se borran TODOS tus eventos, las reservas de tus invitados y tu usuario. No se puede deshacer."
-          confirmar="Sí, eliminar todo"
+          titulo={txt('cuenta.borrar.t')}
+          mensaje={txt('cuenta.borrar.d')}
+          confirmar={txt('cuenta.borrar.si')}
           onConfirmar={() => void handleEliminarCuenta()}
           onCerrar={() => setConfirmaEliminar(false)}
         />

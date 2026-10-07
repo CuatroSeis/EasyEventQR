@@ -4,10 +4,13 @@ import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { aplicarTema } from '../../shared/theming'
 import { useOrganizador } from '../ContextoOrganizador'
 import { salir } from '../../services/auth'
+import TemaToggle from './TemaToggle'
+import { IdiomaToggle, useIdioma } from './IdiomaContext'
 
 /** Cáscara del panel: chrome común + tema en documentElement (efecto, no render: escribe DOM y sobrevive a la navegación). */
 
 export default function PanelLayout() {
+  const { t } = useIdioma()
   const organizador = useOrganizador()
   const navegar = useNavigate()
   const [saliendo, setSaliendo] = useState(false)
@@ -37,7 +40,7 @@ export default function PanelLayout() {
             className="-ml-2 flex min-h-[var(--touch-min)] min-w-[var(--touch-min)] items-center justify-center rounded-lg text-sm text-texto-suave hover:bg-superficie hover:text-texto"
           >
             <span aria-hidden="true">←</span>
-            <span className="sr-only">Volver al panel</span>
+            <span className="sr-only">{t('layout.volver')}</span>
           </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-texto">{organizador.nombre}</p>
@@ -49,15 +52,17 @@ export default function PanelLayout() {
             to="/panel/cuenta"
             className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto hover:bg-superficie"
           >
-            Cuenta y marca
+            {t('layout.cuenta')}
           </Link>
+          <IdiomaToggle />
+          <TemaToggle />
           <button
             type="button"
             onClick={handleSalir}
             disabled={saliendo}
             className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto-suave hover:bg-superficie hover:text-texto disabled:opacity-60"
           >
-            {saliendo ? 'Saliendo…' : 'Salir'}
+            {saliendo ? t('layout.saliendo') : t('layout.salir')}
           </button>
         </div>
       </header>
@@ -76,7 +81,7 @@ export default function PanelLayout() {
             to="/panel/eventos/nuevo"
             className="flex min-h-[var(--touch-min)] w-full items-center justify-center gap-2 rounded-xl bg-primario px-4 text-sm font-semibold text-sobre-primario"
           >
-            Crear evento
+            {t('layout.crear')}
           </Link>
         </div>
       </nav>

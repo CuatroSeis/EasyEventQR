@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { t } from '../../shared/toast'
 import { actualizarEvento, cambiarEstadoEvento, crearEventoBackend, duplicarEvento, eliminarEvento, obtenerEvento } from '../../services/eventos'
 import { validarBorrador, type BorradorEvento, type ProblemaDeValidacion } from '../../services/documentoEvento'
+import { useIdioma } from '../components/IdiomaContext'
 import { PRESETS } from '../../shared/theming'
 
 /**
@@ -35,6 +36,7 @@ function borradorDesdeFecha(fecha: Date): BorradorEvento {
 }
 
 export default function EventoForm() {
+  const { t: txt } = useIdioma()
   const { eventoId } = useParams<{ eventoId: string }>()
   const esNuevo = eventoId === undefined
   const navegar = useNavigate()
@@ -57,7 +59,7 @@ export default function EventoForm() {
       .then((evento) => {
         if (!vigente) return
         if (!evento) {
-          setError('Ese evento no existe o ya no es tuyo.')
+          setError(txt('ef.err.noexiste'))
           return
         }
         setBorrador({
@@ -74,7 +76,7 @@ export default function EventoForm() {
         })
       })
       .catch(() => {
-        if (vigente) setError('No pudimos cargar el evento.')
+        if (vigente) setError(txt('ef.err.carga'))
       })
       .finally(() => {
         if (vigente) setCargando(false)
@@ -106,15 +108,15 @@ export default function EventoForm() {
       if (esNuevo) {
         // Alta por backend (código/slug en transacción).
         await crearEventoBackend(borrador)
-        t.success('Evento creado. Compartilo con el código o el link.')
+        t.success(txt('ef.toast.creado'))
         navegar('/panel', { replace: true })
       } else {
         await actualizarEvento(eventoId, borrador, organizador)
-        t.success('Cambios guardados.')
+        t.success(txt('ef.toast.guardado'))
         navegar('/panel', { replace: true })
       }
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo guardar el evento.')
+      setError(fallo instanceof Error ? fallo.message : txt('ef.err.guardar'))
       setGuardando(false)
     }
   }
@@ -128,7 +130,7 @@ export default function EventoForm() {
       await cambiarEstadoEvento(eventoId, destino, organizador)
       navegar('/panel', { replace: true })
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo cambiar el estado.')
+      setError(fallo instanceof Error ? fallo.message : txt('ef.err.estado'))
       setGuardando(false)
     }
   }
@@ -141,15 +143,15 @@ export default function EventoForm() {
     try {
       const evento = await obtenerEvento(eventoId)
       if (!evento) {
-        setError('Ese evento no existe o ya no es tuyo.')
+        setError(txt('ef.err.noexiste'))
         setGuardando(false)
         return
       }
       const creado = await duplicarEvento(evento)
-      t.success(`Duplicado como ${creado.codigoCorto}.`)
+      t.success(txt('ef.toast.duplicado', { codigo: creado.codigoCorto }))
       navegar('/panel', { replace: true })
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo duplicar el evento.')
+      setError(fallo instanceof Error ? fallo.message : txt('ef.err.duplicar'))
       setGuardando(false)
     }
   }
@@ -162,13 +164,13 @@ export default function EventoForm() {
       await eliminarEvento(eventoId, organizador)
       navegar('/panel', { replace: true })
     } catch (fallo) {
-      setError(fallo instanceof Error ? fallo.message : 'No se pudo borrar el evento.')
+      setError(fallo instanceof Error ? fallo.message : txt('ef.err.borrar'))
       setGuardando(false)
     }
   }
 
   if (cargando) {
-    return <p className="py-8 text-center text-sm text-texto-suave">Cargando evento…</p>
+    return <p className="py-8 text-center text-sm text-texto-suave">{txt('ef.cargando')}</p>
   }
 
   const mensaje = (campo: keyof BorradorEvento) =>
@@ -176,24 +178,24 @@ export default function EventoForm() {
 
   return (
     <form onSubmit={enviar} className="flex flex-col gap-5" noValidate>
-      <h1 className="text-lg font-bold text-texto">{esNuevo ? 'Nuevo evento' : 'Editar evento'}</h1>
+      <h1 className="text-lg font-bold text-texto">{esNuevo ? txt('ef.nuevo') : txt('ef.editar')}</h1>
 
       {confirmaBorrado ? (
         <ConfirmModal
-          titulo="¿Borrar este evento?"
-          mensaje="Se va con las reservas que tenga adentro. No se puede deshacer."
-          confirmar="Borrar evento"
-          enCurso={guardando ? 'Borrando…' : undefined}
+          titulo={txt('ef.borrar.t')}
+          mensaje={txt('ef.borrar.d')}
+          confirmar={txt('ef.borrar.b')}
+          enCurso={guardando ? txt('ef.borrar.curso') : undefined}
           onConfirmar={() => void borrar()}
           onCerrar={() => setConfirmaBorrado(false)}
         />
       ) : null}
       {confirmaDuplicado ? (
         <ConfirmModal
-          titulo="¿Duplicar este evento?"
-          mensaje="Se crea una copia con los mismos datos y un código nuevo. Las reservas empiezan en cero."
-          confirmar="Duplicar evento"
-          enCurso={guardando ? 'Duplicando…' : undefined}
+          titulo={txt('ef.duplicar.t')}
+          mensaje={txt('ef.duplicar.d')}
+          confirmar={txt('ef.duplicar.b')}
+          enCurso={guardando ? txt('ef.duplicar.curso') : undefined}
           onConfirmar={() => void duplicar()}
           onCerrar={() => setConfirmaDuplicado(false)}
         />
@@ -205,17 +207,17 @@ export default function EventoForm() {
         </p>
       ) : null}
 
-      <Campo etiqueta="Nombre" error={mensaje('nombre')}>
+      <Campo etiqueta={txt('ef.nombre')} error={mensaje('nombre')}>
         <input
           className="campo"
           value={borrador.nombre}
           onChange={(e) => cambiar('nombre', e.target.value)}
-          placeholder="Concierto, cena, curso…"
+          placeholder={txt('ef.nombre.ph')}
           autoComplete="off"
         />
       </Campo>
 
-      <Campo etiqueta="Fecha y hora" error={mensaje('fecha')}>
+      <Campo etiqueta={txt('ef.fecha')} error={mensaje('fecha')}>
         <input
           className="campo"
           type="datetime-local"
@@ -227,17 +229,17 @@ export default function EventoForm() {
         />
       </Campo>
 
-      <Campo etiqueta="Dónde" error={mensaje('lugar')}>
+      <Campo etiqueta={txt('ef.donde')} error={mensaje('lugar')}>
         <input
           className="campo"
           value={borrador.lugar}
           onChange={(e) => cambiar('lugar', e.target.value)}
-          placeholder="Salón, dirección, link"
+          placeholder={txt('ef.donde.ph')}
           autoComplete="off"
         />
       </Campo>
 
-      <Campo etiqueta="Descripción" ayuda="Opcional. Sale en la página del evento.">
+      <Campo etiqueta={txt('ef.desc')} ayuda={txt('ef.desc.d')}>
         <textarea
           className="campo min-h-24"
           value={borrador.descripcion}
@@ -246,9 +248,9 @@ export default function EventoForm() {
       </Campo>
 
       <Campo
-        etiqueta="Banner (URL)"
+        etiqueta={txt('ef.banner')}
         error={mensaje('bannerUrl')}
-        ayuda="Opcional. Link a una imagen (jpg, png, webp) en Imgur, Drive, Cloudinary, etc."
+        ayuda={txt('ef.banner.d')}
       >
         <input
           className="campo"
@@ -261,10 +263,9 @@ export default function EventoForm() {
       </Campo>
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
-        <legend className="px-1 text-sm font-medium text-texto">Estilo de la landing</legend>
+        <legend className="px-1 text-sm font-medium text-texto">{txt('ef.estilo')}</legend>
         <p className="text-xs text-texto-suave">
-          Un estilo predefinido pinta la página del evento. Si después elegís
-          colores propios en Marca, esos mandan.
+          {txt('ef.estilo.d')}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <button
@@ -273,7 +274,7 @@ export default function EventoForm() {
             aria-pressed={borrador.tema == null}
             className={`rounded-lg border px-3 py-2 text-xs font-medium ${borrador.tema == null ? 'border-primario bg-primario/10 text-texto' : 'border-borde text-texto-suave'}`}
           >
-            Sin estilo
+            {txt('ef.sinEstilo')}
           </button>
           {(Object.keys(PRESETS) as Array<keyof typeof PRESETS>).map((clave) => (
             <button
@@ -299,9 +300,9 @@ export default function EventoForm() {
       </fieldset>
 
       <Campo
-        etiqueta="Cupo"
+        etiqueta={txt('ef.cupo')}
         error={mensaje('capacidadMaxima')}
-        ayuda={`Tu plan permite hasta ${limite} entradas por evento.`}
+        ayuda={txt('ef.cupo.d', { n: limite })}
       >
         <input
           className="campo"
@@ -315,7 +316,7 @@ export default function EventoForm() {
       </Campo>
 
       <fieldset className="flex flex-col gap-3 rounded-xl border border-borde p-4">
-        <legend className="px-1 text-sm font-medium text-texto">Quién lo puede encontrar</legend>
+        <legend className="px-1 text-sm font-medium text-texto">{txt('ef.quien')}</legend>
         <label className="flex items-start gap-3 text-sm text-texto">
           <input
             type="radio"
@@ -325,9 +326,9 @@ export default function EventoForm() {
             onChange={() => cambiar('visibilidad', 'privado')}
           />
           <span>
-            <span className="font-medium">Privado</span>
+            <span className="font-medium">{txt('ef.privado')}</span>
             <span className="block text-xs text-texto-suave">
-              Solo entra quien tenga el link o el código. No aparece en el buscador.
+              {txt('ef.privado.d')}
             </span>
           </span>
         </label>
@@ -340,9 +341,9 @@ export default function EventoForm() {
             onChange={() => cambiar('visibilidad', 'publico')}
           />
           <span>
-            <span className="font-medium">Público</span>
+            <span className="font-medium">{txt('ef.publico')}</span>
             <span className="block text-xs text-texto-suave">
-              Aparece cuando alguien lo busca por nombre en el inicio.
+              {txt('ef.publico.d')}
             </span>
           </span>
         </label>
@@ -356,11 +357,11 @@ export default function EventoForm() {
             checked={borrador.requierePago}
             onChange={(e) => cambiar('requierePago', e.target.checked)}
           />
-          El evento es pago
+          {txt('ef.pago')}
         </label>
 
         {borrador.requierePago ? (
-          <Campo etiqueta="Precio por entrada" error={mensaje('precioEntrada')}>
+          <Campo etiqueta={txt('ef.precio')} error={mensaje('precioEntrada')}>
             <input
               className="campo"
               type="number"
@@ -377,7 +378,7 @@ export default function EventoForm() {
           </Campo>
         ) : (
           <p className="text-xs text-texto-suave">
-            El cobro real llega en una fase posterior. Por ahora el evento queda como gratis.
+            {txt('ef.pago.prox')}
           </p>
         )}
       </fieldset>
@@ -388,7 +389,7 @@ export default function EventoForm() {
           disabled={guardando}
           className="min-h-[var(--touch-min)] rounded-xl bg-primario px-4 text-sm font-semibold text-sobre-primario disabled:opacity-60"
         >
-          {guardando ? 'Guardando…' : esNuevo ? 'Crear evento' : 'Guardar cambios'}
+          {guardando ? txt('ef.guardando') : esNuevo ? txt('ef.crear') : txt('ef.guardar')}
         </button>
 
         {esNuevo ? null : (
@@ -399,7 +400,7 @@ export default function EventoForm() {
               disabled={guardando}
               className="min-h-[var(--touch-min)] rounded-xl border border-borde px-4 text-sm font-medium text-texto disabled:opacity-60"
             >
-              Cerrar / reabrir reservas
+              {txt('ef.cerrar')}
             </button>
             <button
               type="button"
@@ -407,7 +408,7 @@ export default function EventoForm() {
               disabled={guardando}
               className="min-h-[var(--touch-min)] rounded-xl border border-borde px-4 text-sm font-medium text-texto disabled:opacity-60"
             >
-              Duplicar evento
+              {txt('ef.duplicar')}
             </button>
             <button
               type="button"
@@ -415,7 +416,7 @@ export default function EventoForm() {
               disabled={guardando}
               className="min-h-[var(--touch-min)] px-4 text-sm font-medium text-texto-suave underline disabled:opacity-60"
             >
-              Borrar evento
+              {txt('ef.borrar')}
             </button>
           </>
         )}

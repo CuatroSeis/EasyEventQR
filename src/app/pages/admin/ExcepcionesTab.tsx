@@ -10,12 +10,15 @@ import {
 } from '../../../services/admin'
 import { Cargando } from './Cargando'
 import { MensajeError } from './MensajeError'
+import { useIdioma } from '../../components/IdiomaContext'
 
-const ETIQUETAS_CAMPO: Record<string, string> = {
-  bannerPermitido: 'Banner',
-  colorPersonalizadoPermitido: 'Color',
-  logoPermitido: 'Logo',
-  capacidadMaximaPorEvento: 'Capacidad',
+function etiquetasCampo(t: (clave: 'adm.exc.f.banner' | 'adm.exc.f.color' | 'adm.exc.f.logo' | 'adm.exc.f.capacidad') => string): Record<string, string> {
+  return {
+    bannerPermitido: t('adm.exc.f.banner'),
+    colorPersonalizadoPermitido: t('adm.exc.f.color'),
+    logoPermitido: t('adm.exc.f.logo'),
+    capacidadMaximaPorEvento: t('adm.exc.f.capacidad'),
+  }
 }
 
 /**
@@ -31,6 +34,7 @@ const ETIQUETAS_CAMPO: Record<string, string> = {
  * reinicia de paso el banner a false.
  */
 export function ExcepcionesTab() {
+  const { t } = useIdioma()
   const [excepciones, setExcepciones] = useState<ExcepcionAdmin[]>([])
   const [organizadores, setOrganizadores] = useState<OrganizadorAdmin[]>([])
   const [cargando, setCargando] = useState(true)
@@ -59,7 +63,7 @@ export function ExcepcionesTab() {
   }, [cargar])
 
   async function revocar(excepcion: ExcepcionAdmin) {
-    if (!window.confirm(`¿Revocar las excepciones de ${excepcion.organizadorNombre}? Vuelven a los límites de ${excepcion.plan}.`)) {
+    if (!window.confirm(t('adm.exc.revocar.q', { nombre: excepcion.organizadorNombre, plan: excepcion.plan }))) {
       return
     }
     setGuardando(true)
@@ -74,23 +78,21 @@ export function ExcepcionesTab() {
     }
   }
 
-  if (cargando) return <Cargando etiqueta="Cargando excepciones…" />
+  if (cargando) return <Cargando etiqueta={t('adm.exc.cargando')} />
 
   return (
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-texto">Excepciones comerciales</h1>
-          <p className="text-sm text-texto-suave">
-            Ajustes por cliente que se apartan de los límites de su plan
-          </p>
+          <h1 className="text-lg font-bold text-texto">{t('adm.tabs.exc')}</h1>
+          <p className="text-sm text-texto-suave">{t('adm.exc.sub')}</p>
         </div>
         <button
           type="button"
           onClick={() => setModalAbierto(true)}
           className="rounded-lg bg-primario px-3 py-1.5 text-sm font-medium text-sobre-primario"
         >
-          Conceder excepción
+          {t('adm.exc.conceder')}
         </button>
       </header>
 
@@ -98,17 +100,17 @@ export function ExcepcionesTab() {
 
       {excepciones.length === 0 ? (
         <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
-          Ningún organizador tiene excepciones: todos usan los límites de su plan.
+          {t('adm.exc.vacio')}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-borde">
           <table className="w-full text-sm">
             <thead className="bg-superficie text-left text-xs text-texto-suave">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Organizador</th>
-                <th scope="col" className="px-3 py-2 font-medium">Plan</th>
-                <th scope="col" className="px-3 py-2 font-medium">Excepciones</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">Acciones</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.org')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.plan')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.excepciones')}</th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -123,8 +125,8 @@ export function ExcepcionesTab() {
                     <ul className="space-y-0.5 text-xs">
                       {exc.campos.map((campo) => (
                         <li key={campo} className="text-texto">
-                          <span className="text-texto-suave">{ETIQUETAS_CAMPO[campo] ?? campo}:</span>{' '}
-                          {formatearValor(campo, exc.limitesPersonalizacion)}
+                          <span className="text-texto-suave">{etiquetasCampo(t)[campo] ?? campo}:</span>{' '}
+                          {formatearValor(t, campo, exc.limitesPersonalizacion)}
                         </li>
                       ))}
                     </ul>
@@ -136,7 +138,7 @@ export function ExcepcionesTab() {
                       disabled={guardando}
                       className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                     >
-                      Revocar
+                      {t('adm.exc.revocar')}
                     </button>
                   </td>
                 </tr>
@@ -161,9 +163,9 @@ export function ExcepcionesTab() {
   )
 }
 
-function formatearValor(campo: string, limites: ExcepcionAdmin['limitesPersonalizacion']): string {
+function formatearValor(t: (clave: 'adm.exc.permitido' | 'adm.exc.nopermitido') => string, campo: string, limites: ExcepcionAdmin['limitesPersonalizacion']): string {
   if (campo === 'capacidadMaximaPorEvento') return String(limites.capacidadMaximaPorEvento)
-  return limites[campo as 'bannerPermitido'] ? 'permitido' : 'no permitido'
+  return limites[campo as 'bannerPermitido'] ? t('adm.exc.permitido') : t('adm.exc.nopermitido')
 }
 
 function ModalConceder({
@@ -177,6 +179,7 @@ function ModalConceder({
   onGuardado: () => Promise<void>
   onError: (texto: string) => void
 }) {
+  const { t } = useIdioma()
   const [uid, setUid] = useState('')
   const [banner, setBanner] = useState(false)
   const [color, setColor] = useState(true)
@@ -211,7 +214,7 @@ function ModalConceder({
       })
       await onGuardado()
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'No se pudo conceder la excepción.')
+      onError(e instanceof Error ? e.message : t('adm.exc.err'))
     } finally {
       setGuardando(false)
     }
@@ -222,13 +225,13 @@ function ModalConceder({
       className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Conceder excepción"
+      aria-label={t('adm.exc.conceder.b')}
     >
       <div className="w-full max-w-md rounded-xl border border-borde bg-sobre-primario p-4">
-        <h2 className="text-base font-bold text-texto">Conceder excepción</h2>
+        <h2 className="text-base font-bold text-texto">{t('adm.exc.conceder.b')}</h2>
 
         <label className="mt-3 block text-sm text-texto" htmlFor="organizador-excepcion">
-          Organizador
+          {t('adm.exc.org')}
         </label>
         <select
           id="organizador-excepcion"
@@ -236,7 +239,7 @@ function ModalConceder({
           onChange={(e) => seleccionar(e.target.value)}
           className="campo mt-1"
         >
-          <option value="">Elegí un organizador</option>
+          <option value="">{t('adm.exc.elegi')}</option>
           {organizadores.map((o) => (
             <option key={o.uid} value={o.uid}>
               {o.nombre} ({o.plan})
@@ -245,12 +248,12 @@ function ModalConceder({
         </select>
 
         <fieldset className="mt-3 space-y-2" disabled={!elegido}>
-          <legend className="text-sm text-texto-suave">Límites</legend>
+          <legend className="text-sm text-texto-suave">{t('adm.exc.limites')}</legend>
           {(
             [
-              ['banner', banner, setBanner],
-              ['colorPersonalizado', color, setColor],
-              ['logo', logo, setLogo],
+              [t('adm.exc.f.banner'), banner, setBanner],
+              [t('adm.exc.f.color'), color, setColor],
+              [t('adm.exc.f.logo'), logo, setLogo],
             ] as const
           ).map(([etiqueta, valor, setter]) => (
             <label key={etiqueta} className="flex items-center gap-2 text-sm text-texto">
@@ -260,7 +263,7 @@ function ModalConceder({
           ))}
 
           <label className="block text-sm text-texto" htmlFor="capacidad-excepcion">
-            Capacidad máxima por evento
+            {t('adm.exc.capmax')}
           </label>
           <input
             id="capacidad-excepcion"
@@ -278,7 +281,7 @@ function ModalConceder({
             onClick={onCerrar}
             className="rounded-lg border border-borde px-3 py-1.5 text-sm text-texto hover:bg-superficie"
           >
-            Cancelar
+            {t('adm.exc.cancelar')}
           </button>
           <button
             type="button"
@@ -286,7 +289,7 @@ function ModalConceder({
             disabled={!elegido || guardando}
             className="rounded-lg bg-primario px-3 py-1.5 text-sm font-medium text-sobre-primario disabled:opacity-50"
           >
-            {guardando ? 'Guardando…' : 'Conceder'}
+            {guardando ? t('adm.exc.guardando') : t('adm.exc.guardar')}
           </button>
         </div>
       </div>

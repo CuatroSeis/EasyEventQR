@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { pedirRegistrosAdmin, type RegistroAdmin } from '../../../services/admin'
 import { Cargando } from './Cargando'
 import { MensajeError } from './MensajeError'
+import { useIdioma } from '../../components/IdiomaContext'
 
 const POR_PAGINA = 25
 
@@ -33,6 +34,7 @@ const PAGOS: { valor: RegistroAdmin['pago']['estado']; etiqueta: string }[] = [
  * archivo, porque acá sólo se exporta lo que la página trajo.
  */
 export function RegistrosTab() {
+  const { t } = useIdioma()
   const [registros, setRegistros] = useState<RegistroAdmin[]>([])
   const [total, setTotal] = useState(0)
   const [cargando, setCargando] = useState(true)
@@ -67,7 +69,7 @@ export function RegistrosTab() {
       setTotal(respuesta.total)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudieron cargar los registros.')
+      setError(e instanceof Error ? e.message : t('adm.reg.err'))
     } finally {
       setCargando(false)
     }
@@ -107,7 +109,7 @@ export function RegistrosTab() {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-texto">Registros</h1>
+          <h1 className="text-lg font-bold text-texto">{t('adm.tabs.reg')}</h1>
           <p className="text-sm text-texto-suave">
             {total} en total · {usados} usados en esta página
           </p>
@@ -127,7 +129,7 @@ export function RegistrosTab() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, email, DNI, teléfono, evento o id"
+          placeholder={t('adm.reg.buscar')}
           className="campo flex-1"
           aria-label="Buscar registro"
         />
@@ -140,7 +142,7 @@ export function RegistrosTab() {
           className="campo sm:w-36"
           aria-label="Filtrar por estado"
         >
-          <option value="">Todo estado</option>
+          <option value="">{t('adm.reg.todoest')}</option>
           {ESTADOS.map((e) => (
             <option key={e.valor} value={e.valor}>
               {e.etiqueta}
@@ -156,7 +158,7 @@ export function RegistrosTab() {
           className="campo sm:w-36"
           aria-label="Filtrar por pago"
         >
-          <option value="">Todo pago</option>
+          <option value="">{t('adm.reg.todopago')}</option>
           {PAGOS.map((p) => (
             <option key={p.valor} value={p.valor}>
               {p.etiqueta}
@@ -168,7 +170,7 @@ export function RegistrosTab() {
       {error && <MensajeError texto={error} />}
 
       {cargando ? (
-        <Cargando etiqueta="Cargando registros…" />
+        <Cargando etiqueta={t('adm.reg.cargando')} />
       ) : registros.length === 0 ? (
         <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
           No hay reservas que coincidan.
@@ -178,13 +180,13 @@ export function RegistrosTab() {
           <table className="w-full text-sm">
             <thead className="bg-superficie text-left text-xs text-texto-suave">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Asistente</th>
-                <th scope="col" className="px-3 py-2 font-medium">Evento</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.asistente')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.evento')}</th>
                 <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">DNI</th>
-                <th scope="col" className="px-3 py-2 font-medium">Estado</th>
-                <th scope="col" className="px-3 py-2 font-medium">Pago</th>
-                <th scope="col" className="px-3 py-2 font-medium">Usado</th>
-                <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">Registrado</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.estado')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.pago')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.usado')}</th>
+                <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">{t('adm.th.registrado')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -209,7 +211,7 @@ export function RegistrosTab() {
                       {r.pago.estado === 'no_aplica' ? 'Gratis' : r.pago.estado}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-texto-suave">{r.usado ? 'Sí' : 'No'}</td>
+                  <td className="px-3 py-2 text-xs text-texto-suave">{r.usado ? t('adm.reg.si') : t('adm.reg.no')}</td>
                   <td className="hidden px-3 py-2 text-texto-suave lg:table-cell">
                     {formatearFechaHora(r.fechaRegistro)}
                   </td>

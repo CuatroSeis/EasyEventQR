@@ -4,10 +4,12 @@ import type { User } from 'firebase/auth'
 
 import { asegurarDocumentoOrganizador, observarSesion } from '../../services/auth'
 import { ProveedorOrganizador } from '../ContextoOrganizador'
+import { useIdioma } from './IdiomaContext'
 import type { Organizador } from '../../shared/types'
 
 /** Guarda de rutas: UX, no seguridad (el aislamiento real está en firestore.rules). Lee el organizador UNA vez y lo reparte por contexto. */
 export default function Protegido() {
+  const { t } = useIdioma()
   const [estado, setEstado] = useState<'cargando' | 'autenticado' | 'anonimo'>('cargando')
   const [organizador, setOrganizador] = useState<Organizador | null>(null)
   const ubicacion = useLocation()
@@ -34,7 +36,7 @@ export default function Protegido() {
   if (estado === 'cargando') {
     return (
       <main className="flex min-h-dvh items-center justify-center p-4">
-        <p className="text-sm text-texto-suave">Cargando tu cuenta…</p>
+        <p className="text-sm text-texto-suave">{t('prot.cargando')}</p>
       </main>
     )
   }
@@ -72,28 +74,22 @@ export default function Protegido() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl" aria-hidden="true">
             ⏸
           </div>
-          <h1 className="mt-4 text-lg font-bold text-texto">Tu cuenta está suspendida</h1>
-          <p className="mt-2 text-sm text-texto-suave">
-            Por eso no podés crear ni editar eventos ni cambiar tu marca. Tu cuenta y tus eventos
-            siguen guardados: sólo falta que alguien la reactive.
-          </p>
-          <p className="mt-4 rounded-lg bg-superficie p-3 text-xs text-texto-suave">
-            Si creés que esto es un error, pedile a un administrador que reactive la cuenta desde
-            el panel de administración.
-          </p>
+          <h1 className="mt-4 text-lg font-bold text-texto">{t('prot.susp.t')}</h1>
+          <p className="mt-2 text-sm text-texto-suave">{t('prot.susp.d')}</p>
+          <p className="mt-4 rounded-lg bg-superficie p-3 text-xs text-texto-suave">{t('prot.susp.d2')}</p>
           <div className="mt-5 flex flex-col gap-2">
             <a
               href="/"
               className="rounded-lg border border-borde px-4 py-2 text-sm font-medium text-texto"
             >
-              Ir al inicio
+              {t('prot.inicio')}
             </a>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="rounded-lg px-4 py-2 text-sm text-texto-suave underline"
             >
-              Recargar y volver a intentar
+              {t('prot.recargar')}
             </button>
           </div>
         </div>

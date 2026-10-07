@@ -18,6 +18,19 @@
     -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!--
+      Antiflicker del tema: setea `data-theme` antes del bundle con la
+      MISMA regla que `leerTema()` (guardada > sistema > claro).
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('easyeventqr-tema')
+        if (t !== 'claro' && t !== 'oscuro') {
+          t = matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro'
+        }
+        document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
+    <!--
       Tipografías de la landing pública (/e/:id): Bebas Neue para el
       título del evento, Source Sans 3 para el cuerpo. display=swap para
       no bloquear el primer pintado; si Google Fonts no carga, cae al

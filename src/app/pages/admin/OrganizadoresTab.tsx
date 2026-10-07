@@ -9,6 +9,7 @@ import {
 } from '../../../services/admin'
 import { Cargando } from './Cargando'
 import { MensajeError } from './MensajeError'
+import { useIdioma } from '../../components/IdiomaContext'
 
 const PLAN_LABELS: Record<OrganizadorAdmin['plan'], string> = {
   gratis: 'Gratis',
@@ -27,6 +28,7 @@ const PLANES: OrganizadorAdmin['plan'][] = ['gratis', 'pro', 'pro+']
  * recargarla después de mover un select se ve como un parpadeo.
  */
 export function OrganizadoresTab() {
+  const { t } = useIdioma()
   const [organizadores, setOrganizadores] = useState<OrganizadorAdmin[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +42,7 @@ export function OrganizadoresTab() {
       setOrganizadores(lista)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudieron cargar los organizadores.')
+      setError(e instanceof Error ? e.message : t('adm.org.err.carga'))
     } finally {
       setCargando(false)
     }
@@ -56,7 +58,7 @@ export function OrganizadoresTab() {
     try {
       await accion()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo completar la operación.')
+      setError(e instanceof Error ? e.message : t('adm.org.err.op'))
       // El estado local quedó mentiroso: la escritura falló, así que hay que
       // volver a leer la verdad de la base en vez de seguir mostrando lo que
       // el admin acaba de tocar.
@@ -77,8 +79,8 @@ export function OrganizadoresTab() {
     const suspendido = org.estadoSuscripcion === 'activo'
     const destino = suspendido ? 'suspendido' : 'activo'
     const pregunta = suspendido
-      ? `¿Suspender la cuenta de ${org.nombre}? No podrá publicar hasta reactivarla.`
-      : `¿Reactivar la cuenta de ${org.nombre}?`
+      ? t('adm.org.suspender.q', { nombre: org.nombre })
+      : t('adm.org.reactivar.q', { nombre: org.nombre })
     if (!window.confirm(pregunta)) return
 
     void conOcupado(org.uid, async () => {
@@ -90,11 +92,9 @@ export function OrganizadoresTab() {
   }
 
   function eliminar(org: OrganizadorAdmin) {
-    const pregunta =
-      `Se va a eliminar la cuenta de ${org.nombre} (${org.email}) con TODOS sus eventos ` +
-      'y TODOS sus registros, incluida la cuenta de acceso. No se puede deshacer. ¿Seguís?'
+    const pregunta = t('adm.org.borrar.q', { nombre: org.nombre, email: org.email })
     if (!window.confirm(pregunta)) return
-    if (!window.confirm('Última confirmación: ¿borrar definitivamente?')) return
+    if (!window.confirm(t('adm.org.borrar.q2'))) return
 
     void conOcupado(org.uid, async () => {
       await eliminarOrganizador(org.uid)
@@ -111,14 +111,14 @@ export function OrganizadoresTab() {
   const activos = organizadores.filter((o) => o.estadoSuscripcion === 'activo').length
   const suspendidos = organizadores.length - activos
 
-  if (cargando) return <Cargando etiqueta="Cargando organizadores…" />
+  if (cargando) return <Cargando etiqueta={t('adm.org.cargando')} />
 
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-lg font-bold text-texto">Organizadores</h1>
+        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.org')}</h1>
         <p className="text-sm text-texto-suave">
-          {organizadores.length} en total · {activos} activos · {suspendidos} suspendidos
+          {t('adm.org.sub', { n: organizadores.length, a: activos, s: suspendidos })}
         </p>
       </header>
 
@@ -127,17 +127,17 @@ export function OrganizadoresTab() {
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, email o uid"
+          placeholder={t('adm.org.buscar')}
           className="campo flex-1"
-          aria-label="Buscar organizador"
+          aria-label={t('adm.org.buscar.aria')}
         />
         <select
           value={plan}
           onChange={(e) => setPlan(e.target.value as OrganizadorAdmin['plan'] | '')}
           className="campo sm:w-40"
-          aria-label="Filtrar por plan"
+          aria-label={t('adm.org.filtrar')}
         >
-          <option value="">Todos los planes</option>
+          <option value="">{t('adm.org.todos')}</option>
           {PLANES.map((p) => (
             <option key={p} value={p}>
               {PLAN_LABELS[p]}
@@ -157,12 +157,12 @@ export function OrganizadoresTab() {
           <table className="w-full text-sm">
             <thead className="bg-superficie text-left text-xs text-texto-suave">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Organizador</th>
-                <th scope="col" className="px-3 py-2 font-medium">Plan</th>
-                <th scope="col" className="px-3 py-2 font-medium">Estado</th>
-                <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">Cupo máx.</th>
-                <th scope="col" className="px-3 py-2 font-medium">Alta</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">Acciones</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.org')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.plan')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.estado')}</th>
+                <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">{t('adm.th.cupo')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.alta')}</th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
@@ -211,7 +211,7 @@ export function OrganizadoresTab() {
                         disabled={ocupado === o.uid}
                         className="rounded px-2 py-1 text-xs text-texto-suave hover:bg-superficie disabled:opacity-50"
                       >
-                        {o.estadoSuscripcion === 'activo' ? 'Suspender' : 'Reactivar'}
+                        {o.estadoSuscripcion === 'activo' ? t('adm.org.suspender') : t('adm.org.reactivar')}
                       </button>
                       <button
                         type="button"
@@ -219,7 +219,7 @@ export function OrganizadoresTab() {
                         disabled={ocupado === o.uid}
                         className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
-                        Eliminar
+                        {t('adm.org.eliminar')}
                       </button>
                     </div>
                   </td>

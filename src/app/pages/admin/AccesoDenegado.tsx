@@ -5,47 +5,39 @@ import { salir } from '../../../services/auth'
  * Un rechazo sin motivo ("no tengo permisos") no dice QUÉ falta: claim,
  * variable o sesión. Cada `porQue` de `/api/me` tiene su texto acá.
  */
-const MOTIVOS: Record<string, { titulo: string; cuerpo: string; pasos: string[] }> = {
-  'falta-var': {
-    titulo: 'El servidor no tiene configurado quién es super-admin',
-    cuerpo:
-      'La variable SUPER_ADMIN_UID no está puesta en este entorno. Con esa variable ausente, el único camino es el custom claim admin.',
-    pasos: [
-      'Poné SUPER_ADMIN_UID con tu UID en Vercel → Settings → Environment Variables.',
-      'OJO: marcá los tres ambientes (Production, Preview, Development).',
-      'Volvé a desplegar: la variable se lee en runtime, no al compilar.',
-    ],
-  },
-  'sin-claim': {
-    titulo: 'Tu cuenta todavía no es super-admin',
-    cuerpo:
-      'El servidor está configurado, pero tu UID no es el del super-admin y tu documento no tiene el custom claim admin.',
-    pasos: [
-      'Si sos vos quien administra esto: pedile a un super-admin que te lo asigne.',
-      'El claim va en el documento de Firebase Authentication, no en el de Firestore.',
-      'Después de asignarlo tenés que cerrar sesión y volver a entrar (ver abajo).',
-    ],
-  },
-  'error-red': {
-    titulo: 'No se pudo verificar tu sesión',
-    cuerpo:
-      'La consulta a /api/me falló o no devolvió una respuesta válida. Puede ser la red, o que las funciones del backend estén caídas.',
-    pasos: [
-      'Probá de nuevo en unos segundos.',
-      'Si sigue, mirá los logs de Vercel para ver si /api/me está fallando.',
-      'Verificá que FIREBASE_SERVICE_ACCOUNT esté bien puesta: sin eso, /api/me no puede verificar el token.',
-    ],
-  },
-  desconocido: {
-    titulo: 'Tu sesión no tiene permisos de super-admin',
-    cuerpo: 'La respuesta del servidor no indica un motivo concreto.',
-    pasos: ['Cerrá sesión y volvé a entrar con la cuenta correcta.'],
-  },
-  'sin-sesion': {
-    titulo: 'No hay sesión activa',
-    cuerpo: 'Este panel necesita que inicies sesión con la cuenta de super-admin.',
-    pasos: ['Iniciá sesión y volvé a abrir esta pantalla.'],
-  },
+import { useIdioma } from '../../components/IdiomaContext'
+import type { ClaveTexto } from '../../../shared/i18n'
+
+type InfoMotivo = { titulo: ClaveTexto; cuerpo: ClaveTexto; pasos: ClaveTexto[] }
+
+function motivos(): Record<string, InfoMotivo> {
+  return {
+    'falta-var': {
+      titulo: 'adm.den.faltavar.t',
+      cuerpo: 'adm.den.faltavar.d',
+      pasos: ['adm.den.faltavar.p1', 'adm.den.faltavar.p2', 'adm.den.faltavar.p3'],
+    },
+    'sin-claim': {
+      titulo: 'adm.den.sinclaim.t',
+      cuerpo: 'adm.den.sinclaim.d',
+      pasos: ['adm.den.sinclaim.p1', 'adm.den.sinclaim.p2', 'adm.den.sinclaim.p3'],
+    },
+    'error-red': {
+      titulo: 'adm.den.red.t',
+      cuerpo: 'adm.den.red.d',
+      pasos: ['adm.den.red.p1', 'adm.den.red.p2', 'adm.den.red.p3'],
+    },
+    desconocido: {
+      titulo: 'adm.den.desc.t',
+      cuerpo: 'adm.den.desc.d',
+      pasos: ['adm.den.desc.p1'],
+    },
+    'sin-sesion': {
+      titulo: 'adm.den.sinsesion.t',
+      cuerpo: 'adm.den.sinsesion.d',
+      pasos: ['adm.den.sinsesion.p1'],
+    },
+  }
 }
 
 export default function AccesoDenegado({
@@ -55,7 +47,9 @@ export default function AccesoDenegado({
   motivo: string | null
   onSalir: () => void
 }) {
-  const info = MOTIVOS[motivo ?? ''] ?? MOTIVOS['desconocido']
+  const { t } = useIdioma()
+  const tabla = motivos()
+  const info = tabla[motivo ?? ''] ?? tabla['desconocido']
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
@@ -65,8 +59,8 @@ export default function AccesoDenegado({
             🔒
           </span>
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-texto">{info.titulo}</h1>
-            <p className="mt-1 text-sm text-texto-suave">{info.cuerpo}</p>
+            <h1 className="text-lg font-bold text-texto">{t(info.titulo)}</h1>
+            <p className="mt-1 text-sm text-texto-suave">{t(info.cuerpo)}</p>
           </div>
         </div>
 
@@ -76,24 +70,20 @@ export default function AccesoDenegado({
               <span aria-hidden="true" className="text-texto-suave">
                 →
               </span>
-              <span>{paso}</span>
+              <span>{t(paso)}</span>
             </li>
           ))}
         </ol>
 
         <div className="mt-4 rounded-xl bg-superficie-2 p-3">
-          <p className="text-sm font-semibold text-texto">¿Cambiaste un permiso recién?</p>
-          <p className="mt-1 text-sm text-texto-suave">
-            Los custom claims van horneados en el token que emite Firebase, y ese token se cachea
-            una hora. Recargar la página no alcanza: cerrá sesión y volvé a entrar para que se
-            emita uno nuevo con el claim.
-          </p>
+          <p className="text-sm font-semibold text-texto">{t('adm.den.cambio')}</p>
+          <p className="mt-1 text-sm text-texto-suave">{t('adm.den.cambio.d')}</p>
           <button
             type="button"
             onClick={() => void salir()}
             className="mt-3 min-h-[var(--touch-min)] w-full rounded-xl bg-primario px-4 py-2 text-sm font-semibold text-sobre-primario"
           >
-            Cerrar sesión y entrar de nuevo
+            {t('adm.den.resalir')}
           </button>
         </div>
 
@@ -103,7 +93,7 @@ export default function AccesoDenegado({
             onClick={onSalir}
             className="min-h-[var(--touch-min)] flex-1 rounded-xl border border-borde px-4 py-2 text-sm font-medium text-texto"
           >
-            Volver al panel
+            {t('adm.volver')}
           </button>
         </div>
       </div>

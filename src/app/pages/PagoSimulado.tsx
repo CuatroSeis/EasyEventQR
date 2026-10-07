@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useIdioma } from '../components/IdiomaContext'
 
 /** Checkout SIMULADO (`MERCADOPAGO_SIMULADO=true`): no cobra nada, los botones pegan al webhook como haría MP. El banner arriba es para que nadie lo confunda con un checkout real. */
 
@@ -32,6 +33,7 @@ function formatoMoneda(monto: number, moneda: string): string {
 }
 
 export default function PagoSimulado() {
+  const { t } = useIdioma()
   const [busca] = useSearchParams()
   const preferenceId = busca.get('preference_id')
   const paymentId = busca.get('payment_id')
@@ -49,7 +51,7 @@ export default function PagoSimulado() {
 
   useEffect(() => {
     if (!registroId) {
-      setError('El link de pago no tiene la referencia de la reserva.')
+      setError(t('pago.link.malo'))
       setCargando(false)
       return
     }
@@ -63,12 +65,12 @@ export default function PagoSimulado() {
         const data = await resp.json()
         if (!vivo) return
         if (!resp.ok || !data.ok) {
-          setError(data.error ?? 'No pudimos cargar el pago.')
+          setError(data.error ?? t('pago.cargando'))
           return
         }
         setResumen(data as Resumen)
       } catch {
-        if (vivo) setError('No pudimos conectar con el servidor.')
+        if (vivo) setError(t('pago.red'))
       } finally {
         if (vivo) setCargando(false)
       }
@@ -82,7 +84,7 @@ export default function PagoSimulado() {
   const decidir = useCallback(
     async (estado: 'approved' | 'rejected') => {
       if (!registroId || !preferenceId) {
-        setFallo('El link de pago está incompleto. Volvé a la landing del evento.')
+        setFallo(t('pago.link.roto'))
         return
       }
 
@@ -102,13 +104,13 @@ export default function PagoSimulado() {
       try {
         const resp = await fetch(webhook, { method: 'POST' })
         if (!resp.ok) {
-          setFallo('El pago no se pudo registrar. Probá de nuevo.')
+          setFallo(t('pago.no.registro'))
           setDecision('idle')
           return
         }
         window.location.assign(`${destino}?registroId=${encodeURIComponent(registroId)}`)
       } catch {
-        setFallo('No pudimos conectar con el servidor.')
+        setFallo(t('pago.red'))
         setDecision('idle')
       }
     },
@@ -119,20 +121,20 @@ export default function PagoSimulado() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6">
       <div className="rounded-xl border-2 border-yellow-400 bg-yellow-50 p-4 text-center">
         <p className="text-xs font-bold uppercase tracking-wide text-yellow-800">
-          Modo simulación
+          {t('pago.sim.aviso')}
         </p>
         <p className="mt-1 text-sm text-texto">
-          Esto no es Mercado Pago. No se cobra nada y los botones son de mentira.
+          {t('pago.sim.aviso.d')}
         </p>
       </div>
 
-      {cargando && <p className="text-center text-sm text-texto-suave">Cargando el pago…</p>}
+      {cargando && <p className="text-center text-sm text-texto-suave">{t('pago.cargando')}</p>}
 
       {error && (
         <div className="rounded-xl border border-borde p-4 text-center">
           <p className="text-sm text-texto">{error}</p>
           <a href="/" className="mt-4 inline-block text-sm underline">
-            Volver al inicio
+            {t('pago.volver.inicio')}
           </a>
         </div>
       )}
@@ -143,17 +145,17 @@ export default function PagoSimulado() {
             <h1 className="text-lg font-bold text-texto">{resumen.evento.nombre}</h1>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-texto-suave">Cuándo</dt>
+                <dt className="text-texto-suave">{t('pago.cuando')}</dt>
                 <dd className="text-right font-medium capitalize text-texto">
                   {formatoFecha(resumen.evento.fechaIso)}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-texto-suave">Dónde</dt>
+                <dt className="text-texto-suave">{t('pago.donde')}</dt>
                 <dd className="text-right font-medium text-texto">{resumen.evento.lugar}</dd>
               </div>
               <div className="flex justify-between gap-4 border-t border-borde pt-2">
-                <dt className="text-texto-suave">Total</dt>
+                <dt className="text-texto-suave">{t('pago.total')}</dt>
                 <dd className="text-right text-lg font-bold text-texto">
                   {formatoMoneda(resumen.monto, resumen.moneda)}
                 </dd>
@@ -163,8 +165,7 @@ export default function PagoSimulado() {
 
           {resumen.estado !== 'pendiente' && (
             <p className="rounded-xl border border-borde bg-superficie p-4 text-center text-sm text-texto-suave">
-              Esta reserva ya está en estado <strong>{resumen.estado}</strong>. Podés cerrarla sin
-              pagar de nuevo.
+              {t('pago.yaestado')} <strong>{resumen.estado}</strong>. {t('pago.yaestado.d')}
             </p>
           )}
 
@@ -182,7 +183,7 @@ export default function PagoSimulado() {
                 disabled={decision !== 'idle'}
                 className="rounded-lg bg-green-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {decision === 'aprobando' ? 'Aprobando…' : 'Simular pago aprobado'}
+                {decision === 'aprobando' ? t('pago.aprobando') : t('pago.aprobar')}
               </button>
               <button
                 type="button"
@@ -190,14 +191,13 @@ export default function PagoSimulado() {
                 disabled={decision !== 'idle'}
                 className="rounded-lg border border-borde px-6 py-3 text-sm font-medium text-texto disabled:opacity-50"
               >
-                {decision === 'rechazando' ? 'Rechazando…' : 'Simular pago rechazado'}
+                {decision === 'rechazando' ? t('pago.rechazando') : t('pago.rechazar')}
               </button>
             </div>
           )}
 
           <p className="text-center text-xs text-texto-suave">
-            Para probar el circuito completo: aprobá el pago, revisá que el registro quede en
-            &ldquo;aprobado&rdquo; y escaneá el QR del mail en la puerta.
+            {t('pago.sim.pie')}
           </p>
         </>
       )}

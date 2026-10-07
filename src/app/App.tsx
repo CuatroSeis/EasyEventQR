@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import Home from './pages/Home'
+import { ProveedorIdioma } from './components/IdiomaContext'
 
 /**
  * Todo con Firebase va con lazy(): un import estático metería el SDK
@@ -46,6 +47,7 @@ const PanelLayout = lazy(() => import('./components/PanelLayout'))
 export default function App() {
   return (
     <BrowserRouter>
+      <ProveedorIdioma>
       <Suspense fallback={<Cargando />}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -89,6 +91,7 @@ export default function App() {
           <Route path="*" element={<NoEncontrado />} />
         </Routes>
       </Suspense>
+      </ProveedorIdioma>
     </BrowserRouter>
   )
 }

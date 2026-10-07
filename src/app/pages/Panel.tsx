@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useIdioma } from '../components/IdiomaContext'
+
 import { useOrganizador } from '../ContextoOrganizador'
 import EmptyState from '../components/EmptyState'
 import { listarEventos, resumenVentas } from '../../services/eventos'
@@ -16,6 +18,7 @@ import type { EventoConId } from '../../services/eventos'
  * scroll horizontal en un celular de 360 px es una tabla que nadie usa.
  */
 export default function Panel() {
+  const { t } = useIdioma()
   const organizador = useOrganizador()
   const [eventos, setEventos] = useState<EventoConId[] | null>(null)
   const [ventas, setVentas] = useState<{ entradas: number; monto: number } | null>(null)
@@ -44,7 +47,7 @@ export default function Panel() {
         setError(
           fallo instanceof Error
             ? fallo.message
-            : 'No pudimos cargar tus eventos. Probá de nuevo en un momento.',
+            : t('panel.error.carga'),
         )
       })
 
@@ -56,7 +59,7 @@ export default function Panel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-bold text-texto">Tus eventos</h1>
+      <h1 className="text-lg font-bold text-texto">{t('panel.titulo')}</h1>
 
       {error ? (
         <p
@@ -87,12 +90,13 @@ export default function Panel() {
 }
 
 function Cargando() {
+  const { t } = useIdioma()
   return (
     <div className="flex flex-col gap-3" aria-busy="true">
       {[0, 1].map((i) => (
         <div key={i} className="h-28 animate-pulse rounded-xl border border-borde" />
       ))}
-      <span className="sr-only">Cargando eventos…</span>
+      <span className="sr-only">{t('panel.cargando')}</span>
     </div>
   )
 }
@@ -105,24 +109,25 @@ function Resumen({
   ventas: { entradas: number; monto: number } | null
 }) {
   // Suma local de `reservas` (no en vivo: se actualiza al volver a entrar).
+  const { t } = useIdioma()
   const inscriptos = eventos.reduce((total, e) => total + (Number(e.reservas) || 0), 0)
   const abiertos = eventos.filter((e) => e.estado === 'activo').length
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">Eventos</dt>
+        <dt className="text-xs text-texto-suave">{t('panel.m.eventos')}</dt>
         <dd className="text-xl font-bold text-texto">{eventos.length}</dd>
       </div>
       <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">Abiertos</dt>
+        <dt className="text-xs text-texto-suave">{t('panel.m.abiertos')}</dt>
         <dd className="text-xl font-bold text-texto">{abiertos}</dd>
       </div>
       <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">Inscriptos</dt>
+        <dt className="text-xs text-texto-suave">{t('panel.m.inscriptos')}</dt>
         <dd className="text-xl font-bold text-texto">{inscriptos}</dd>
       </div>
       <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">Vendidas</dt>
+        <dt className="text-xs text-texto-suave">{t('panel.m.vendidas')}</dt>
         <dd className="text-xl font-bold text-texto">
           {ventas === null ? '—' : ventas.entradas}
         </dd>
@@ -137,17 +142,19 @@ function Resumen({
 }
 
 function Vacio() {
+  const { t } = useIdioma()
   return (
     <EmptyState
-      titulo="Todavía no tenés eventos"
-      ayuda="Creá el primero con el botón de abajo. Después vas a poder compartir el link de reservas y el código con tus invitados."
-      cta="Crear mi primer evento"
+      titulo={t('panel.vacio.t')}
+      ayuda={t('panel.vacio.d')}
+      cta={t('panel.vacio.boton')}
       to="/panel/eventos/nuevo"
     />
   )
 }
 
 function TarjetaEvento({ evento }: { evento: EventoConId }) {
+  const { t } = useIdioma()
   const cerrado = evento.estado === 'cerrado'
   const pagado = evento.requierePago
   const [copiado, setCopiado] = useState<'link' | 'codigo' | 'qr' | null>(null)
@@ -196,7 +203,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-texto">{evento.nombre}</h2>
-          <p className="mt-0.5 font-mono text-xs text-texto-suave" aria-label={`Código del evento: ${evento.codigoCorto}`}>
+          <p className="mt-0.5 font-mono text-xs text-texto-suave" aria-label={`${t('panel.codigo.aria')} ${evento.codigoCorto}`}>
             {evento.codigoCorto}
           </p>
         </div>
@@ -208,13 +215,13 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
                 : 'shrink-0 rounded-full bg-primario px-2 py-0.5 text-xs text-sobre-primario'
             }
           >
-            {cerrado ? 'Cerrado' : 'Abierto'}
+{cerrado ? t('panel.estado.cerrado') : t('panel.estado.abierto')}
           </span>
           <span
             className="shrink-0 rounded-full border border-borde px-2 py-0.5 text-xs text-texto-suave"
-            title={evento.visibilidad === 'publico' ? 'Aparece en el buscador' : 'Solo entra quien tenga el link o el código'}
+            title={evento.visibilidad === 'publico' ? t('panel.vis.pub.t') : t('panel.vis.priv.t')}
           >
-            {evento.visibilidad === 'publico' ? 'Público' : 'Privado'}
+{evento.visibilidad === 'publico' ? t('panel.vis.pub') : t('panel.vis.priv')}
           </span>
         </div>
       </div>
@@ -225,27 +232,27 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(linkPublico, 'link'); }}
           className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
           disabled={copiado !== null}
-          aria-label="Copiar link de invitación"
+          aria-label={t('panel.copiarLink.aria')}
         >
-          {copiado === 'link' ? '✓ Copiado' : 'Copiar link'}
+          {copiado === 'link' ? `✓ ${t('comun.copiado')}` : t('panel.copiarLink')}
         </button>
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(evento.codigoCorto, 'codigo'); }}
           className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 font-mono text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
           disabled={copiado !== null}
-          aria-label="Copiar código del evento"
+          aria-label={t('panel.copiarCodigo.aria')}
         >
-          {copiado === 'codigo' ? '✓ Copiado' : 'Copiar código'}
+          {copiado === 'codigo' ? `✓ ${t('comun.copiado')}` : t('panel.copiarCodigo')}
         </button>
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void descargarQR(); }}
           className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
           disabled={copiado !== null}
-          aria-label="Descargar QR del evento"
+          aria-label={t('panel.qr.aria')}
         >
-          {copiado === 'qr' ? '✓ Listo' : 'QR'}
+          {copiado === 'qr' ? `✓ ${t('panel.qr.listo')}` : t('panel.qr')}
         </button>
       </div>
 
@@ -254,35 +261,35 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
           to={`/panel/eventos/${evento.id}/escanear`}
           onClick={(e) => { e.stopPropagation(); }}
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primario px-3 py-1.5 text-xs font-semibold text-sobre-primario transition hover:brightness-110"
-          aria-label={`Escanear entradas de ${evento.nombre}`}
+          aria-label={`${t('panel.escanear.aria')} ${evento.nombre}`}
         >
-          Escanear
+          {t('panel.escanear')}
         </Link>
         <Link
           to={`/panel/eventos/${evento.id}/registros`}
           onClick={(e) => { e.stopPropagation(); }}
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition"
-          aria-label={`Ver registros de ${evento.nombre}`}
+          aria-label={`${t('panel.registros.aria')} ${evento.nombre}`}
         >
-          Registros
+          {t('panel.registros')}
         </Link>
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">
-        <dt className="text-texto-suave">Cuándo</dt>
+        <dt className="text-texto-suave">{t('panel.f.cuando')}</dt>
         <dd className="text-texto">{formatearFecha(evento.fecha)}</dd>
 
-        <dt className="text-texto-suave">Dónde</dt>
+        <dt className="text-texto-suave">{t('panel.f.donde')}</dt>
         <dd className="truncate text-texto">{evento.lugar || '—'}</dd>
 
-        <dt className="text-texto-suave">Cupo</dt>
-        <dd className="text-texto">{evento.capacidadMaxima} entradas</dd>
+        <dt className="text-texto-suave">{t('panel.f.cupo')}</dt>
+        <dd className="text-texto">{t('panel.cupo.n', { n: evento.capacidadMaxima })}</dd>
 
-        <dt className="text-texto-suave">Entrada</dt>
+        <dt className="text-texto-suave">{t('panel.f.entrada')}</dt>
         <dd className="text-texto">
           {pagado && evento.precioEntrada !== null
             ? `$ ${evento.precioEntrada.toLocaleString('es-AR')}`
-            : 'Gratis'}
+            : t('panel.gratis')}
         </dd>
       </dl>
     </Link>

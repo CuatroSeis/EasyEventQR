@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { pedirAuditoria, type AuditoriaLog } from '../../../services/admin'
 import { Cargando } from './Cargando'
 import { MensajeError } from './MensajeError'
+import { useIdioma } from '../../components/IdiomaContext'
 
 const ENTIDADES = ['', 'organizador', 'evento']
 
@@ -15,6 +16,7 @@ const ENTIDADES = ['', 'organizador', 'evento']
  * de ser evidencia.
  */
 export function AuditoriaTab() {
+  const { t } = useIdioma()
   const [logs, setLogs] = useState<AuditoriaLog[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +29,7 @@ export function AuditoriaTab() {
       setLogs(lista)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo cargar la auditoría.')
+      setError(e instanceof Error ? e.message : t('adm.aud.err'))
     } finally {
       setCargando(false)
     }
@@ -37,12 +39,12 @@ export function AuditoriaTab() {
     void cargar()
   }, [cargar])
 
-  if (cargando) return <Cargando etiqueta="Cargando auditoría…" />
+  if (cargando) return <Cargando etiqueta={t('adm.aud.cargando')} />
 
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-lg font-bold text-texto">Auditoría</h1>
+        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.aud')}</h1>
         <p className="text-sm text-texto-suave">
           Quién hizo qué en el panel. Sólo lectura: el registro se escribe en el servidor y no se puede editar
           desde la aplicación.
@@ -54,7 +56,7 @@ export function AuditoriaTab() {
           type="search"
           value={filtroAccion}
           onChange={(e) => setFiltroAccion(e.target.value)}
-          placeholder="Filtrar por acción (ej. suspender)"
+          placeholder={t('adm.aud.filtrar')}
           className="campo flex-1"
           aria-label="Filtrar por acción"
         />
@@ -83,11 +85,11 @@ export function AuditoriaTab() {
           <table className="w-full text-sm">
             <thead className="bg-superficie text-left text-xs text-texto-suave">
               <tr>
-                <th scope="col" className="px-3 py-2 font-medium">Cuándo</th>
-                <th scope="col" className="px-3 py-2 font-medium">Acción</th>
-                <th scope="col" className="px-3 py-2 font-medium">Sobre</th>
-                <th scope="col" className="px-3 py-2 font-medium">Autor</th>
-                <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">Detalles</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.cuando')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.accion')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.sobre')}</th>
+                <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.autor')}</th>
+                <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">{t('adm.th.detalles')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-borde">
