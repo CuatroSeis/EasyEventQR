@@ -51,8 +51,8 @@
 /* Valores por defecto. El tema de un evento sólo pisa lo que trae. */
 :root {
   --c-primario: #2563eb;
-  --c-secundario: #0f172a;
-  --c-superficie: #ffffff;
+  --c-secundario: #334155;
+  --c-superficie: #f8fafc;
   --c-texto: #0f172a;
   --c-texto-suave: #475569;
   --c-borde: #e2e8f0;

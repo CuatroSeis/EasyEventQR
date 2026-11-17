@@ -115,7 +115,7 @@ export default function Home() {
   // Un solo resultado exacto no redirige: el usuario elige de la lista.
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-10 p-4 pb-12">
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-12 p-4 pb-12">
       <a
         href="#buscar"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primario focus:text-sobre-primario focus:rounded-lg focus:outline-none"
@@ -127,7 +127,7 @@ export default function Home() {
         {/* Patrón QR sutil de fondo para identidad visual de marca */}
         <div className="absolute inset-0 -z-10 opacity-5 pointer-events-none">
           <svg
-            className="w-full h-full"
+            className="w-full h-full text-secundario"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
           >
@@ -141,13 +141,13 @@ export default function Home() {
             <rect x="44" y="44" width="2" height="2" fill="currentColor" opacity="0.15" />
           </svg>
         </div>
-        <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
+        <p className="inline-flex items-center rounded-full bg-primario/20 px-3 py-1 text-sm font-bold uppercase tracking-wider text-primario">
           {t('app.tagline')}
         </p>
-        <h1 className="mt-3 text-5xl font-bold leading-none tracking-wide text-texto sm:text-6xl font-display">
+        <h1 className="mt-3 text-6xl font-bold leading-tight tracking-tighter text-texto sm:text-7xl font-display">
           EasyEventQR
         </h1>
-        <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
+        <p className="mx-auto mt-3 max-w-lg text-xl text-texto">
           {t('home.hero.bajada')}
         </p>
         {/* QR real: escanearlo lleva a crear tu evento. */}
@@ -161,13 +161,13 @@ export default function Home() {
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
           <a
             href="#buscar"
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition hover:brightness-110"
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario shadow-sm transition hover:brightness-105 hover:shadow-md"
           >
             {t('home.hero.codigo')}
           </a>
           <Link
             to="/entrar"
-            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-xl border border-borde px-4 py-2.5 text-sm font-medium text-texto-suave transition hover:bg-superficie/50"
+            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-xl border border-borde bg-secundario/5 px-4 py-2.5 text-sm font-medium text-texto transition hover:bg-primario/10 hover:text-primario"
           >
             {t('home.hero.crear')}
           </Link>
@@ -282,7 +282,7 @@ export default function Home() {
               <li key={evt.codigoCorto}>
                 <Link
                   to={`/e/${evt.codigoCorto}`}
-                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition relative group"
+                  className="block rounded-xl border border-borde bg-superficie p-5 hover:bg-superficie/70 transition shadow-sm hover:shadow-md relative group"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -302,7 +302,7 @@ export default function Home() {
                           evt.codigoCorto
                         )}
                         <svg
-                          className="shrink-0 w-3 h-3 text-texto-suave mt-1"
+                          className="shrink-0 w-3 h-3 text-secundario mt-1"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -338,10 +338,10 @@ export default function Home() {
             { n: '2', t: t('home.como.2t'), d: t('home.como.2d') },
             { n: '3', t: t('home.como.3t'), d: t('home.como.3d') },
           ].map((p) => (
-            <li key={p.n} className="rounded-xl border border-borde bg-superficie p-4">
-              <p aria-hidden="true" className="text-2xl font-bold text-primario">{p.n}</p>
-              <h3 className="mt-1 font-semibold text-texto">{p.t}</h3>
-              <p className="mt-1 text-sm text-texto-suave">{p.d}</p>
+            <li key={p.n} className="rounded-xl border border-borde bg-superficie p-5">
+              <p aria-hidden="true" className="text-3xl font-black text-primario">{p.n}</p>
+              <h3 className="mt-1 font-bold text-texto">{p.t}</h3>
+              <p className="mt-1 text-base text-texto-suave">{p.d}</p>
             </li>
           ))}
         </ol>
