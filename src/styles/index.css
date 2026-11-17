@@ -127,7 +127,7 @@
   }
 
   .campo[aria-invalid='true'] {
-    border-color: #dc2626;
+    border-color: var(--c-error);
   }
 
   .campo::placeholder {

@@ -196,6 +196,7 @@ export default function Home() {
             <input
               id="buscar"
               type="search"
+              autoComplete="off"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onBlur={() => setTouched(true)}
@@ -389,15 +390,14 @@ export default function Home() {
         <h2 id="confianza-heading" className="text-center text-2xl font-bold text-texto font-display sm:text-3xl">
           {t('home.confianza.titulo')}
         </h2>
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {bloquesConfianza.map(({ n, clave, desc }) => (
-            <div key={n} className="rounded-xl border border-borde bg-superficie p-5 flex flex-col gap-2">
-              <p className="text-3xl font-black text-primario">{n}</p>
-              <h3 className="font-bold text-texto">{t(clave)}</h3>
-              <p className="mt-1 text-sm text-texto-suave leading-relaxed">{t(desc)}</p>
-            </div>
+        <ul className="space-y-6 max-w-2xl mx-auto text-texto leading-relaxed sm:max-w-lg lg:max-w-3xl">
+          {bloquesConfianza.map(({ clave, desc }) => (
+            <li key={clave} className="flex flex-col gap-1">
+              <p className="font-bold text-texto">{t(clave)}</p>
+              <p className="text-sm text-texto-suave">{t(desc)}</p>
+            </li>
           ))}
-        </dl>
+        </ul>
       </section>
 
       <footer className="mt-auto pt-8 border-t border-borde">
