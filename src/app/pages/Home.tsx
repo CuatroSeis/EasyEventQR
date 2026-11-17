@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 
 import TemaToggle from '../components/TemaToggle'
 import { useIdioma, IdiomaToggle } from '../components/IdiomaContext'
-import { formatoFecha } from '../../shared/fecha'
 import { useReducedMotion } from '../../shared/useReducedMotion'
 
 export default function Home() {
@@ -12,8 +11,6 @@ export default function Home() {
   const [buscando, setBuscando] = useState(false)
   const [resultados, setResultados] = useState<EventoResultado[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [sugeridos, setSugeridos] = useState<Array<{ codigoCorto: string; nombre: string; fecha: string; lugar: string }> | null>(null)
-  const [sugeridosError, setSugeridosError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
   const [offline, setOffline] = useState(
@@ -31,24 +28,6 @@ export default function Home() {
       // Clipboard no disponible; se ignora silenciosamente.
     }
   }
-
-  useEffect(() => {
-    let cancelado = false
-    async function cargarSugeridos() {
-      try {
-        const resp = await fetch('/api/eventos/destacados?limit=3')
-        if (!resp.ok) throw new Error('No se pudieron cargar los eventos sugeridos')
-        const data = await resp.json()
-        if (!cancelado && data.ok) {
-          setSugeridos(data.eventos)
-        }
-      } catch {
-        if (!cancelado) setSugeridosError('No se pudieron cargar los eventos sugeridos')
-      }
-    }
-    cargarSugeridos()
-    return () => { cancelado = true }
-  }, [])
 
   useEffect(() => {
     const enLinea = () => setOffline(false)
@@ -69,6 +48,15 @@ export default function Home() {
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim()
+  }
+
+  /** Fecha con año completo para tarjetas tipo entrada. */
+  function fechaConAnio(iso: string): string {
+    return new Intl.DateTimeFormat('es-AR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(iso))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -135,7 +123,24 @@ export default function Home() {
         Saltar a buscar
       </a>
       {/* Hero: qué es, para quién, qué hacer. */}
-      <header className="text-center">
+      <header className="text-center relative">
+        {/* Patrón QR sutil de fondo para identidad visual de marca */}
+        <div className="absolute inset-0 -z-10 opacity-5 pointer-events-none">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <rect width="100" height="100" fill="currentColor" opacity="0.06" />
+            <rect x="10" y="10" width="8" height="8" fill="currentColor" opacity="0.1" />
+            <rect x="82" y="10" width="8" height="8" fill="currentColor" opacity="0.1" />
+            <rect x="10" y="82" width="8" height="8" fill="currentColor" opacity="0.1" />
+            <rect x="82" y="82" width="8" height="8" fill="currentColor" opacity="0.1" />
+            <rect x="40" y="40" width="2" height="2" fill="currentColor" opacity="0.15" />
+            <rect x="48" y="40" width="2" height="2" fill="currentColor" opacity="0.15" />
+            <rect x="44" y="44" width="2" height="2" fill="currentColor" opacity="0.15" />
+          </svg>
+        </div>
         <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
           {t('app.tagline')}
         </p>
@@ -145,33 +150,13 @@ export default function Home() {
         <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
           {t('home.hero.bajada')}
         </p>
-        {/* Visual de producto: código QR de entrada, sin decoración gratuita. */}
+        {/* QR real: escanearlo lleva a crear tu evento. */}
         <div className="mx-auto mt-6 flex items-center justify-center">
-          <div className="relative inline-block p-2 bg-primario/10 rounded-2xl border border-borde/30 shadow-sm">
-            <svg
-              className="w-20 h-20 sm:w-24 sm:h-24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="2" y="2" width="20" height="20" rx="2" />
-              <rect x="4" y="4" width="6" height="6" />
-              <rect x="14" y="4" width="6" height="6" />
-              <rect x="4" y="14" width="6" height="6" />
-              <rect x="9" y="10" width="2" height="2" />
-              <rect x="13" y="10" width="2" height="2" />
-              <rect x="11" y="12" width="2" height="2" />
-              <rect x="9" y="14" width="2" height="2" />
-              <rect x="13" y="14" width="2" height="2" />
-            </svg>
-            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primario text-[10px] font-bold text-sobre-primario shadow-sm">
-              QR
-            </span>
-          </div>
+          <img
+            src="/qr-logo.svg"
+            alt="QR de EasyEventQR"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl shadow-sm"
+          />
         </div>
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
           <a
@@ -182,7 +167,7 @@ export default function Home() {
           </a>
           <Link
             to="/entrar"
-            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-borde px-4 py-2.5 text-base font-medium text-texto-suave transition hover:bg-superficie/50"
+            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-xl border border-borde px-4 py-2.5 text-sm font-medium text-texto-suave transition hover:bg-superficie/50"
           >
             {t('home.hero.crear')}
           </Link>
@@ -297,12 +282,12 @@ export default function Home() {
               <li key={evt.codigoCorto}>
                 <Link
                   to={`/e/${evt.codigoCorto}`}
-                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition"
+                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition relative group"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-texto">{evt.nombre}</h3>
-                      <p className="text-sm text-texto-suave">{evt.lugar} · {formatoFecha(evt.fecha)}</p>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {fechaConAnio(evt.fecha)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <button
@@ -341,81 +326,6 @@ export default function Home() {
         <p className="text-center text-xs text-texto-suave">
           {t('home.buscar.ayuda')} <code className="font-mono">FEST-8K2P</code>.
         </p>
-      </section>
-
-      {/* Eventos sugeridos: reconocimiento sobre recuerdo para quien no tiene el código a mano. */}
-      <section aria-labelledby="sugeridos-heading" className="space-y-4">
-        <h2 id="sugeridos-heading" className="text-center text-xl font-bold text-texto font-display">
-          {t('home.buscar.sugeridos.titulo')}
-        </h2>
-        {sugeridos === null && (
-          <p className="text-center text-xs text-texto-suave">
-            {t('home.sugeridos.cargando')}
-          </p>
-        )}
-        {sugeridosError && (
-          <>
-            <p className="text-center text-xs text-error">{sugeridosError}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setSugeridosError(null)
-                setSugeridos(null)
-              }}
-              className="text-xs text-primario underline underline-offset-4 hover:text-primario/70 transition"
-            >
-              {t('home.sugeridos.reintentar')}
-            </button>
-          </>
-        )}
-        {sugeridos && sugeridos.length > 0 && (
-          <ul role="list" className="grid gap-3 sm:grid-cols-3">
-            {sugeridos.map((evt) => (
-              <li key={evt.codigoCorto} className="rounded-xl border border-borde bg-superficie p-4">
-                <Link
-                  to={`/e/${evt.codigoCorto}`}
-                  className="block flex flex-col gap-2 hover:bg-superficie/50 transition"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-texto">{evt.nombre}</h3>
-                      <p className="text-sm text-texto-suave">{evt.lugar} · {formatoFecha(evt.fecha)}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => copiarCodigo(evt.codigoCorto)}
-                      aria-label={`Copiar código ${evt.codigoCorto}`}
-                      className="shrink-0 flex items-center gap-1 font-mono text-xs text-primario bg-primario/10 px-2 py-1 rounded hover:bg-primario/20 transition"
-                    >
-                      {copiado === evt.codigoCorto ? (
-                        <span className="text-primario font-bold text-[10px]">✓</span>
-                      ) : (
-                        evt.codigoCorto
-                      )}
-                      <svg
-                        className="shrink-0 w-3 h-3 text-texto-suave mt-1"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {sugeridos && sugeridos.length === 0 && (
-          <p className="text-center text-xs text-texto-suave">
-            {t('home.sugeridos.vacio')}
-          </p>
-        )}
       </section>
 
       <section aria-labelledby="como-funciona" className="space-y-4">
@@ -489,9 +399,6 @@ export default function Home() {
           </Link>
           <a href="#buscar" className="hover:text-primario transition">
             {t('home.pie.link.buscar')}
-          </a>
-          <a href="mailto:soporte@easyeventqr.com" className="hover:text-primario transition">
-            {t('home.pie.link.contacto')}
           </a>
         </nav>
       </footer>
