@@ -82,6 +82,8 @@ export const STRINGS = {
   'home.buscar.buscando': { es: 'Buscando…', en: 'Searching…' },
   'home.buscar.no': { es: 'Evento no encontrado. Verificá el código o el nombre.', en: 'Event not found. Check the code or name.' },
   'home.buscar.red': { es: 'No pudimos buscar. Revisá la conexión.', en: 'Search failed. Check your connection.' },
+  'home.buscar.errorServidor': { es: 'Error del servidor. Intentá de nuevo.', en: 'Server error. Try again.' },
+  'home.sugeridos.reintentar': { es: 'Reintentar', en: 'Retry' },
   'home.buscar.ayuda': { es: 'El código es algo como', en: 'The code looks like' },
   'home.buscar.crearOrg': { es: '¿Sos el organizador? Crear tu evento →', en: 'Are you the organizer? Create your event →' },
   'home.buscar.sugeridos.titulo': { es: 'Eventos sugeridos', en: 'Suggested events' },

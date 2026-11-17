@@ -1,8 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import TemaToggle from '../components/TemaToggle'
 import { useIdioma, IdiomaToggle } from '../components/IdiomaContext'
+import { formatoFecha } from '../../shared/fecha'
 
 export default function Home() {
   const { t } = useIdioma()
@@ -13,6 +14,18 @@ export default function Home() {
   const [sugeridos, setSugeridos] = useState<Array<{ codigoCorto: string; nombre: string; fecha: string; lugar: string }> | null>(null)
   const [sugeridosError, setSugeridosError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
+  const [copiado, setCopiado] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  async function copiarCodigo(codigo: string) {
+    try {
+      await navigator.clipboard.writeText(codigo)
+      setCopiado(codigo)
+      setTimeout(() => setCopiado(null), 2000)
+    } catch {
+      // Clipboard no disponible; se ignora silenciosamente.
+    }
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -45,15 +58,28 @@ export default function Home() {
     const q = normalizarParaBusqueda(query)
     if (!q) return
 
+    // Abortar búsqueda previa si existe (cancel durante búsqueda en vuelo).
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     setBuscando(true)
     setError(null)
     setResultados([])
 
     try {
-      const resp = await fetch(`/api/eventos/buscar?q=${encodeURIComponent(q)}`)
+      const resp = await fetch(`/api/eventos/buscar?q=${encodeURIComponent(q)}`, {
+        signal: controller.signal,
+      })
       const data = await resp.json()
-      if (!resp.ok || !data.ok) {
-        setError(data.error || 'Error buscando el evento')
+      if (!resp.ok) {
+        // Error de red o de servidor HTTP (4xx/5xx).
+        setError(data.error || t('home.buscar.errorServidor'))
+        return
+      }
+      if (!data.ok) {
+        // Respuesta HTTP OK pero la API indica fallo lógico.
+        setError(data.error || t('home.buscar.errorServidor'))
         return
       }
       if (data.eventos && data.eventos.length > 0) {
@@ -61,9 +87,15 @@ export default function Home() {
       } else {
         setError(t('home.buscar.no'))
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return // Cancelación intencional: no mostrar error al usuario.
+      }
       setError(t('home.buscar.red'))
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+      }
       setBuscando(false)
     }
   }
@@ -149,9 +181,17 @@ export default function Home() {
               disabled={buscando}
               autoComplete="off"
               autoFocus
+              aria-invalid={error ? 'true' : 'false'}
+              aria-describedby={
+                error
+                  ? 'buscar-error'
+                  : touched && !buscando && !query.trim()
+                  ? 'buscar-hint'
+                  : undefined
+              }
             />
             {touched && !buscando && !query.trim() && (
-              <p className="text-center text-xs text-texto-suave mt-1">
+              <p id="buscar-hint" className="text-center text-xs text-texto-suave mt-1">
                 {t('home.buscar.hintVacio')}
               </p>
             )}
@@ -177,7 +217,7 @@ export default function Home() {
 
         {error && (
           <>
-            <p role="alert" className="text-center text-sm text-error">
+            <p id="buscar-error" role="alert" className="text-center text-sm text-error">
               {error}
             </p>
             <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
@@ -232,24 +272,33 @@ export default function Home() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-texto">{evt.nombre}</h3>
-                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {formatoFecha(evt.fecha)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      <span className="shrink-0 font-mono text-sm text-primario bg-primario/10 px-2 py-1 rounded">
-                        {evt.codigoCorto}
-                      </span>
-                      <svg
-                        className="shrink-0 w-4 h-4 text-texto-suave"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                      <button
+                        type="button"
+                        onClick={() => copiarCodigo(evt.codigoCorto)}
+                        aria-label={`Copiar código ${evt.codigoCorto}`}
+                        className="shrink-0 flex items-center gap-1 font-mono text-xs text-primario bg-primario/10 px-2 py-1 rounded hover:bg-primario/20 transition"
                       >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
+                        {copiado === evt.codigoCorto ? (
+                          <span className="text-primario font-bold text-[10px]">✓</span>
+                        ) : (
+                          evt.codigoCorto
+                        )}
+                        <svg
+                          className="shrink-0 w-3 h-3 text-texto-suave mt-1"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </Link>
@@ -273,7 +322,19 @@ export default function Home() {
           <p className="text-center text-xs text-texto-suave">Cargando eventos sugeridos…</p>
         )}
         {sugeridosError && (
-          <p className="text-center text-xs text-error">{sugeridosError}</p>
+          <>
+            <p className="text-center text-xs text-error">{sugeridosError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSugeridosError(null)
+                setSugeridos(null)
+              }}
+              className="text-xs text-primario underline underline-offset-4 hover:text-primario/70 transition"
+            >
+              {t('home.sugeridos.reintentar')}
+            </button>
+          </>
         )}
         {sugeridos && sugeridos.length > 0 && (
           <ul role="list" className="grid gap-3 sm:grid-cols-3">
@@ -286,24 +347,33 @@ export default function Home() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-texto">{evt.nombre}</h3>
-                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {formatoFecha(evt.fecha)}</p>
                     </div>
-                    <span className="shrink-0 font-mono text-xs text-primario bg-primario/10 px-2 py-1 rounded">
-                      {evt.codigoCorto}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copiarCodigo(evt.codigoCorto)}
+                      aria-label={`Copiar código ${evt.codigoCorto}`}
+                      className="shrink-0 flex items-center gap-1 font-mono text-xs text-primario bg-primario/10 px-2 py-1 rounded hover:bg-primario/20 transition"
+                    >
+                      {copiado === evt.codigoCorto ? (
+                        <span className="text-primario font-bold text-[10px]">✓</span>
+                      ) : (
+                        evt.codigoCorto
+                      )}
+                      <svg
+                        className="shrink-0 w-3 h-3 text-texto-suave mt-1"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
                   </div>
-                  <svg
-                    className="shrink-0 w-4 h-4 text-texto-suave mt-2"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
                 </Link>
               </li>
             ))}
@@ -359,9 +429,16 @@ export default function Home() {
         </div>
       </section>
 
+      {copiado && (
+        <p className="text-center text-xs text-texto-suave mt-2 animate-ping">
+          Código {copiado} copiado
+        </p>
+      )}
+
       <footer className="mt-auto pt-8 border-t border-borde">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-texto-suave">
           <p>{t('home.pie')}</p>
+          <p className="text-xs font-medium text-texto">Entrá directo con tu código</p>
           <div className="flex items-center gap-3">
             <IdiomaToggle />
             <TemaToggle />
