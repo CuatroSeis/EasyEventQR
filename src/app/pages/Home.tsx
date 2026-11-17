@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import TemaToggle from '../components/TemaToggle'
 import { useIdioma, IdiomaToggle } from '../components/IdiomaContext'
 import { formatoFecha } from '../../shared/fecha'
+import { useReducedMotion } from '../../shared/useReducedMotion'
 
 export default function Home() {
   const { t } = useIdioma()
@@ -16,6 +17,7 @@ export default function Home() {
   const [touched, setTouched] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const reducedMotion = useReducedMotion()
 
   async function copiarCodigo(codigo: string) {
     try {
@@ -179,7 +181,6 @@ export default function Home() {
               placeholder={t('home.buscar.ph')}
               className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
               disabled={buscando}
-              autoComplete="off"
               autoFocus
               aria-invalid={error ? 'true' : 'false'}
               aria-describedby={
@@ -198,7 +199,9 @@ export default function Home() {
             {buscando && (
               <>
                 <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
-                  <span className="inline-block animate-ping rounded-full h-3 w-3 bg-primario" />
+                  <span
+                    className={`inline-block rounded-full h-3 w-3 bg-primario ${!reducedMotion ? 'animate-ping' : ''}`}
+                  />
                 </span>
                 <span className="sr-only" aria-live="polite">
                   {t('home.buscar.buscando')}
@@ -319,7 +322,9 @@ export default function Home() {
           {t('home.buscar.sugeridos.titulo')}
         </h2>
         {sugeridos === null && (
-          <p className="text-center text-xs text-texto-suave">Cargando eventos sugeridos…</p>
+          <p className="text-center text-xs text-texto-suave">
+            {t('home.sugeridos.cargando')}
+          </p>
         )}
         {sugeridosError && (
           <>
@@ -381,12 +386,11 @@ export default function Home() {
         )}
         {sugeridos && sugeridos.length === 0 && (
           <p className="text-center text-xs text-texto-suave">
-            No hay eventos destacados todavía. Buscá el tuyo por código o nombre arriba.
+            {t('home.sugeridos.vacio')}
           </p>
         )}
       </section>
 
-      {/* {t('home.como.titulo')}: 3 pasos. */}
       <section aria-labelledby="como-funciona" className="space-y-4">
         <h2 id="como-funciona" className="text-center text-xl font-bold text-texto font-display">
           {t('home.como.titulo')}
@@ -430,8 +434,8 @@ export default function Home() {
       </section>
 
       {copiado && (
-        <p className="text-center text-xs text-texto-suave mt-2 animate-ping">
-          Código {copiado} copiado
+        <p className={`text-center text-xs text-texto-suave mt-2 ${!reducedMotion ? 'animate-ping' : ''}`}>
+          {t('home.copiado.toast', { codigo: copiado })}
         </p>
       )}
 
@@ -453,7 +457,7 @@ export default function Home() {
             <a href="#buscar" className="hover:text-primario transition">
               {t('home.pie.link.buscar')}
             </a>
-            <a href="mailto:ivanrufinocontac@gmail.com" className="hover:text-primario transition">
+            <a href="mailto:soporte@easyeventqr.com" className="hover:text-primario transition">
               {t('home.pie.link.contacto')}
             </a>
           </nav>
