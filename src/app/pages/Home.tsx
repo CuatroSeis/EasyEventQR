@@ -16,6 +16,9 @@ export default function Home() {
   const [sugeridosError, setSugeridosError] = useState<string | null>(null)
   const [touched, setTouched] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [offline, setOffline] = useState(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  )
   const abortControllerRef = useRef<AbortController | null>(null)
   const reducedMotion = useReducedMotion()
 
@@ -47,6 +50,19 @@ export default function Home() {
     return () => { cancelado = true }
   }, [])
 
+  useEffect(() => {
+    const enLinea = () => setOffline(false)
+    const sinLinea = () => setOffline(true)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', enLinea)
+      window.addEventListener('offline', sinLinea)
+      return () => {
+        window.removeEventListener('online', enLinea)
+        window.removeEventListener('offline', sinLinea)
+      }
+    }
+  }, [])
+
   function normalizarParaBusqueda(texto: string): string {
     return texto
       .normalize('NFD')
@@ -57,6 +73,12 @@ export default function Home() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!navigator.onLine) {
+      setOffline(true)
+      setError(t('home.buscar.red'))
+      setBuscando(false)
+      return
+    }
     const q = normalizarParaBusqueda(query)
     if (!q) return
 
@@ -106,6 +128,12 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-10 p-4 pb-12">
+      <a
+        href="#buscar"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primario focus:text-sobre-primario focus:rounded-lg focus:outline-none"
+      >
+        Saltar a buscar
+      </a>
       {/* Hero: qué es, para quién, qué hacer. */}
       <header className="text-center">
         <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
@@ -181,7 +209,6 @@ export default function Home() {
               placeholder={t('home.buscar.ph')}
               className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
               disabled={buscando}
-              autoFocus
               aria-invalid={error ? 'true' : 'false'}
               aria-describedby={
                 error
@@ -211,7 +238,7 @@ export default function Home() {
           </div>
           <button
             type="submit"
-            disabled={buscando || !query.trim()}
+            disabled={buscando || !query.trim() || offline}
             className="w-full min-h-[56px] rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {buscando ? t('home.buscar.buscando') : t('home.buscar.boton')}
@@ -441,27 +468,32 @@ export default function Home() {
 
       <footer className="mt-auto pt-8 border-t border-borde">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-texto-suave">
-          <p>{t('home.pie')}</p>
-          <p className="text-xs font-medium text-texto">Entrá directo con tu código</p>
-          <div className="flex items-center gap-3">
-            <IdiomaToggle />
-            <TemaToggle />
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <p className="leading-none">{t('home.pie')}</p>
+            <p className="text-xs font-medium text-texto leading-none">·</p>
+            <p className="text-xs font-medium text-texto leading-none">Entrá directo con tu código</p>
           </div>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link
-              to="/entrar"
-              className="hover:text-primario transition"
-            >
-              {t('home.pie.link.crear')}
-            </Link>
-            <a href="#buscar" className="hover:text-primario transition">
-              {t('home.pie.link.buscar')}
-            </a>
-            <a href="mailto:soporte@easyeventqr.com" className="hover:text-primario transition">
-              {t('home.pie.link.contacto')}
-            </a>
-          </nav>
+          <div className="flex items-center gap-2">
+            <div className="flex overflow-hidden rounded-lg border border-borde text-xs font-semibold">
+              <IdiomaToggle />
+              <TemaToggle />
+            </div>
+          </div>
         </div>
+        <nav className="mt-4 sm:mt-0 flex flex-col sm:flex-row sm:flex-nowrap gap-2 sm:gap-4 text-xs text-texto-suave sm:ml-auto">
+          <Link
+            to="/entrar"
+            className="hover:text-primario transition"
+          >
+            {t('home.pie.link.crear')}
+          </Link>
+          <a href="#buscar" className="hover:text-primario transition">
+            {t('home.pie.link.buscar')}
+          </a>
+          <a href="mailto:soporte@easyeventqr.com" className="hover:text-primario transition">
+            {t('home.pie.link.contacto')}
+          </a>
+        </nav>
       </footer>
     </main>
   )

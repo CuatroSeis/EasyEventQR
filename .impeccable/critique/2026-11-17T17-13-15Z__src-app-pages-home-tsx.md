@@ -12,6 +12,7 @@ target_fingerprint: "sha256:593c3bd403238e97fed324b12ca59df41604b062b5ddb2d8a262
 target_path: /home/rufino/Desktop/Propios/EasyEventQR/EasyEventQR/src/app/pages/Home.tsx
 timestamp: 2026-11-17T17-13-15Z
 slug: src-app-pages-home-tsx
+closed: true
 ---
 # /impeccable critique — EasyEventQR homepage (`/`) — 4ª ejecución
 
