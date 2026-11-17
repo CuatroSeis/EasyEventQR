@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import TemaToggle from '../components/TemaToggle'
@@ -10,6 +10,27 @@ export default function Home() {
   const [buscando, setBuscando] = useState(false)
   const [resultados, setResultados] = useState<EventoResultado[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [sugeridos, setSugeridos] = useState<Array<{ codigoCorto: string; nombre: string; fecha: string; lugar: string }> | null>(null)
+  const [sugeridosError, setSugeridosError] = useState<string | null>(null)
+  const [touched, setTouched] = useState(false)
+
+  useEffect(() => {
+    let cancelado = false
+    async function cargarSugeridos() {
+      try {
+        const resp = await fetch('/api/eventos/destacados?limit=3')
+        if (!resp.ok) throw new Error('No se pudieron cargar los eventos sugeridos')
+        const data = await resp.json()
+        if (!cancelado && data.ok) {
+          setSugeridos(data.eventos)
+        }
+      } catch {
+        if (!cancelado) setSugeridosError('No se pudieron cargar los eventos sugeridos')
+      }
+    }
+    cargarSugeridos()
+    return () => { cancelado = true }
+  }, [])
 
   function normalizarParaBusqueda(texto: string): string {
     return texto
@@ -62,6 +83,34 @@ export default function Home() {
         <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
           {t('home.hero.bajada')}
         </p>
+        {/* Visual de producto: código QR de entrada, sin decoración gratuita. */}
+        <div className="mx-auto mt-6 flex items-center justify-center">
+          <div className="relative inline-block p-2 bg-primario/10 rounded-2xl border border-borde/30 shadow-sm">
+            <svg
+              className="w-20 h-20 sm:w-24 sm:h-24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2" y="2" width="20" height="20" rx="2" />
+              <rect x="4" y="4" width="6" height="6" />
+              <rect x="14" y="4" width="6" height="6" />
+              <rect x="4" y="14" width="6" height="6" />
+              <rect x="9" y="10" width="2" height="2" />
+              <rect x="13" y="10" width="2" height="2" />
+              <rect x="11" y="12" width="2" height="2" />
+              <rect x="9" y="14" width="2" height="2" />
+              <rect x="13" y="14" width="2" height="2" />
+            </svg>
+            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primario text-[10px] font-bold text-sobre-primario shadow-sm">
+              QR
+            </span>
+          </div>
+        </div>
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
           <a
             href="#buscar"
@@ -71,7 +120,7 @@ export default function Home() {
           </a>
           <Link
             to="/entrar"
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario transition hover:bg-primario/5"
+            className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-borde px-4 py-2.5 text-base font-medium text-texto-suave transition hover:bg-superficie/50"
           >
             {t('home.hero.crear')}
           </Link>
@@ -94,12 +143,18 @@ export default function Home() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onBlur={() => setTouched(true)}
               placeholder={t('home.buscar.ph')}
               className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
               disabled={buscando}
               autoComplete="off"
               autoFocus
             />
+            {touched && !buscando && !query.trim() && (
+              <p className="text-center text-xs text-texto-suave mt-1">
+                {t('home.buscar.hintVacio')}
+              </p>
+            )}
             {buscando && (
               <>
                 <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
@@ -137,19 +192,38 @@ export default function Home() {
               >
                 {t('comun.reintentar')}
               </button>
-              <Link
-                to="/entrar"
-                className="min-h-[56px] rounded-xl border-2 border-primario px-6 py-3 text-sm font-semibold text-primario transition hover:bg-primario/5"
-              >
-                {t('home.buscar.crearOrg')}
-              </Link>
+              {error === t('home.buscar.no') && (
+                <>
+                  <a
+                    href="#buscar"
+                    className="min-h-[56px] rounded-xl border border-borde bg-superficie px-6 py-3 text-sm font-semibold text-texto transition hover:bg-superficie/50"
+                  >
+                    {t('home.buscar.buscarNombre')}
+                  </a>
+                  <Link
+                    to="/entrar"
+                    className="min-h-[56px] rounded-xl border-2 border-primario px-6 py-3 text-sm font-semibold text-primario transition hover:bg-primario/5"
+                  >
+                    {t('home.buscar.crearOrg')}
+                  </Link>
+                </>
+              )}
+              {error === t('home.buscar.red') && (
+                <p className="text-center text-xs text-texto-suave mt-2 sm:mt-0">
+                  {t('home.buscar.noCodigo')} — {t('home.buscar.contactoOrg')}
+                </p>
+              )}
             </div>
           </>
         )}
 
         {resultados.length > 0 && (
-          <ul role="list" className="space-y-2 max-w-md mx-auto">
-            {resultados.map((evt) => (
+          <>
+            <p className="text-center text-sm font-semibold text-texto">
+              {resultados.length} evento{resultados.length !== 1 ? 's' : ''} encontrado{resultados.length !== 1 ? 's' : ''}
+            </p>
+            <ul role="list" className="space-y-2 max-w-md mx-auto">
+              {resultados.map((evt) => (
               <li key={evt.codigoCorto}>
                 <Link
                   to={`/e/${evt.codigoCorto}`}
@@ -182,11 +256,64 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          </>
         )}
 
         <p className="text-center text-xs text-texto-suave">
           {t('home.buscar.ayuda')} <code className="font-mono">FEST-8K2P</code>.
         </p>
+      </section>
+
+      {/* Eventos sugeridos: reconocimiento sobre recuerdo para quien no tiene el código a mano. */}
+      <section aria-labelledby="sugeridos-heading" className="space-y-4">
+        <h2 id="sugeridos-heading" className="text-center text-xl font-bold text-texto font-display">
+          {t('home.buscar.sugeridos.titulo')}
+        </h2>
+        {sugeridos === null && (
+          <p className="text-center text-xs text-texto-suave">Cargando eventos sugeridos…</p>
+        )}
+        {sugeridosError && (
+          <p className="text-center text-xs text-error">{sugeridosError}</p>
+        )}
+        {sugeridos && sugeridos.length > 0 && (
+          <ul role="list" className="grid gap-3 sm:grid-cols-3">
+            {sugeridos.map((evt) => (
+              <li key={evt.codigoCorto} className="rounded-xl border border-borde bg-superficie p-4">
+                <Link
+                  to={`/e/${evt.codigoCorto}`}
+                  className="block flex flex-col gap-2 hover:bg-superficie/50 transition"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-texto">{evt.nombre}</h3>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
+                    </div>
+                    <span className="shrink-0 font-mono text-xs text-primario bg-primario/10 px-2 py-1 rounded">
+                      {evt.codigoCorto}
+                    </span>
+                  </div>
+                  <svg
+                    className="shrink-0 w-4 h-4 text-texto-suave mt-2"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {sugeridos && sugeridos.length === 0 && (
+          <p className="text-center text-xs text-texto-suave">
+            No hay eventos destacados todavía. Buscá el tuyo por código o nombre arriba.
+          </p>
+        )}
       </section>
 
       {/* {t('home.como.titulo')}: 3 pasos. */}
@@ -249,7 +376,7 @@ export default function Home() {
             <a href="#buscar" className="hover:text-primario transition">
               {t('home.pie.link.buscar')}
             </a>
-            <a href="#" className="hover:text-primario transition">
+            <a href="mailto:ivanrufinocontac@gmail.com" className="hover:text-primario transition">
               {t('home.pie.link.contacto')}
             </a>
           </nav>
