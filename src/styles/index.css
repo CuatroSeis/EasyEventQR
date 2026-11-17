@@ -34,6 +34,10 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Bebas Neue', 'Source Sans 3', system-ui, sans-serif;
+
   --color-primario: var(--c-primario);
   --color-secundario: var(--c-secundario);
   --color-superficie: var(--c-superficie);
@@ -41,6 +45,7 @@
   --color-texto-suave: var(--c-texto-suave);
   --color-borde: var(--c-borde);
   --color-sobre-primario: var(--c-sobre-primario);
+  --color-error: var(--c-error);
 }
 
 /* Valores por defecto. El tema de un evento sólo pisa lo que trae. */
@@ -52,6 +57,7 @@
   --c-texto-suave: #64748b;
   --c-borde: #e2e8f0;
   --c-sobre-primario: #ffffff;
+  --c-error: #dc2626;
 
   /* Área táctil mínima comfortable para un dedo.
      44px es el número que usan iOS y Material como referencia. */
@@ -69,6 +75,7 @@
   --c-texto-suave: #94a3b8;
   --c-borde: #1e293b;
   --c-sobre-primario: #0f172a;
+  --c-error: #f87171;
 }
 
 @layer base {
@@ -125,5 +132,9 @@
 
   .campo::placeholder {
     color: var(--c-texto-suave);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
   }
 }

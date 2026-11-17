@@ -51,43 +51,147 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-10 p-4 pb-12">
-      <div className="flex items-center justify-end gap-2 pt-2">
-        <IdiomaToggle />
-        <TemaToggle />
-      </div>
       {/* Hero: qué es, para quién, qué hacer. */}
       <header className="text-center">
         <p className="inline-flex items-center rounded-full bg-primario/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primario">
           {t('app.tagline')}
         </p>
-        <h1
-          className="mt-3 text-5xl font-bold leading-none tracking-wide text-texto sm:text-6xl"
-          style={{ fontFamily: "'Bebas Neue', 'Source Sans 3', system-ui, sans-serif" }}
-        >
+        <h1 className="mt-3 text-5xl font-bold leading-none tracking-wide text-texto sm:text-6xl font-display">
           EasyEventQR
         </h1>
         <p className="mx-auto mt-3 max-w-md text-lg text-texto-suave">
           {t('home.hero.bajada')}
         </p>
         <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
-          <Link
-            to="/entrar"
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition hover:brightness-110"
-          >
-            {t('home.hero.crear')}
-          </Link>
           <a
             href="#buscar"
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario transition hover:bg-primario/5"
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition hover:brightness-110"
           >
             {t('home.hero.codigo')}
           </a>
+          <Link
+            to="/entrar"
+            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-primario px-6 py-3 text-lg font-semibold text-primario transition hover:bg-primario/5"
+          >
+            {t('home.hero.crear')}
+          </Link>
         </div>
       </header>
 
+      {/* Buscar: acción principal del visitante. */}
+      <section id="buscar" aria-labelledby="invitado-heading" className="scroll-mt-4 space-y-4">
+        <h2 id="invitado-heading" className="text-center text-xl font-bold text-texto font-display">
+          {t('home.buscar.titulo')}
+        </h2>
+
+        <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto" noValidate>
+          <label htmlFor="buscar" className="text-sm font-semibold text-texto">
+            Buscar evento por código o nombre
+          </label>
+          <div className="relative">
+            <input
+              id="buscar"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('home.buscar.ph')}
+              className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
+              disabled={buscando}
+              autoComplete="off"
+              autoFocus
+            />
+            {buscando && (
+              <>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
+                  <span className="inline-block animate-ping rounded-full h-3 w-3 bg-primario" />
+                </span>
+                <span className="sr-only" aria-live="polite">
+                  {t('home.buscar.buscando')}
+                </span>
+              </>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={buscando || !query.trim()}
+            className="w-full min-h-[56px] rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {buscando ? t('home.buscar.buscando') : t('home.buscar.boton')}
+          </button>
+        </form>
+
+        {error && (
+          <>
+            <p role="alert" className="text-center text-sm text-error">
+              {error}
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setResultados([])
+                  document.getElementById('buscar')?.focus()
+                }}
+                className="min-h-[56px] rounded-xl border border-borde bg-superficie px-6 py-3 text-sm font-semibold text-texto transition hover:bg-superficie/50"
+              >
+                {t('comun.reintentar')}
+              </button>
+              <Link
+                to="/entrar"
+                className="min-h-[56px] rounded-xl border-2 border-primario px-6 py-3 text-sm font-semibold text-primario transition hover:bg-primario/5"
+              >
+                {t('home.buscar.crearOrg')}
+              </Link>
+            </div>
+          </>
+        )}
+
+        {resultados.length > 0 && (
+          <ul role="list" className="space-y-2 max-w-md mx-auto">
+            {resultados.map((evt) => (
+              <li key={evt.codigoCorto}>
+                <Link
+                  to={`/e/${evt.codigoCorto}`}
+                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-texto">{evt.nombre}</h3>
+                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="shrink-0 font-mono text-sm text-primario bg-primario/10 px-2 py-1 rounded">
+                        {evt.codigoCorto}
+                      </span>
+                      <svg
+                        className="shrink-0 w-4 h-4 text-texto-suave"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="text-center text-xs text-texto-suave">
+          {t('home.buscar.ayuda')} <code className="font-mono">FEST-8K2P</code>.
+        </p>
+      </section>
+
       {/* {t('home.como.titulo')}: 3 pasos. */}
       <section aria-labelledby="como-funciona" className="space-y-4">
-        <h2 id="como-funciona" className="text-center text-xl font-bold text-texto">
+        <h2 id="como-funciona" className="text-center text-xl font-bold text-texto font-display">
           {t('home.como.titulo')}
         </h2>
         <ol role="list" className="grid gap-3 sm:grid-cols-3">
@@ -128,78 +232,28 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="buscar" aria-labelledby="invitado-heading" className="scroll-mt-4 space-y-4">
-        <h2 id="invitado-heading" className="text-center text-xl font-bold text-texto">
-          {t('home.buscar.titulo')}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto" noValidate>
-          <label htmlFor="buscar" className="sr-only">
-            Buscar evento por código o nombre
-          </label>
-          <div className="relative">
-            <input
-              id="buscar"
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('home.buscar.ph')}
-              className="w-full min-h-[56px] rounded-xl border border-borde bg-superficie px-4 py-3 text-base text-texto placeholder:text-texto-suave focus:outline-none focus-visible:outline-2 focus-visible:outline-primario"
-              disabled={buscando}
-              autoComplete="off"
-              autoFocus
-            />
-            {buscando && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden>
-                ⏳
-              </span>
-            )}
+      <footer className="mt-auto pt-8 border-t border-borde">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-texto-suave">
+          <p>{t('home.pie')}</p>
+          <div className="flex items-center gap-3">
+            <IdiomaToggle />
+            <TemaToggle />
           </div>
-          <button
-            type="submit"
-            disabled={buscando || !query.trim()}
-            className="w-full min-h-[56px] rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {buscando ? t('home.buscar.buscando') : t('home.buscar.boton')}
-          </button>
-        </form>
-
-        {error && (
-          <p role="alert" className="text-center text-sm text-red-600">
-            {error}
-          </p>
-        )}
-
-        {resultados.length > 0 && (
-          <ul role="list" className="space-y-2 max-w-md mx-auto">
-            {resultados.map((evt) => (
-              <li key={evt.codigoCorto}>
-                <Link
-                  to={`/e/${evt.codigoCorto}`}
-                  className="block rounded-xl border border-borde bg-superficie p-4 hover:bg-superficie/50 transition"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-texto">{evt.nombre}</h3>
-                      <p className="text-sm text-texto-suave">{evt.lugar} · {evt.fecha}</p>
-                    </div>
-                    <span className="shrink-0 font-mono text-sm text-primario bg-primario/10 px-2 py-1 rounded">
-                      {evt.codigoCorto}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <p className="text-center text-xs text-texto-suave">
-          {t('home.buscar.ayuda')} <code className="font-mono">FEST-8K2P</code>.
-        </p>
-      </section>
-
-      <footer className="mt-auto text-center text-xs text-texto-suave">
-        <p>{t('home.pie')}</p>
+          <nav className="flex gap-4 sm:gap-6">
+            <Link
+              to="/entrar"
+              className="hover:text-primario transition"
+            >
+              {t('home.pie.link.crear')}
+            </Link>
+            <a href="#buscar" className="hover:text-primario transition">
+              {t('home.pie.link.buscar')}
+            </a>
+            <a href="#" className="hover:text-primario transition">
+              {t('home.pie.link.contacto')}
+            </a>
+          </nav>
+        </div>
       </footer>
     </main>
   )

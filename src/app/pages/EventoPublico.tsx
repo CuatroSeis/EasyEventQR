@@ -444,20 +444,64 @@ function Formulario({
   onEnviar: (datos: Record<string, string>) => void
   t: Texto
 }) {
+  const [paso, setPaso] = useState<'1' | '2'>('1')
+  const [valores, setValores] = useState<Record<string, string>>({})
+  const [problemasLocales, setProblemasLocales] = useState<ProblemasDelFormulario>({})
+
+  const problemasVista: ProblemasDelFormulario = { ...problemas, ...problemasLocales }
+
   if (evento.agotado) return null
+
+  const etiquetas: Record<string, string> = {
+    nombre: t('pub.form.nombre'),
+    email: t('pub.form.email'),
+    telefono: t('pub.form.tel'),
+    dni: t('pub.form.dni'),
+    fechaNacimiento: t('pub.form.nac'),
+  }
+
+  function etiquetaDe(campo: string): string {
+    return etiquetas[campo]
+  }
+
+  function validarPaso1(form: FormData): boolean {
+    const siguiente: ProblemasDelFormulario = {}
+    const nombre = String(form.get('nombre') ?? '').trim()
+    if (nombre.length < 2) siguiente.nombre = 'El nombre debe tener al menos 2 caracteres.'
+    const email = String(form.get('email') ?? '')
+    if (!email) siguiente.email = 'El email es requerido.'
+    const dni = String(form.get('dni') ?? '')
+    if (!/^[0-9]{7,8}$/.test(dni)) siguiente.dni = 'El DNI debe tener 7 u 8 dígitos.'
+    const fechaNacimiento = String(form.get('fechaNacimiento') ?? '')
+    if (!fechaNacimiento) siguiente.fechaNacimiento = 'La fecha de nacimiento es requerida.'
+    setProblemasLocales(siguiente)
+    return Object.keys(siguiente).length === 0
+  }
 
   function mandar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (enviando) return
-    const datos = new FormData(e.currentTarget)
+    const form = new FormData(e.currentTarget)
+    if (paso === '1') {
+      if (!validarPaso1(form)) return
+      setValores({
+        nombre: String(form.get('nombre') ?? ''),
+        email: String(form.get('email') ?? ''),
+        telefono: String(form.get('telefono') ?? ''),
+        dni: String(form.get('dni') ?? ''),
+        fechaNacimiento: String(form.get('fechaNacimiento') ?? ''),
+      })
+      setPaso('2')
+      return
+    }
     onEnviar({
       eventoId: evento.eventoId,
-      nombre: String(datos.get('nombre') ?? ''),
-      email: String(datos.get('email') ?? ''),
-      telefono: String(datos.get('telefono') ?? ''),
-      dni: String(datos.get('dni') ?? ''),
-      fechaNacimiento: String(datos.get('fechaNacimiento') ?? ''),
-      sitioWeb: String(datos.get('sitioWeb') ?? ''),
+      nombre: valores.nombre,
+      email: valores.email,
+      telefono: valores.telefono,
+      dni: valores.dni,
+      fechaNacimiento: valores.fechaNacimiento,
+      sitioWeb: String(form.get('sitioWeb') ?? ''),
     })
   }
 
@@ -469,95 +513,135 @@ function Formulario({
         </p>
       ) : null}
 
-      <Campo nombre="nombre" etiqueta={t('pub.form.nombre')} problemas={problemas}>
-        <input
-          id="nombre"
-          name="nombre"
-          type="text"
-          required
-          minLength={2}
-          maxLength={80}
-          autoComplete="name"
-          enterKeyHint="next"
-          className={claseInput(problemas.nombre)}
-        />
-      </Campo>
+      {paso === '1' ? (
+        <>
+          <Campo nombre="nombre" etiqueta={etiquetaDe('nombre')} problemas={problemasVista}>
+            <input
+              id="nombre"
+              name="nombre"
+              type="text"
+              required
+              minLength={2}
+              maxLength={80}
+              autoComplete="name"
+              enterKeyHint="next"
+              className={claseInput(problemas.nombre)}
+            />
+          </Campo>
 
-      <Campo nombre="email" etiqueta={t('pub.form.email')} problemas={problemas}>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          maxLength={254}
-          autoComplete="email"
-          inputMode="email"
-          enterKeyHint="next"
-          className={claseInput(problemas.email)}
-        />
-      </Campo>
+          <Campo nombre="email" etiqueta={etiquetaDe('email')} problemas={problemasVista}>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="email"
+              inputMode="email"
+              enterKeyHint="next"
+              className={claseInput(problemas.email)}
+            />
+          </Campo>
 
-      <Campo nombre="telefono" etiqueta={t('pub.form.tel')} problemas={problemas}>
-        <input
-          id="telefono"
-          name="telefono"
-          type="tel"
-          maxLength={32}
-          autoComplete="tel"
-          inputMode="tel"
-          className={claseInput(problemas.telefono)}
-        />
-      </Campo>
+          <Campo nombre="telefono" etiqueta={etiquetaDe('telefono')} problemas={problemasVista}>
+            <input
+              id="telefono"
+              name="telefono"
+              type="tel"
+              maxLength={32}
+              autoComplete="tel"
+              inputMode="tel"
+              className={claseInput(problemas.telefono)}
+            />
+          </Campo>
 
-      <Campo nombre="dni" etiqueta={t('pub.form.dni')} problemas={problemas}>
-        <input
-          id="dni"
-          name="dni"
-          type="text"
-          required
-          pattern="[0-9]{7,8}"
-          maxLength={8}
-          inputMode="numeric"
-          autoComplete="off"
-          enterKeyHint="next"
-          className={claseInput(problemas.dni)}
-          placeholder="12345678"
-        />
-      </Campo>
+          <Campo nombre="dni" etiqueta={etiquetaDe('dni')} problemas={problemasVista}>
+            <input
+              id="dni"
+              name="dni"
+              type="text"
+              required
+              pattern="[0-9]{7,8}"
+              maxLength={8}
+              inputMode="numeric"
+              autoComplete="off"
+              enterKeyHint="next"
+              className={claseInput(problemas.dni)}
+              placeholder="12345678"
+            />
+          </Campo>
 
-      <Campo nombre="fechaNacimiento" etiqueta={t('pub.form.nac')} problemas={problemas}>
-        <input
-          id="fechaNacimiento"
-          name="fechaNacimiento"
-          type="date"
-          required
-          max={fechaMaximaNacimiento()}
-          className={claseInput(problemas.fechaNacimiento)}
-        />
-      </Campo>
+          <Campo nombre="fechaNacimiento" etiqueta={etiquetaDe('fechaNacimiento')} problemas={problemasVista}>
+            <input
+              id="fechaNacimiento"
+              name="fechaNacimiento"
+              type="date"
+              required
+              max={fechaMaximaNacimiento()}
+              className={claseInput(problemas.fechaNacimiento)}
+            />
+          </Campo>
 
-      {/* La trampa. Hidden a la vista, presente en el DOM: los bots que
-          completan forms recorren los inputs y lo llenan. */}
-      <div className="sr-only" aria-hidden="true">
-        <label htmlFor="sitioWeb">{t('pub.form.trampa')}</label>
-        <input id="sitioWeb" name="sitioWeb" type="text" tabIndex={-1} autoComplete="off" />
-      </div>
+          {/* La trampa. Hidden a la vista, presente en el DOM: los bots que
+              completan forms recorren los inputs y lo llenan. */}
+          <div className="sr-only" aria-hidden="true">
+            <label htmlFor="sitioWeb">{t('pub.form.trampa')}</label>
+            <input id="sitioWeb" name="sitioWeb" type="text" tabIndex={-1} autoComplete="off" />
+          </div>
 
-      {evento.requierePago && evento.precioEntrada ? (
-        <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
-          {t('pub.form.pago', { monto: `$${evento.precioEntrada.toFixed(0)}` })}
-        </p>
-      ) : null}
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
+          >
+            {t('comun.siguiente')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {['nombre', 'email', 'telefono', 'dni', 'fechaNacimiento'].map((campo) => (
+              <div key={campo} className="flex justify-between text-sm">
+                <span className="text-texto-suave">{etiquetaDe(campo)}</span>
+                <span className="text-texto">{valores[campo] ?? ''}</span>
+              </div>
+            ))}
+          </div>
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
-        >
-          {enviando ? t('pub.form.enviando') : t('pub.form.enviar')}
-        </button>
+          {Object.entries(problemasVista).length > 0 ? (
+            <p role="alert" className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+              {Object.entries(problemasVista)
+                .map(([campo, mensaje]) => `${etiquetaDe(campo)}: ${mensaje}`)
+                .join(' ')}
+            </p>
+          ) : null}
 
-        <p className="text-center text-xs text-texto-suave">{t('pub.form.aviso')}</p>
+          {evento.requierePago && evento.precioEntrada ? (
+            <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+              {t('pub.form.pago', { monto: `$${evento.precioEntrada.toFixed(0)}` })}
+            </p>
+          ) : null}
+
+          <p className="text-center text-xs text-texto-suave">{t('pub.form.aviso')}</p>
+
+          <button
+            type="button"
+            onClick={() => setPaso('1')}
+            disabled={enviando}
+            className="w-full rounded-lg border border-borde bg-superficie px-4 py-3 text-sm font-semibold text-texto disabled:opacity-60"
+          >
+            {t('comun.volver')}
+          </button>
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
+          >
+            {enviando ? t('pub.form.enviando') : t('pub.form.enviar')}
+          </button>
+        </>
+      )}
     </form>
   )
 }
