@@ -19,6 +19,13 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const reducedMotion = useReducedMotion()
 
+  const bloquesConfianza = [
+    { n: 1, clave: 'home.confianza.1t', desc: 'home.confianza.1d' },
+    { n: 2, clave: 'home.confianza.2t', desc: 'home.confianza.2d' },
+    { n: 3, clave: 'home.confianza.3t', desc: 'home.confianza.3d' },
+    { n: 4, clave: 'home.confianza.4t', desc: 'home.confianza.4d' },
+  ] as const
+
   async function copiarCodigo(codigo: string) {
     try {
       await navigator.clipboard.writeText(codigo)
@@ -158,16 +165,17 @@ export default function Home() {
             className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl shadow-sm"
           />
         </div>
-        <div className="mx-auto mt-6 flex max-w-md flex-col gap-3 sm:flex-row">
-          <a
-            href="#buscar"
-            className="inline-flex min-h-[56px] flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario shadow-sm transition hover:brightness-105 hover:shadow-md"
+        <div className="mx-auto mt-6 flex flex-col sm:flex-row gap-3">
+          <button
+            type="button"
+            onClick={() => document.getElementById('buscar')?.focus()}
+            className="inline-flex min-h-[56px] w-full sm:w-auto flex-1 items-center justify-center rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario shadow-sm transition hover:brightness-105 hover:shadow-md"
           >
-            {t('home.hero.codigo')}
-          </a>
+            {t('home.hero.buscar')}
+          </button>
           <Link
             to="/entrar"
-            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-xl border border-borde bg-secundario/5 px-4 py-2.5 text-sm font-medium text-texto transition hover:bg-primario/10 hover:text-primario"
+            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-xl border border-borde bg-superficie px-4 py-2.5 text-sm font-medium text-texto transition hover:bg-primario/5 hover:text-primario"
           >
             {t('home.hero.crear')}
           </Link>
@@ -375,6 +383,22 @@ export default function Home() {
           {t('home.copiado.toast', { codigo: copiado })}
         </p>
       )}
+
+      {/* Confianza: qué recibe el visitante y por qué funciona en la puerta. */}
+      <section aria-labelledby="confianza-heading" className="space-y-6">
+        <h2 id="confianza-heading" className="text-center text-2xl font-bold text-texto font-display sm:text-3xl">
+          {t('home.confianza.titulo')}
+        </h2>
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {bloquesConfianza.map(({ n, clave, desc }) => (
+            <div key={n} className="rounded-xl border border-borde bg-superficie p-5 flex flex-col gap-2">
+              <p className="text-3xl font-black text-primario">{n}</p>
+              <h3 className="font-bold text-texto">{t(clave)}</h3>
+              <p className="mt-1 text-sm text-texto-suave leading-relaxed">{t(desc)}</p>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       <footer className="mt-auto pt-8 border-t border-borde">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-texto-suave">
