@@ -76,10 +76,10 @@ export function EventosTab() {
   if (cargando) return <Cargando etiqueta={t('adm.ev.cargando')} />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 ee-sans">
       <header>
-        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.ev')}</h1>
-        <p className="text-sm text-texto-suave">
+        <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.ev')}</h1>
+        <p className="text-sm text-ee-texto-suave">
           {eventos.length} eventos · {activos} activos
         </p>
       </header>
@@ -116,11 +116,11 @@ export function EventosTab() {
       {error && <MensajeError texto={error} />}
 
       {filtrados.length === 0 ? (
-        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
+        <p className="ee-tarjeta-premium p-6 text-center text-sm text-ee-texto-suave ee-sans">
           No hay eventos que coincidan.
         </p>
       ) : (
-        <div className="ee-tarjeta overflow-x-auto">
+        <div className="ee-tarjeta-premium overflow-x-auto">
           <table className="w-full text-sm ee-sans">
             <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
@@ -133,25 +133,25 @@ export function EventosTab() {
                 <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-borde">
+            <tbody className="divide-y divide-ee-borde">
               {filtrados.map((e) => (
-                <tr key={e.id} className="hover:bg-superficie/50">
+                <tr key={e.id} className="hover:bg-ee-superficie/80">
                   <td className="px-3 py-2">
                     <p className="font-medium text-texto">{e.nombre}</p>
-                    <p className="text-xs text-texto-suave">{e.lugar}</p>
+                    <p className="text-xs text-ee-texto-suave">{e.lugar}</p>
                   </td>
-                  <td className="hidden px-3 py-2 text-texto-suave md:table-cell">{e.organizadorNombre}</td>
-                  <td className="px-3 py-2 text-texto-suave">{formatearFechaHora(e.fecha)}</td>
+                  <td className="hidden px-3 py-2 text-ee-texto-suave md:table-cell">{e.organizadorNombre}</td>
+                  <td className="px-3 py-2 text-ee-texto-suave">{formatearFechaHora(e.fecha)}</td>
                   <td className="px-3 py-2 text-texto">
                     {e.reservas} / {e.capacidadMaxima}
                   </td>
-                  <td className="px-3 py-2 text-texto-suave">
+                  <td className="px-3 py-2 text-ee-texto-suave">
                     {e.requierePago ? `$${e.precioEntrada ?? 0}` : 'Gratis'}
                   </td>
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        e.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        e.estado === 'activo' ? 'bg-ee-acento/10 text-ee-acento-texto' : 'bg-ee-acento/10 text-ee-acento-texto'
                       }`}
                     >
                       {e.estado}

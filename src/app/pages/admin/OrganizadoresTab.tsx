@@ -114,10 +114,10 @@ export function OrganizadoresTab() {
   if (cargando) return <Cargando etiqueta={t('adm.org.cargando')} />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 ee-sans">
       <header>
-        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.org')}</h1>
-        <p className="text-sm text-texto-suave">
+        <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.org')}</h1>
+        <p className="text-sm text-ee-texto-suave">
           {t('adm.org.sub', { n: organizadores.length, a: activos, s: suspendidos })}
         </p>
       </header>
@@ -149,11 +149,11 @@ export function OrganizadoresTab() {
       {error && <MensajeError texto={error} />}
 
       {filtrados.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
+        <p className="ee-tarjeta-premium p-6 text-center text-sm text-ee-texto-suave">
           No hay organizadores que coincidan.
         </p>
       ) : (
-        <div className="ee-tarjeta overflow-x-auto">
+        <div className="ee-tarjeta-premium overflow-x-auto">
           <table className="w-full text-sm ee-sans">
             <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
@@ -165,13 +165,13 @@ export function OrganizadoresTab() {
                 <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-borde">
+            <tbody className="divide-y divide-ee-borde">
               {filtrados.map((o) => (
-                <tr key={o.uid} className="hover:bg-superficie/50">
+                <tr key={o.uid} className="hover:bg-ee-superficie/80">
                   <td className="px-3 py-2">
                     <p className="font-medium text-texto">{o.nombre}</p>
-                    <p className="text-xs text-texto-suave">{o.email}</p>
-                    <p className="truncate font-mono text-xs text-texto-suave">{o.uid}</p>
+                    <p className="text-xs text-ee-texto-suave">{o.email}</p>
+                    <p className="truncate font-mono text-xs text-ee-texto-suave">{o.uid}</p>
                   </td>
                   <td className="px-3 py-2">
                     <select
@@ -192,17 +192,17 @@ export function OrganizadoresTab() {
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         o.estadoSuscripcion === 'activo'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                          ? 'bg-ee-acento/10 text-ee-acento-texto'
+                          : 'bg-ee-acento/10 text-ee-acento-texto'
                       }`}
                     >
                       {o.estadoSuscripcion}
                     </span>
                   </td>
-                  <td className="hidden px-3 py-2 text-texto-suave md:table-cell">
+                  <td className="hidden px-3 py-2 text-ee-texto-suave md:table-cell">
                     {o.limitesPersonalizacion?.capacidadMaximaPorEvento ?? '—'}
                   </td>
-                  <td className="px-3 py-2 text-texto-suave">{formatearFecha(o.fechaAlta)}</td>
+                  <td className="px-3 py-2 text-ee-texto-suave">{formatearFecha(o.fechaAlta)}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
                       <button

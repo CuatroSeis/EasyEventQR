@@ -105,37 +105,37 @@ export default function QrPublico() {
   }, [token, busca])
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-5 p-6 text-center">
+    <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-5 p-6 text-center ee-sans">
       <meta name="robots" content="noindex, nofollow" />
 
       {veredicto.estado === 'cargando' ? (
-        <p className="text-sm text-texto-suave">{t('qr.cargando')}</p>
+        <p className="text-sm text-ee-texto-suave">{t('qr.cargando')}</p>
       ) : veredicto.estado === 'valido' ? (
         <>
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primario text-4xl text-sobre-primario">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full ee-boton-primario text-4xl text-sobre-primario ee-foco">
             ✓
           </div>
-          <h1 className="text-xl font-bold text-texto">{t('qr.valida')}</h1>
+          <h1 className="text-xl font-bold text-texto ee-sans">{t('qr.valida')}</h1>
           <canvas
             ref={canvasRef}
-            className="mx-auto rounded-xl border border-borde bg-white p-2"
+            className="mx-auto rounded-xl border border-ee-borde bg-ee-superficie p-2 ee-textura"
             role="img"
             aria-label="Código QR de tu entrada"
           />
-          <p className="text-sm text-texto-suave">{veredicto.motivo}</p>
-          <p className="text-sm text-texto-suave">{t('qr.brillo')}</p>
+          <p className="text-sm text-ee-texto-suave">{veredicto.motivo}</p>
+          <p className="text-sm text-ee-texto-suave">{t('qr.brillo')}</p>
         </>
       ) : (
         <>
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-borde text-3xl text-texto-suave">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-ee-borde text-3xl text-ee-acento-texto ee-foco">
             ✕
           </div>
-          <h1 className="text-xl font-bold text-texto">
+          <h1 className="text-xl font-bold text-texto ee-sans">
             {veredicto.estado === 'error' ? t('qr.error') : t('qr.no')}
           </h1>
-          <p className="text-sm text-texto-suave">{veredicto.motivo}</p>
+          <p className="text-sm text-ee-texto-suave">{veredicto.motivo}</p>
           {veredicto.estado === 'invalido' ? (
-            <p className="text-xs text-texto-suave">{t('qr.spam')}</p>
+            <p className="text-xs text-ee-texto-suave">{t('qr.spam')}</p>
           ) : null}
         </>
       )}

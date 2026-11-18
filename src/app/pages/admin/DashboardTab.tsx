@@ -55,21 +55,21 @@ export function DashboardTab() {
   ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-bold text-texto">{t('adm.tabs.dash')}</h1>
+    <div className="flex flex-col gap-4 ee-sans">
+      <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.dash')}</h1>
 
       {error && <MensajeError texto={error} />}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 ee-sans">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tarjetas.map((tarjeta) => (
-          <div key={tarjeta.etiqueta} className="ee-tarjeta p-4">
+          <div key={tarjeta.etiqueta} className="ee-tarjeta-premium p-4">
             <p className="text-xs text-ee-texto-suave">{tarjeta.etiqueta}</p>
             <p className="mt-1 text-2xl font-bold text-texto">{tarjeta.valor}</p>
           </div>
         ))}
       </div>
 
-      <div className="ee-tarjeta p-4">
+      <div className="ee-tarjeta-premium p-4">
         <p className="text-xs text-ee-texto-suave">{t('adm.dash.ingresos')}</p>
         <p className="mt-1 text-2xl font-bold text-texto">
           ${(stats?.ingresosMes ?? 0).toLocaleString('es-AR')}

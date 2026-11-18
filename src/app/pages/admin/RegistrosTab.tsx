@@ -106,11 +106,11 @@ export function RegistrosTab() {
   const usados = registros.filter((r) => r.usado).length
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 ee-sans">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-texto">{t('adm.tabs.reg')}</h1>
-          <p className="text-sm text-texto-suave">
+          <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.reg')}</h1>
+          <p className="text-sm text-ee-texto-suave">
             {total} en total · {usados} usados en esta página
           </p>
         </div>
@@ -172,11 +172,11 @@ export function RegistrosTab() {
       {cargando ? (
         <Cargando etiqueta={t('adm.reg.cargando')} />
       ) : registros.length === 0 ? (
-        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
+        <p className="ee-tarjeta-premium p-6 text-center text-sm text-ee-texto-suave ee-sans">
           No hay reservas que coincidan.
         </p>
       ) : (
-        <div className="ee-tarjeta overflow-x-auto">
+        <div className="ee-tarjeta-premium overflow-x-auto">
           <table className="w-full text-sm ee-sans">
             <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
@@ -189,18 +189,18 @@ export function RegistrosTab() {
                 <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">{t('adm.th.registrado')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-borde">
+            <tbody className="divide-y divide-ee-borde">
               {registros.map((r) => (
-                <tr key={r.id} className="hover:bg-superficie/50">
+                <tr key={r.id} className="hover:bg-ee-superficie/80">
                   <td className="px-3 py-2">
                     <p className="font-medium text-texto">{r.nombre}</p>
-                    <p className="text-xs text-texto-suave">{r.email}</p>
+                    <p className="text-xs text-ee-texto-suave">{r.email}</p>
                   </td>
                   <td className="px-3 py-2">
                     <p className="text-texto">{r.eventoNombre}</p>
-                    <p className="text-xs text-texto-suave">{r.organizadorNombre}</p>
+                    <p className="text-xs text-ee-texto-suave">{r.organizadorNombre}</p>
                   </td>
-                  <td className="hidden px-3 py-2 font-mono text-xs text-texto md:table-cell">{r.dni}</td>
+                  <td className="hidden px-3 py-2 font-mono text-xs text-ee-texto-suave md:table-cell">{r.dni}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colorEstado(r.estado)}`}>
                       {r.estado}
@@ -211,8 +211,8 @@ export function RegistrosTab() {
                       {r.pago.estado === 'no_aplica' ? 'Gratis' : r.pago.estado}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-texto-suave">{r.usado ? t('adm.reg.si') : t('adm.reg.no')}</td>
-                  <td className="hidden px-3 py-2 text-texto-suave lg:table-cell">
+                  <td className="px-3 py-2 text-xs text-ee-texto-suave">{r.usado ? t('adm.reg.si') : t('adm.reg.no')}</td>
+                  <td className="hidden px-3 py-2 text-ee-texto-suave lg:table-cell">
                     {formatearFechaHora(r.fechaRegistro)}
                   </td>
                 </tr>

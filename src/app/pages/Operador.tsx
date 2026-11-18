@@ -130,8 +130,8 @@ export default function Operador() {
 
   if (estado === 'verificando' && !payload) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-600 animate-pulse">🔍</div>
+      <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center ee-sans">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full ee-boton-primario text-3xl text-sobre-primario animate-pulse ee-foco">🔍</div>
         <h1 className="text-xl font-bold text-texto">{t('scan.verificando')}</h1>
       </main>
     )
@@ -139,11 +139,11 @@ export default function Operador() {
 
   if (estado === 'error_token') {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">✕</div>
+      <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center ee-sans">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full ee-borde-activo text-4xl text-ee-acento-texto ee-foco">✕</div>
         <h1 className="text-xl font-bold text-texto">{t('scan.link.malo.t')}</h1>
-        <p className="text-sm text-texto-suave">{t('scan.link.malo.d')}</p>
-        <button onClick={volver} className="rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario">
+        <p className="text-sm text-ee-texto-suave">{t('scan.link.malo.d')}</p>
+        <button onClick={volver} className="min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-6 py-3 text-sm font-semibold">
           {t('comun.volverPanel')}
         </button>
       </main>
@@ -152,11 +152,11 @@ export default function Operador() {
 
   if (estado === 'error_permiso') {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-4xl text-red-600">📷</div>
+      <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center ee-sans">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full ee-borde-activo text-4xl text-ee-acento-texto ee-foco">📷</div>
         <h1 className="text-xl font-bold text-texto">{t('scan.camara.t')}</h1>
-        <p className="text-sm text-texto-suave">{t('scan.camara.d')}</p>
-        <button onClick={reiniciarEscaneo} className="rounded-lg bg-primario px-6 py-3 text-sm font-semibold text-sobre-primario">
+        <p className="text-sm text-ee-texto-suave">{t('scan.camara.d')}</p>
+        <button onClick={reiniciarEscaneo} className="min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-6 py-3 text-sm font-semibold">
           {t('scan.reintentar')}
         </button>
       </main>
@@ -164,21 +164,21 @@ export default function Operador() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col p-6">
+    <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col p-6 ee-sans">
       {/* Header */}
       <header className="mb-6">
         <h1 className="text-lg font-bold text-texto">{t('scan.control')}</h1>
-        <p className="text-sm text-texto-suave">{t('scan.evento')}: {payload?.eventoId}</p>
-        <p className="text-xs text-texto-suave mt-1">
+        <p className="text-sm text-ee-texto-suave">{t('scan.evento')}: {payload?.eventoId}</p>
+        <p className="text-xs text-ee-texto-suave mt-1">
           {t('scan.valido.hasta')}: {payload ? new Date(payload.exp * 1000).toLocaleString('es-AR') : '—'}
         </p>
       </header>
 
       {/* Cámara */}
       <div className="relative mb-6">
-        <div id="escaner" className="w-full aspect-square rounded-xl overflow-hidden bg-slate-100" />
+        <div id="escaner" className="w-full aspect-square rounded-xl overflow-hidden bg-ee-superficie/50" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <svg width="280" height="280" viewBox="0 0 280 280" className="text-primario/50">
+          <svg width="280" height="280" viewBox="0 0 280 280" className="text-ee-acento/60">
             <rect x="40" y="40" width="200" height="200" fill="none" stroke="currentColor" strokeWidth="3" rx="20" />
             <path d="M40 100h30M210 100h30M40 180h30M210 180h30M100 40v30M100 210v30M180 40v30M180 210v30" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
           </svg>
@@ -188,50 +188,50 @@ export default function Operador() {
       {/* Resultado */}
       <div className="flex flex-col gap-4">
         {estado === 'valido' && (
-          <div className="rounded-xl border-2 border-green-500 bg-green-50 p-6 text-center animate-bounce-in">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500 mx-auto mb-4 text-3xl text-white">✓</div>
-            <h2 className="text-xl font-bold text-green-800">{t('scan.ok')}</h2>
-            <p className="text-green-700 mt-1"><strong>{resultado.asistente}</strong></p>
-            <p className="text-green-600 text-sm">{resultado.evento}</p>
-            <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-green-600 px-6 py-2 text-sm font-semibold text-white">
+          <div className="ee-tarjeta-premium p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full ee-boton-primario mx-auto mb-4 text-3xl text-sobre-primario ee-foco">✓</div>
+            <h2 className="text-xl font-bold text-texto">{t('scan.ok')}</h2>
+            <p className="text-ee-texto-suave mt-1"><strong>{resultado.asistente}</strong></p>
+            <p className="text-ee-texto-suave text-sm">{resultado.evento}</p>
+            <button onClick={reiniciarEscaneo} className="mt-4 min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-6 py-3 text-sm font-semibold">
               {t('scan.op.siguiente')}
             </button>
           </div>
         )}
 
         {estado === 'ya_usado' && (
-          <div className="rounded-xl border-2 border-yellow-500 bg-yellow-50 p-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-yellow-500 mx-auto mb-4 text-3xl text-white">⚠</div>
-            <h2 className="text-xl font-bold text-yellow-800">{t('scan.usado')}</h2>
-            <p className="text-yellow-700 mt-1">{resultado.mensaje}</p>
-            <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-yellow-600 px-6 py-2 text-sm font-semibold text-white">
+          <div className="ee-tarjeta-premium p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full ee-borde-activo mx-auto mb-4 text-3xl text-ee-acento-texto ee-foco">⚠</div>
+            <h2 className="text-xl font-bold text-texto">{t('scan.usado')}</h2>
+            <p className="text-ee-texto-suave mt-1">{resultado.mensaje}</p>
+            <button onClick={reiniciarEscaneo} className="mt-4 min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-6 py-3 text-sm font-semibold">
               {t('scan.op.siguiente')}
             </button>
           </div>
         )}
 
         {estado === 'invalido' && (
-          <div className="rounded-xl border-2 border-red-500 bg-red-50 p-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 mx-auto mb-4 text-3xl text-white">✕</div>
-            <h2 className="text-xl font-bold text-red-800">{t('scan.no')}</h2>
-            <p className="text-red-700 mt-1">{resultado.mensaje}</p>
-            <button onClick={reiniciarEscaneo} className="mt-4 rounded-lg bg-red-600 px-6 py-2 text-sm font-semibold text-white">
+          <div className="ee-tarjeta-premium p-6 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full ee-borde-activo mx-auto mb-4 text-3xl text-ee-acento-texto ee-foco">✕</div>
+            <h2 className="text-xl font-bold text-texto">{t('scan.no')}</h2>
+            <p className="text-ee-texto-suave mt-1">{resultado.mensaje}</p>
+            <button onClick={reiniciarEscaneo} className="mt-4 min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-6 py-3 text-sm font-semibold">
               {t('scan.op.reintentar2')}
             </button>
           </div>
         )}
 
         {estado === 'verificando' && (
-          <div className="rounded-xl border border-borde bg-superficie p-6 text-center">
-            <p className="text-texto-suave">{t('scan.op.apunta')}</p>
+          <div className="ee-tarjeta-premium p-6 text-center">
+            <p className="text-ee-texto-suave">{t('scan.op.apunta')}</p>
           </div>
         )}
 
         <div className="mt-4 flex gap-3">
-          <button onClick={reiniciarEscaneo} className="flex-1 rounded-lg border border-borde px-4 py-2 text-sm font-medium text-texto">
+          <button onClick={reiniciarEscaneo} className="flex-1 min-h-[56px] rounded-xl ee-boton-secundario ee-foco px-4 py-3 text-sm font-medium">
             {t('scan.op.reiniciar')}
           </button>
-          <button onClick={volver} className="flex-1 rounded-lg bg-primario px-4 py-2 text-sm font-semibold text-sobre-primario">
+          <button onClick={volver} className="flex-1 min-h-[56px] rounded-xl ee-boton-primario ee-foco px-4 py-3 text-sm font-semibold">
             {t('comun.volverPanel')}
           </button>
         </div>

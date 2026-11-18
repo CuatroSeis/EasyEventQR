@@ -20,7 +20,7 @@ export default function EmptyState({
   to?: string
 }): ReactNode {
   return (
-    <div className="ee-tarjeta p-6 text-center ee-sans">
+    <div className="ee-tarjeta-premium p-6 text-center ee-sans">
       <p className="text-sm font-medium text-texto">{titulo}</p>
       <p className="mx-auto mt-1 max-w-sm text-xs text-ee-texto-suave">{ayuda}</p>
       {cta && to ? (

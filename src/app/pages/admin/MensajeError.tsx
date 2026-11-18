@@ -7,7 +7,7 @@
  */
 export function MensajeError({ texto }: { texto: string }) {
   return (
-    <p role="alert" className="ee-tarjeta p-3 text-sm text-texto ee-sans">
+    <p role="alert" className="ee-tarjeta-premium p-3 text-sm text-texto ee-sans">
       {texto}
     </p>
   )

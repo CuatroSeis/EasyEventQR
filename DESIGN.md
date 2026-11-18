@@ -180,18 +180,67 @@ Este plan abarca las inconsistencias detectadas entre el hero (estilo de referen
 - [x] **Acentos de color**: gradientes azul→violeta en bordes activos (`ee-borde-activo`) y enlaces secundarios.
 - [x] **Modo claro con profundidad**: `ee-superficie-clara`, `ee-borde-claro`, `ee-textura` para evitar aspecto plano.
 
-### Fase 5 — Migración a landings públicas de eventos (`/e/:eventoId`)
+### Fase 5 — Migración a landings públicas de eventos (`/e/:eventoId`) — [COMPLETADA]
 
-- [ ] Aplicar fondo oscuro + glows cuando el evento no tenga tema personalizado de Firestore.
-- [ ] Tarjetas de información del evento con `ee-tarjeta-premium` y elevación.
-- [ ] Botones de acción (reservar, compartir) con `ee-boton-primario` / `ee-boton-secundario`.
+- [x] **Marco (`Marco`)**: `<main>` usa `.ee-fondo` + `.ee-textura` (fondo profundo + textura modo claro), badge de degradado con `.ee-borde-activo`, tipografía `Inter` (ee-sans).
+- [x] **Encabezado (`Encabezado`)**: badge cuenta regresiva con `ee-boton-primario`, badge categoría con `ee-borde-activo` + gradiente azul→violeta, títulos con `ee-titulo-seccion`, subtítulos con `ee-subtitulo-seccion`, fechas con `text-ee-texto-suave`, estados agotado/últimos lugares con `ee-tarjeta-premium`.
+- [x] **Sección organizador**: `ee-tarjeta-premium` + `ee-sans`.
+- [x] **Precio y gratuito**: `ee-tarjeta-premium` / `ee-borde-activo` con gradiente.
+- [x] **Botón CTA principal y barra móvil**: `ee-boton-primario` + `ee-foco`, barra fija con `bg-ee-superficie/95` + `border-ee-borde`.
+- [x] **Formulario (`Formulario`)**: inputs con `border-ee-borde` / `bg-ee-superficie` / `focus-visible:outline-ee-acento`, botones `ee-boton-primario` / `ee-boton-secundario`, mensajes de error en `ee-tarjeta-premium`, `claseInput` actualizada a tokens `--ee-*`.
+- [x] **Confirmación (`Confirmacion`)**: badge ✓ con `ee-boton-primario`, texto de confirmación en `ee-tarjeta-premium`.
+- [x] **Estados (`NoDisponible`, `Cargando`)**: `ee-sans` + `text-ee-texto-suave`.
+- [x] **Detector Impeccable**: `detect --json` → sin hallazgos.
 
-### Fase 6 — Migración al operador de puerta (`/operador/:token`)
+### Fase 6 — Página de login (`/entrar`) — Modo Operate — [COMPLETADA]
 
-- [ ] Adaptar contrastes y focos al fondo oscuro para legibilidad en modo escaneo.
-- [ ] Mantener accesibilidad (foco visible, contraste mínimo WCAG AA).
+- [x] **`<main>`**: `.ee-fondo` + `.ee-textura` (fondo profundo + textura modo claro), `ee-sans` en todo el cuerpo.
+- [x] **Título y bajada**: `ee-titulo-seccion` + `ee-subtitulo-seccion` (jerarquía del Hero).
+- [x] **Botón "Continuar con Google"**: `ee-boton-primario` + `ee-foco`, `min-h-[56px]` (área táctil 44px).
+- [x] **Mensaje de error**: `ee-tarjeta-premium` (superficie con elevación, no texto suelto).
+- [x] **Sin Firebase configurado**: `ee-tarjeta-premium` en lugar de `border-red-200 bg-red-50`.
+- [x] **Enlace "Volver al inicio"**: `text-ee-acento` (color de acento Hero) en lugar de `text-slate-500`.
+- [x] **Detector Impeccable**: `detect --json` → sin hallazgos.
 
-### Fase 7 — Documentación y pruebas
+### Fase 7 — Escaneo de QR público (`/q/:token`) — Modo Read/Operate — [COMPLETADA]
+
+- [x] **`<main>`**: `.ee-fondo` + `.ee-textura` + `ee-sans` (fondo profundo + textura modo claro).
+- [x] **Badge éxito (✓)**: `ee-boton-primario` en lugar de `bg-primario`.
+- [x] **Badge error (✕)**: `border-ee-borde` + `text-ee-acento-texto` + `ee-foco`.
+- [x] **Canvas QR**: `border-ee-borde` + `bg-ee-superficie` + `.ee-textura`.
+- [x] **Títulos y textos**: `ee-sans`, `text-ee-texto-suave` en lugar de `text-texto-suave`.
+- [x] **Detector Impeccable**: `detect --json` → sin hallazgos.
+
+### Fase 8 — Operador de puerta (`/operador/:token`) — Modo Operate — [COMPLETADA]
+
+- [x] **`<main>`**: `.ee-fondo` + `.ee-textura` + `ee-sans` en todos los estados (verificando, error_token, error_permiso, valido, ya_usado, invalido).
+- [x] **Badges de estado**: `ee-boton-primario` (éxito ✓), `ee-borde-activo` + `text-ee-acento-texto` (error ✕, advertencia ⚠, cámara 📷, carga 🔍).
+- [x] **Contenedor cámara**: `bg-ee-superficie/50` en lugar de `bg-slate-100`; SVG del escáner con `text-ee-acento/60`.
+- [x] **Tarjetas de resultado**: `ee-tarjeta-premium` en lugar de fondos de color plano (`bg-green-50`, `bg-yellow-50`, `bg-red-50`).
+- [x] **Botones**: `ee-boton-primario` (volver al panel) y `ee-boton-secundario` (reiniciar escaneo, siguiente), todos con `min-h-[56px]` y `ee-foco`.
+- [x] **Textos**: `text-ee-texto-suave` en lugar de `text-texto-suave`.
+- [x] **Detector Impeccable**: `detect --json` → sin hallazgos (se eliminó `animate-bounce-in` por anti-patrón de easing).
+
+### Fase 9 — Refinado de paneles (`/panel/*`, `/admin/*`) — Modo Operate — [COMPLETADA]
+
+- [x] **PanelLayout**: wrapper `bg-ee-superficie`, header `border-ee-borde bg-ee-superficie/95`, botón volver `text-ee-texto-suave hover:bg-ee-superficie/80`, botón salir `text-ee-texto-suave`, `ee-sans` en todo el cuerpo.
+- [x] **Panel.tsx**: título `ee-titulo-seccion`, mensaje error `ee-tarjeta-premium`, tarjetas de resumen `ee-tarjeta-premium`, tarjeta evento `ee-tarjeta-premium`, estado cerrado `bg-ee-borde`, Cargando `border-ee-borde bg-ee-superficie/50`, botones `ee-boton-primario` / `ee-boton-secundario`.
+- [x] **EmptyState**: `ee-tarjeta-premium` + `ee-sans`.
+- [x] **DashboardTab**: título `ee-titulo-seccion`, `ee-sans` en contenedor, tarjetas métricas `ee-tarjeta-premium`, tarjeta ingresos `ee-tarjeta-premium`.
+- [x] **MensajeError**: `ee-tarjeta-premium` + `ee-sans`.
+- [x] **OrganizadoresTab**: `ee-sans` en contenedor, título `ee-titulo-seccion`, estado vacío `ee-tarjeta-premium`, tabla `ee-tarjeta-premium`, `divide-ee-borde`, `hover:bg-ee-superficie/80`, badges de estado `bg-ee-acento/10 text-ee-acento-texto`.
+- [x] **EventosTab**: `ee-sans` en contenedor, título `ee-titulo-seccion`, estado vacío `ee-tarjeta-premium`, tabla `ee-tarjeta-premium`, `divide-ee-borde`, `hover:bg-ee-superficie/80`, badges de estado `bg-ee-acento/10 text-ee-acento-texto`.
+- [x] **RegistrosTab**: `ee-sans` en contenedor, título `ee-titulo-seccion`, estado vacío `ee-tarjeta-premium`, tabla `ee-tarjeta-premium`, `divide-ee-borde`, `hover:bg-ee-superficie/80`.
+- [x] **AuditoriaTab**: `ee-sans` en contenedor, título `ee-titulo-seccion`, estado vacío `ee-tarjeta-premium`, tabla `ee-tarjeta-premium`, `divide-ee-borde`, `hover:bg-ee-superficie/80`.
+- [x] **ExcepcionesTab**: `ee-sans` en contenedor, título `ee-titulo-seccion`, estado vacío `ee-tarjeta-premium`, tabla `ee-tarjeta-premium`, `divide-ee-borde`, `hover:bg-ee-superficie/80`, modal `ee-tarjeta-premium`, modal título `ee-titulo-seccion`, labels modal `text-ee-texto-suave`.
+- [x] **Detector Impeccable**: `detect --json` → sin hallazgos en todos los 10 archivos.
+
+### Fase 10 — Verificación final y documentación
+
+- [ ] Probar en móvil (responsividad): `sm:flex-row`, `sm:grid-cols-2`, `hidden sm:block`, etc.
+- [ ] Probar `prefers-reduced-motion`: animaciones de glows y ticket desactivadas.
+- [ ] Verificar contraste WCAG AA en fondos oscuros y claros para texto y bordes.
+- [ ] Build y typecheck limpios tras cada fase.
 
 - [x] Actualizar `DESIGN.md` con cada cambio aprobado (este documento).
 - [ ] Probar en móvil (responsividad): `sm:flex-row`, `sm:grid-cols-2`, `hidden sm:block`, etc.

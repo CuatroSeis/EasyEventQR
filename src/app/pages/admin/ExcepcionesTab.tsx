@@ -81,11 +81,11 @@ export function ExcepcionesTab() {
   if (cargando) return <Cargando etiqueta={t('adm.exc.cargando')} />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 ee-sans">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-texto">{t('adm.tabs.exc')}</h1>
-          <p className="text-sm text-texto-suave">{t('adm.exc.sub')}</p>
+          <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.exc')}</h1>
+          <p className="text-sm text-ee-texto-suave">{t('adm.exc.sub')}</p>
         </div>
         <button
           type="button"
@@ -99,11 +99,11 @@ export function ExcepcionesTab() {
       {error && <MensajeError texto={error} />}
 
       {excepciones.length === 0 ? (
-        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
+        <p className="ee-tarjeta-premium p-6 text-center text-sm text-ee-texto-suave ee-sans">
           {t('adm.exc.vacio')}
         </p>
       ) : (
-        <div className="ee-tarjeta overflow-x-auto">
+        <div className="ee-tarjeta-premium overflow-x-auto">
           <table className="w-full text-sm ee-sans">
             <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
@@ -113,19 +113,19 @@ export function ExcepcionesTab() {
                 <th scope="col" className="px-3 py-2 text-right font-medium">{t('adm.th.acciones')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-borde">
+            <tbody className="divide-y divide-ee-borde">
               {excepciones.map((exc) => (
-                <tr key={exc.organizadorId} className="hover:bg-superficie/50">
+                <tr key={exc.organizadorId} className="hover:bg-ee-superficie/80">
                   <td className="px-3 py-2">
                     <p className="font-medium text-texto">{exc.organizadorNombre}</p>
-                    <p className="text-xs text-texto-suave">{exc.organizadorEmail}</p>
+                    <p className="text-xs text-ee-texto-suave">{exc.organizadorEmail}</p>
                   </td>
-                  <td className="px-3 py-2 text-texto-suave">{exc.plan}</td>
+                  <td className="px-3 py-2 text-ee-texto-suave">{exc.plan}</td>
                   <td className="px-3 py-2">
                     <ul className="space-y-0.5 text-xs">
                       {exc.campos.map((campo) => (
                         <li key={campo} className="text-texto">
-                          <span className="text-texto-suave">{etiquetasCampo(t)[campo] ?? campo}:</span>{' '}
+                          <span className="text-ee-texto-suave">{etiquetasCampo(t)[campo] ?? campo}:</span>{' '}
                           {formatearValor(t, campo, exc.limitesPersonalizacion)}
                         </li>
                       ))}
@@ -227,10 +227,10 @@ function ModalConceder({
       aria-modal="true"
       aria-label={t('adm.exc.conceder.b')}
     >
-      <div className="w-full max-w-md ee-tarjeta p-4 ee-sans">
-        <h2 className="text-base font-bold text-texto">{t('adm.exc.conceder.b')}</h2>
+      <div className="w-full max-w-md ee-tarjeta-premium p-4 ee-sans">
+        <h2 className="ee-titulo-seccion text-base font-bold text-texto">{t('adm.exc.conceder.b')}</h2>
 
-        <label className="mt-3 block text-sm text-texto" htmlFor="organizador-excepcion">
+        <label className="mt-3 block text-sm text-ee-texto-suave" htmlFor="organizador-excepcion">
           {t('adm.exc.org')}
         </label>
         <select
@@ -248,7 +248,7 @@ function ModalConceder({
         </select>
 
         <fieldset className="mt-3 space-y-2" disabled={!elegido}>
-          <legend className="text-sm text-texto-suave">{t('adm.exc.limites')}</legend>
+          <legend className="text-sm text-ee-texto-suave">{t('adm.exc.limites')}</legend>
           {(
             [
               [t('adm.exc.f.banner'), banner, setBanner],
@@ -256,13 +256,13 @@ function ModalConceder({
               [t('adm.exc.f.logo'), logo, setLogo],
             ] as const
           ).map(([etiqueta, valor, setter]) => (
-            <label key={etiqueta} className="flex items-center gap-2 text-sm text-texto">
+            <label key={etiqueta} className="flex items-center gap-2 text-sm text-ee-texto-suave">
               <input type="checkbox" checked={valor} onChange={(e) => setter(e.target.checked)} />
               {etiqueta}
             </label>
           ))}
 
-          <label className="block text-sm text-texto" htmlFor="capacidad-excepcion">
+          <label className="block text-sm text-ee-texto-suave" htmlFor="capacidad-excepcion">
             {t('adm.exc.capmax')}
           </label>
           <input

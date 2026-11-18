@@ -83,30 +83,30 @@ export default function Login() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6">
+    <main className="ee-fondo ee-textura mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 ee-sans">
       <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-900">{t('login.titulo')}</h1>
-          <p className="mt-2 text-sm text-slate-600">{t('login.bajada')}</p>
+          <h1 className="ee-titulo-seccion text-2xl font-bold text-texto">{t('login.titulo')}</h1>
+          <p className="ee-subtitulo-seccion mt-2 text-ee-texto-suave">{t('login.bajada')}</p>
       </div>
 
       <button
         type="button"
         onClick={manejarLogin}
         disabled={estado === 'entrando' || !firebaseConfigurado}
-        className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario transition disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full min-h-[56px] rounded-xl ee-boton-primario ee-foco px-6 py-3 text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-60"
       >
           {estado === 'entrando' ? t('login.entrando') : t('login.boton')}
       </button>
 
       {estado === 'error' && mensaje && (
-        <p role="alert" className="text-center text-sm text-red-600">
+        <p role="alert" className="ee-tarjeta-premium p-3 text-sm text-texto text-center">
           {mensaje}
         </p>
       )}
 
       {!firebaseConfigurado && (
         // Errores con paleta fija (no del tema): si no, se confunden con la marca.
-          <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-center text-xs text-slate-700">
+          <p className="ee-tarjeta-premium p-3 text-center text-xs text-texto">
             {t('login.sinFirebase.titulo')}
           </p>
       )}
@@ -117,7 +117,7 @@ export default function Login() {
           porque un `<a>` inline ignora height por defecto. */}
       <Link
         to="/"
-        className="inline-flex min-h-11 items-center px-2 text-xs text-slate-500 underline"
+        className="inline-flex min-h-11 items-center px-2 text-xs text-ee-acento underline ee-sans"
       >
         {t('login.volver')}
       </Link>

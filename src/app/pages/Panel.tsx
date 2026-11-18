@@ -59,10 +59,10 @@ export default function Panel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-bold text-texto">{t('panel.titulo')}</h1>
+      <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('panel.titulo')}</h1>
 
       {error ? (
-        <p role="alert" className="ee-tarjeta p-3 text-sm text-texto ee-sans">
+        <p role="alert" className="ee-tarjeta-premium p-3 text-sm text-texto ee-sans">
           {error}
         </p>
       ) : null}
@@ -91,7 +91,7 @@ function Cargando() {
   return (
     <div className="flex flex-col gap-3" aria-busy="true">
       {[0, 1].map((i) => (
-        <div key={i} className="h-28 animate-pulse rounded-xl border border-borde" />
+        <div key={i} className="h-28 animate-pulse rounded-xl border border-ee-borde bg-ee-superficie/50" />
       ))}
       <span className="sr-only">{t('panel.cargando')}</span>
     </div>
@@ -111,19 +111,19 @@ function Resumen({
   const abiertos = eventos.filter((e) => e.estado === 'activo').length
   return (
     <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 ee-sans">
-      <div className="ee-tarjeta p-3 text-center">
+      <div className="ee-tarjeta-premium p-3 text-center">
         <dt className="text-xs text-ee-texto-suave">{t('panel.m.eventos')}</dt>
         <dd className="text-xl font-bold text-texto">{eventos.length}</dd>
       </div>
-      <div className="ee-tarjeta p-3 text-center">
+      <div className="ee-tarjeta-premium p-3 text-center">
         <dt className="text-xs text-ee-texto-suave">{t('panel.m.abiertos')}</dt>
         <dd className="text-xl font-bold text-texto">{abiertos}</dd>
       </div>
-      <div className="ee-tarjeta p-3 text-center">
+      <div className="ee-tarjeta-premium p-3 text-center">
         <dt className="text-xs text-ee-texto-suave">{t('panel.m.inscriptos')}</dt>
         <dd className="text-xl font-bold text-texto">{inscriptos}</dd>
       </div>
-      <div className="ee-tarjeta p-3 text-center">
+      <div className="ee-tarjeta-premium p-3 text-center">
         <dt className="text-xs text-ee-texto-suave">{t('panel.m.vendidas')}</dt>
         <dd className="text-xl font-bold text-texto">
           {ventas === null ? '—' : ventas.entradas}
@@ -195,7 +195,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
   return (
     <Link
       to={`/panel/eventos/${evento.id}`}
-      className="block ee-tarjeta p-4"
+      className="block ee-tarjeta-premium p-4"
     >
       <div className="flex items-start justify-between gap-3 ee-sans">
         <div className="min-w-0">
@@ -208,7 +208,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
           <span
             className={
               cerrado
-                ? 'shrink-0 rounded-full bg-borde px-2 py-0.5 text-xs text-texto-suave'
+                ? 'shrink-0 rounded-full bg-ee-borde px-2 py-0.5 text-xs text-ee-texto-suave'
                 : 'shrink-0 rounded-full bg-ee-acento px-2 py-0.5 text-xs text-ee-acento-texto'
             }
           >

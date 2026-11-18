@@ -42,10 +42,10 @@ export function AuditoriaTab() {
   if (cargando) return <Cargando etiqueta={t('adm.aud.cargando')} />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 ee-sans">
       <header>
-        <h1 className="text-lg font-bold text-texto">{t('adm.tabs.aud')}</h1>
-        <p className="text-sm text-texto-suave">
+        <h1 className="ee-titulo-seccion text-lg font-bold text-texto">{t('adm.tabs.aud')}</h1>
+        <p className="text-sm text-ee-texto-suave">
           Quién hizo qué en el panel. Sólo lectura: el registro se escribe en el servidor y no se puede editar
           desde la aplicación.
         </p>
@@ -77,11 +77,11 @@ export function AuditoriaTab() {
       {error && <MensajeError texto={error} />}
 
       {logs.length === 0 ? (
-        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
+        <p className="ee-tarjeta-premium p-6 text-center text-sm text-ee-texto-suave ee-sans">
           Todavía no hay acciones registradas.
         </p>
       ) : (
-        <div className="ee-tarjeta overflow-x-auto">
+        <div className="ee-tarjeta-premium overflow-x-auto">
           <table className="w-full text-sm ee-sans">
             <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
@@ -92,10 +92,10 @@ export function AuditoriaTab() {
                 <th scope="col" className="hidden px-3 py-2 font-medium lg:table-cell">{t('adm.th.detalles')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-borde">
+            <tbody className="divide-y divide-ee-borde">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-superficie/50">
-                  <td className="whitespace-nowrap px-3 py-2 text-texto-suave">
+                <tr key={log.id} className="hover:bg-ee-superficie/80">
+                  <td className="whitespace-nowrap px-3 py-2 text-ee-texto-suave">
                     {formatearFechaHora(log.creadoEn)}
                   </td>
                   <td className="px-3 py-2">
@@ -105,11 +105,11 @@ export function AuditoriaTab() {
                   </td>
                   <td className="px-3 py-2">
                     <p className="text-texto">{log.entidad}</p>
-                    <p className="truncate font-mono text-xs text-texto-suave">{log.entidadId}</p>
+                    <p className="truncate font-mono text-xs text-ee-texto-suave">{log.entidadId}</p>
                   </td>
-                  <td className="px-3 py-2 text-texto-suave">{log.usuarioEmail || log.usuarioId}</td>
+                  <td className="px-3 py-2 text-ee-texto-suave">{log.usuarioEmail || log.usuarioId}</td>
                   <td className="hidden px-3 py-2 lg:table-cell">
-                    <pre className="max-w-xs overflow-auto whitespace-pre-wrap text-xs text-texto-suave">
+                    <pre className="max-w-xs overflow-auto whitespace-pre-wrap text-xs text-ee-texto-suave">
                       {JSON.stringify(log.detalles, null, 2)}
                     </pre>
                   </td>

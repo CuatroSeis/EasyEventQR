@@ -139,7 +139,7 @@ export default function EventoPublico() {
         <Encabezado evento={evento} t={t} />
 
         {evento.organizador ? (
-          <section className="rounded-xl border border-borde bg-superficie p-4 space-y-2" aria-label="Organizador">
+          <section className="ee-tarjeta-premium p-4 space-y-2 ee-sans" aria-label="Organizador">
             <div className="flex items-center gap-3">
               {evento.organizador.logoUrl ? (
                 <img
@@ -152,11 +152,11 @@ export default function EventoPublico() {
               <div>
                 <p className="text-sm font-semibold text-texto">{t('pub.org.por')} {evento.organizador.nombre}</p>
                 {evento.organizador.descripcion ? (
-                  <p className="text-xs text-texto-suave">{evento.organizador.descripcion}</p>
+                  <p className="text-xs text-ee-texto-suave">{evento.organizador.descripcion}</p>
                 ) : null}
               </div>
             </div>
-            <div className="flex gap-3 text-xs text-texto-suave">
+            <div className="flex gap-3 text-xs text-ee-texto-suave">
               {evento.organizador.instagram ? <span>@{evento.organizador.instagram.replace(/^@/, '')}</span> : null}
               {evento.organizador.web ? <span>{evento.organizador.web}</span> : null}
             </div>
@@ -164,14 +164,16 @@ export default function EventoPublico() {
         ) : null}
 
         {evento.requierePago && evento.precioEntrada !== null ? (
-          <div className="flex items-baseline gap-2 rounded-xl border border-borde bg-superficie p-4">
-            <p className="text-3xl font-bold text-texto">
-              ${evento.precioEntrada.toLocaleString('es-AR')}
-            </p>
-            <p className="text-sm text-texto-suave">{t('pub.precio.entrada')}</p>
+          <div className="ee-tarjeta-premium p-4 ee-sans">
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-texto">
+                ${evento.precioEntrada.toLocaleString('es-AR')}
+              </p>
+              <p className="text-sm text-ee-texto-suave">{t('pub.precio.entrada')}</p>
+            </div>
           </div>
         ) : (
-          <p className="inline-flex items-center rounded-full border border-borde bg-superficie px-3 py-1 text-xs font-bold uppercase tracking-wide text-texto">
+          <p className="inline-flex items-center rounded-full ee-borde-activo px-3 py-1 text-xs font-bold uppercase tracking-wide text-ee-acento-texto">
             {t('pub.gratis')}
           </p>
         )}
@@ -180,7 +182,7 @@ export default function EventoPublico() {
           <button
             type="button"
             onClick={irAlFormulario}
-            className="hidden min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110 sm:block"
+            className="hidden min-h-[56px] w-full cursor-pointer rounded-xl ee-boton-primario ee-foco px-6 py-3 text-lg font-semibold sm:block"
           >
             {t('pub.cta')}
           </button>
@@ -246,11 +248,11 @@ export default function EventoPublico() {
         {!mostrandoForm && !evento.agotado ? (
           <>
             <div aria-hidden="true" className="h-20 sm:hidden" />
-            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-borde bg-superficie/95 px-4 pb-[env(safe-area-inset-bottom)] pt-3 backdrop-blur sm:hidden">
+            <div className="fixed inset-x-0 bottom-0 z-20 border-t border-ee-borde bg-ee-superficie/95 px-4 pb-[env(safe-area-inset-bottom)] pt-3 backdrop-blur sm:hidden ee-textura">
               <button
                 type="button"
                 onClick={irAlFormulario}
-                className="min-h-[56px] w-full cursor-pointer rounded-xl bg-primario px-6 py-3 text-lg font-semibold text-sobre-primario transition-colors duration-200 hover:brightness-110"
+                className="min-h-[56px] w-full cursor-pointer rounded-xl ee-boton-primario ee-foco px-6 py-3 text-lg font-semibold"
               >
                 {t('pub.cta')}
               </button>
@@ -262,13 +264,13 @@ export default function EventoPublico() {
   )
 }
 
-/** El marco: fondo con blur, logo, y el ancho de lectura en el centro. */
+/** El marco: fondo profundo (estilo Hero), logo, y el ancho de lectura en el centro. */
 function Marco({ evento, children }: { evento?: EventoPublico; children: React.ReactNode }) {
   const p = evento?.personalizacion
   // Con banner, el main va transparente para que se vea el fondo con
   // blur; el overlay lo funde a superficie donde va el contenido.
   return (
-    <main className={p?.bannerUrl ? 'min-h-dvh' : 'min-h-dvh bg-superficie'} style={{ fontFamily: "'Source Sans 3', system-ui, sans-serif" }}>
+    <main className={`ee-fondo ${p?.bannerUrl ? '' : 'ee-textura'} min-h-dvh`} style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}>
       {p?.bannerUrl ? (
         <>
           {/* Fondo con blur grande: se intuye pero no se distingue. Capa
@@ -297,8 +299,8 @@ function Marco({ evento, children }: { evento?: EventoPublico; children: React.R
       ) : (
         <div
           aria-hidden="true"
-          className="h-24 w-full sm:h-32"
-          style={{ background: 'linear-gradient(135deg, var(--c-primario), var(--c-secundario))' }}
+          className="h-24 w-full sm:h-32 ee-borde-activo"
+          style={{ background: 'linear-gradient(135deg, var(--ee-acento), var(--ee-acento-violeta))' }}
         />
       )}
 
@@ -320,14 +322,14 @@ function Marco({ evento, children }: { evento?: EventoPublico; children: React.R
 }
 
 function Cargando({ t }: { t: Texto }) {
-  return <p className="py-16 text-center text-sm text-texto-suave">{t('pub.cargando')}</p>
+  return <p className="py-16 text-center text-sm text-ee-texto-suave ee-sans">{t('pub.cargando')}</p>
 }
 
 function NoDisponible({ t }: { t: Texto }) {
   return (
-    <div className="space-y-3 py-16 text-center">
+    <div className="space-y-3 py-16 text-center ee-sans">
       <h1 className="text-lg font-semibold text-texto">{t('pub.noexiste.t')}</h1>
-      <p className="text-sm text-texto-suave">{t('pub.noexiste.d')}</p>
+      <p className="text-sm text-ee-texto-suave">{t('pub.noexiste.d')}</p>
     </div>
   )
 }
@@ -367,26 +369,26 @@ function Encabezado({ evento, t }: { evento: EventoPublico; t: Texto }) {
       })
 
   return (
-    <header className="space-y-4">
+    <header className="space-y-4 ee-sans">
       <div className="flex flex-wrap items-center gap-2">
         {cuentaRegresiva(evento.fecha, t) ? (
-          <p className="inline-flex items-center rounded-full bg-primario px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
+          <p className="inline-flex items-center rounded-full ee-boton-primario ee-foco px-3 py-1 text-xs font-bold uppercase tracking-wide text-sobre-primario">
             {cuentaRegresiva(evento.fecha, t)}
           </p>
         ) : null}
         {evento.categoria && nombreCategoria(evento.categoria) ? (
-          <p className="inline-flex items-center rounded-full border border-borde bg-superficie/80 px-3 py-1 text-xs font-bold uppercase tracking-wide text-texto backdrop-blur">
+          <p className="inline-flex items-center rounded-full ee-borde-activo px-3 py-1 text-xs font-bold uppercase tracking-wide text-ee-acento-texto">
             {t(nombreCategoria(evento.categoria)!)}
           </p>
         ) : null}
       </div>
       <h1
-        className="text-4xl font-bold leading-none tracking-wide text-texto sm:text-5xl"
+        className="ee-titulo-seccion text-4xl font-bold leading-none tracking-wide text-texto sm:text-5xl"
         style={{ fontFamily: "'Bebas Neue', 'Source Sans 3', system-ui, sans-serif" }}
       >
         {evento.nombre}
       </h1>
-      <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-texto-suave">
+      <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-ee-texto-suave ee-sans">
         <div className="flex items-center gap-1.5">
           <dt className="sr-only">{t('pub.f.fecha')}</dt>
           <dd className="font-semibold text-texto">{cuando}</dd>
@@ -394,24 +396,24 @@ function Encabezado({ evento, t }: { evento: EventoPublico; t: Texto }) {
         {evento.lugar ? (
           <div className="flex items-center gap-1.5">
             <dt className="sr-only">{t('pub.f.lugar')}</dt>
-            <dd>{evento.lugar}</dd>
+            <dd className="text-texto">{evento.lugar}</dd>
           </div>
         ) : null}
       </dl>
 
       {evento.personalizacion.textoBienvenida ? (
-        <p className="pt-2 text-sm leading-relaxed text-texto">
+        <p className="pt-2 text-sm leading-relaxed text-texto ee-sans">
           {evento.personalizacion.textoBienvenida}
         </p>
       ) : null}
 
       {evento.agotado ? (
-        <div className="rounded-lg border border-borde bg-superficie p-4 text-sm text-texto">
-          <p className="font-semibold">{t('pub.agotado.t')}</p>
-          <p className="mt-1 text-texto-suave">{t('pub.agotado.d')}</p>
+        <div className="ee-tarjeta-premium p-4 text-sm">
+          <p className="font-semibold text-texto">{t('pub.agotado.t')}</p>
+          <p className="mt-1 text-ee-texto-suave">{t('pub.agotado.d')}</p>
         </div>
       ) : evento.lugaresRestantes <= 20 ? (
-        <p className="rounded-lg border border-borde bg-superficie p-3 text-sm font-semibold text-texto">
+        <p className="ee-tarjeta-premium p-3 text-sm font-semibold text-texto">
           {t('pub.ultimos', { n: evento.lugaresRestantes })}
         </p>
       ) : null}
@@ -506,9 +508,9 @@ function Formulario({
   }
 
   return (
-    <form onSubmit={mandar} className="space-y-4">
+    <form onSubmit={mandar} className="space-y-4 ee-sans">
       {errorEnvio ? (
-        <p role="alert" className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+        <p role="alert" className="ee-tarjeta-premium p-3 text-sm text-texto">
           {errorEnvio}
         </p>
       ) : null}
@@ -592,7 +594,7 @@ function Formulario({
           <button
             type="submit"
             disabled={enviando}
-            className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
+            className="w-full rounded-lg ee-boton-primario ee-foco px-4 py-3 text-sm font-semibold disabled:opacity-60"
           >
             {t('comun.siguiente')}
           </button>
@@ -602,14 +604,14 @@ function Formulario({
           <div className="space-y-2">
             {['nombre', 'email', 'telefono', 'dni', 'fechaNacimiento'].map((campo) => (
               <div key={campo} className="flex justify-between text-sm">
-                <span className="text-texto-suave">{etiquetaDe(campo)}</span>
+                <span className="text-ee-texto-suave">{etiquetaDe(campo)}</span>
                 <span className="text-texto">{valores[campo] ?? ''}</span>
               </div>
             ))}
           </div>
 
           {Object.entries(problemasVista).length > 0 ? (
-            <p role="alert" className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+            <p role="alert" className="ee-tarjeta-premium p-3 text-sm text-texto">
               {Object.entries(problemasVista)
                 .map(([campo, mensaje]) => `${etiquetaDe(campo)}: ${mensaje}`)
                 .join(' ')}
@@ -617,18 +619,18 @@ function Formulario({
           ) : null}
 
           {evento.requierePago && evento.precioEntrada ? (
-            <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+            <p className="ee-tarjeta-premium p-3 text-sm text-texto">
               {t('pub.form.pago', { monto: `$${evento.precioEntrada.toFixed(0)}` })}
             </p>
           ) : null}
 
-          <p className="text-center text-xs text-texto-suave">{t('pub.form.aviso')}</p>
+          <p className="text-center text-xs text-ee-texto-suave ee-sans">{t('pub.form.aviso')}</p>
 
           <button
             type="button"
             onClick={() => setPaso('1')}
             disabled={enviando}
-            className="w-full rounded-lg border border-borde bg-superficie px-4 py-3 text-sm font-semibold text-texto disabled:opacity-60"
+            className="w-full rounded-lg ee-boton-secundario ee-foco px-4 py-3 text-sm font-semibold disabled:opacity-60"
           >
             {t('comun.volver')}
           </button>
@@ -636,7 +638,7 @@ function Formulario({
           <button
             type="submit"
             disabled={enviando}
-            className="w-full rounded-lg bg-primario px-4 py-3 text-sm font-semibold text-sobre-primario disabled:opacity-60"
+            className="w-full rounded-lg ee-boton-primario ee-foco px-4 py-3 text-sm font-semibold disabled:opacity-60"
           >
             {enviando ? t('pub.form.enviando') : t('pub.form.enviar')}
           </button>
@@ -653,13 +655,13 @@ type Texto = (clave: ClaveTexto, vars?: Record<string, string | number>) => stri
 function Confirmacion({ evento, t }: { evento: EventoPublico; t: Texto }) {
   return (
     <>
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primario text-2xl text-sobre-primario">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full ee-boton-primario text-2xl text-sobre-primario ee-foco">
         ✓
       </div>
-      <h1 className="text-xl font-bold text-texto">{t('pub.ok.t')}</h1>
-      <p className="text-sm leading-relaxed text-texto-suave">{t('pub.ok.d')}</p>
+      <h1 className="text-xl font-bold text-texto ee-sans">{t('pub.ok.t')}</h1>
+      <p className="text-sm leading-relaxed text-ee-texto-suave ee-sans">{t('pub.ok.d')}</p>
       {evento.personalizacion.textoConfirmacion ? (
-        <p className="rounded-lg border border-borde bg-superficie p-3 text-sm text-texto">
+        <p className="ee-tarjeta-premium p-3 text-sm text-texto ee-sans">
           {evento.personalizacion.textoConfirmacion}
         </p>
       ) : null}
@@ -681,13 +683,13 @@ function Campo({
 }) {
   const error = problemas[nombre]
   return (
-    <div>
+    <div className="ee-sans">
       <label htmlFor={nombre} className="mb-1 block text-sm font-medium text-texto">
         {etiqueta}
       </label>
       {children}
       {error ? (
-        <p role="alert" className="mt-1 text-xs text-texto-suave">
+        <p role="alert" className="mt-1 text-xs text-ee-texto-suave">
           {error}
         </p>
       ) : null}
@@ -697,8 +699,8 @@ function Campo({
 
 function claseInput(error?: string): string {
   return (
-    'w-full rounded-lg border bg-superficie px-3 py-2.5 text-base text-texto ' +
-    'focus:outline-none focus-visible:outline-2 ' +
-    (error ? 'border-texto-suave' : 'border-borde')
+    'w-full rounded-lg border border-ee-borde bg-ee-superficie px-3 py-2.5 text-base text-texto ee-sans ' +
+    'focus:outline-none focus-visible:outline-2 focus-visible:outline-ee-acento ' +
+    (error ? 'border-texto-suave' : '')
   )
 }

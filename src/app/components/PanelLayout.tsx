@@ -32,19 +32,19 @@ export default function PanelLayout() {
   }, [organizador.brandingPanel])
 
   return (
-    <div className="flex min-h-dvh flex-col bg-superficie text-texto ee-sans">
-      <header className="sticky top-0 z-10 border-b border-borde bg-superficie/95 backdrop-blur">
+    <div className="flex min-h-dvh flex-col bg-ee-superficie text-texto ee-sans">
+      <header className="sticky top-0 z-10 border-b border-ee-borde bg-ee-superficie/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
           <Link
             to="/panel"
-            className="-ml-2 flex min-h-[var(--touch-min)] min-w-[var(--touch-min)] items-center justify-center rounded-lg text-sm text-texto-suave hover:bg-superficie hover:text-texto"
+            className="-ml-2 flex min-h-[var(--touch-min)] min-w-[var(--touch-min)] items-center justify-center rounded-lg text-sm text-ee-texto-suave hover:bg-ee-superficie/80 hover:text-texto"
           >
             <span aria-hidden="true">←</span>
             <span className="sr-only">{t('layout.volver')}</span>
           </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-texto">{organizador.nombre}</p>
-            <p className="truncate text-xs text-texto-suave">
+            <p className="truncate text-xs text-ee-texto-suave">
               Plan {organizador.plan} · {organizador.estadoSuscripcion}
             </p>
           </div>
