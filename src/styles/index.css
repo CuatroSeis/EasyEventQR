@@ -32,10 +32,10 @@
 
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Bebas Neue', 'Source Sans 3', system-ui, sans-serif;
 
   --color-primario: var(--c-primario);
@@ -46,6 +46,14 @@
   --color-borde: var(--c-borde);
   --color-sobre-primario: var(--c-sobre-primario);
   --color-error: var(--c-error);
+
+  --color-ee-fondo: var(--ee-fondo);
+  --color-ee-acento: var(--ee-acento);
+  --color-ee-acento-suave: var(--ee-acento-suave);
+  --color-ee-superficie: var(--ee-superficie);
+  --color-ee-borde: var(--ee-borde);
+  --color-ee-texto-suave: var(--ee-texto-suave);
+  --color-ee-acento-texto: var(--ee-acento-texto);
 }
 
 /* Valores por defecto. El tema de un evento sólo pisa lo que trae. */
@@ -137,4 +145,415 @@
   .font-display {
     font-family: var(--font-display);
   }
+}
+
+/* ==================================================================
+   REDISEÑO VISUAL — HOME (EasyEventQR)
+   Tokens propios, separados del sistema --c-* que usa el resto de la
+   app. Solo afectan la landing pública (/).
+   ================================================================== */
+
+/* ==================================================================
+   TOKENS — ESTILO HERO (referencia visual para toda la web)
+   Se aplican al <main> de la landing pública (/). El fondo es oscuro
+   profundo en ambos modos; el modo claro usa valores más luminosos
+   en superficie y bordes para mantener legibilidad sin perder textura.
+   ================================================================== */
+
+/* Modo claro (base del sistema): fondo oscuro profundo (estilo Hero),
+   superficie y bordes más luminosos para contraste en modo claro. */
+:root {
+  --ee-fondo: #0A0B12;
+  --ee-acento: #2563EB;
+  --ee-acento-violeta: #7C3AED;
+  --ee-acento-suave: rgba(37, 99, 235, 0.16);
+  --ee-acento-texto: #FFFFFF;
+  --ee-superficie: rgba(30, 41, 59, 0.5);
+  --ee-superficie-clara: rgba(255, 255, 255, 0.7);
+  --ee-borde: rgba(148, 163, 184, 0.22);
+  --ee-borde-claro: rgba(0, 0, 0, 0.12);
+  --ee-texto-suave: #94A3B8;
+  --ee-glow: rgba(37, 99, 235, 0.4);
+  --ee-glow-violeta: rgba(124, 58, 237, 0.25);
+}
+
+/* Modo oscuro: fondo profundo, superficies translúcidas, bordes oscuros. */
+:root[data-theme='oscuro'] {
+  --ee-fondo: #0A0B12;
+  --ee-acento: #60A5FA;
+  --ee-acento-violeta: #A855F7;
+  --ee-acento-suave: rgba(96, 165, 250, 0.14);
+  --ee-acento-texto: #FFFFFF;
+  --ee-superficie: rgba(15, 23, 42, 0.5);
+  --ee-superficie-clara: rgba(30, 41, 59, 0.6);
+  --ee-borde: rgba(30, 41, 59, 0.75);
+  --ee-borde-claro: rgba(255, 255, 255, 0.08);
+  --ee-texto-suave: #CBD5E1;
+  --ee-glow: rgba(96, 165, 250, 0.32);
+  --ee-glow-violeta: rgba(168, 85, 247, 0.22);
+}
+
+/* Fondo de la home: muy oscuro + granulado sutil + dos glows difusos (azul eléctrico + violeta) para profundidad. */
+.ee-fondo {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--ee-fondo);
+  overflow-x: clip;
+}
+
+.ee-fondo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Granulado muy tenue para que el fondo no se vea plano. */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  isolation: isolate;
+}
+
+/* Glow principal azul eléctrico detrás del título principal. */
+.ee-glow {
+  position: absolute;
+  top: -8%;
+  left: 50%;
+  width: 68vw;
+  height: 42vw;
+  background: radial-gradient(circle at 50% 32%, var(--ee-glow), transparent 68%);
+  opacity: 0.6;
+  filter: blur(64px);
+  pointer-events: none;
+  isolation: isolate;
+  transform: translateX(-50%);
+  animation: ee-glow-pulso 8s ease-in-out infinite alternate;
+}
+
+/* Glow secundario violeta a la derecha, para dar dimensión y romper lo plano. */
+.ee-glow::after {
+  content: "";
+  position: absolute;
+  top: 18%;
+  right: -8%;
+  width: 34vw;
+  height: 24vw;
+  background: radial-gradient(circle at 72% 40%, var(--ee-glow-violeta), transparent 62%);
+  opacity: 0.5;
+  filter: blur(48px);
+  pointer-events: none;
+  animation: ee-glow-violeta 10s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes ee-glow-pulso {
+  from { transform: translateX(-50%) scale(1); opacity: 0.6; }
+  to { transform: translateX(-50%) scale(1.18); opacity: 0.42; }
+}
+
+@keyframes ee-glow-violeta {
+  from { transform: scale(1); opacity: 0.5; }
+  to { transform: scale(1.12); opacity: 0.32; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ee-glow,
+  .ee-glow::after {
+    animation: none;
+  }
+}
+
+/* Tarjetas de sección: superficie más clara que el fondo general, borde sutil,
+   esquinas redondeadas y efecto de elevación. backdrop-filter para sensación de vidrio. */
+.ee-tarjeta {
+  position: relative;
+  background: var(--ee-superficie);
+  border: 1px solid var(--ee-borde);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.ee-tarjeta:hover {
+  transform: translateY(-4px);
+  border-color: var(--ee-acento);
+  box-shadow: 0 12px 28px -6px var(--ee-acento-suave), 0 6px 12px -2px rgba(0, 0, 0, 0.35);
+}
+
+/* Mockup de ticket digital: borde con muescas, sombra flotante, leve inclinación
+   y animación de flotación para que el producto luzca tangible. */
+.ee-ticket {
+  position: relative;
+  background: var(--ee-fondo);
+  border: 1px solid var(--ee-borde);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.55);
+  transform: rotate(-0.8deg);
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  animation: ee-ticket-flote 6s ease-in-out infinite;
+}
+
+.ee-ticket:hover {
+  transform: rotate(-0.8deg) scale(1.02);
+  box-shadow: 0 28px 56px -10px var(--ee-acento-suave), 0 0 32px var(--ee-glow);
+  animation: none;
+}
+
+.ee-ticket::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, var(--ee-borde) 0, var(--ee-borde) 6px, transparent 6px, transparent 12px);
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+@keyframes ee-ticket-flote {
+  0%, 100% { transform: rotate(-0.8deg) translateY(0); }
+  50% { transform: rotate(-0.8deg) translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ee-ticket {
+    animation: none;
+  }
+}
+
+/* Tipografía de cuerpo (sans moderna) para todo menos el logotipo. */
+.ee-sans {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* CTA principal: gradiente vibrante, sombra base y glow intenso en hover. */
+.ee-boton-primario {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--ee-acento), var(--ee-acento-violeta));
+  color: var(--ee-acento-texto);
+  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.35);
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+
+.ee-boton-primario:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 0 36px var(--ee-glow), 0 8px 24px -4px rgba(37, 99, 235, 0.45);
+}
+
+.ee-boton-primario:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+/* Botón secundario: borde definido para destacar sobre fondo oscuro. */
+.ee-boton-secundario {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ee-borde);
+  color: var(--ee-acento-texto);
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+
+.ee-boton-secundario:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--ee-acento);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.35);
+}
+
+/* ==================================================================
+   JERARQUÍA TIPOTOGRÁFICA — Títulos de sección con fuerza visual
+   del Hero. Tamaños elevados, pesos marcados y espaciado armonioso
+   en todas las resoluciones.
+   ================================================================== */
+
+/* Título de sección: tamaño elevado, peso marcado, tracking ajustado. */
+.ee-titulo-seccion {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Subtítulo de sección: sin-serif limpio, peso medio, color suave. */
+.ee-subtitulo-seccion {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+/* ==================================================================
+   CONTENEDORES Y TARJETAS UNIFICADOS — Estilo premium del Hero
+   aplicado a todas las secciones inferiores.
+   ================================================================== */
+
+/* Contenedor de sección: padding fluido, max-width controlado,
+   espacio entre secciones, mobile-first con expansión en desktop. */
+.ee-seccion {
+  padding-top: 2.5rem;
+  padding-bottom: 4rem;
+}
+
+/* Tarjeta premium: superficie diferenciada, borde definido,
+   sombra difuminada para profundidad en ambos modos. */
+.ee-tarjeta-premium {
+  position: relative;
+  background: var(--ee-superficie-clara);
+  border: 1px solid var(--ee-borde-claro);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 200ms ease, border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.ee-tarjeta-premium:hover {
+  transform: translateY(-4px);
+  border-color: var(--ee-acento);
+  box-shadow: 0 12px 28px -6px var(--ee-acento-suave),
+    0 6px 12px -2px rgba(0, 0, 0, 0.25);
+}
+
+/* Modo oscuro: tarjeta con superficie translúcida y borde oscuro. */
+[data-theme='oscuro'] .ee-tarjeta-premium {
+  background: var(--ee-superficie);
+  border: 1px solid var(--ee-borde);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='oscuro'] .ee-tarjeta-premium:hover {
+  box-shadow: 0 12px 28px -6px var(--ee-acento-suave),
+    0 8px 16px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Tarjeta paso: versión compacta para los pasos de "Cómo funciona". */
+.ee-tarjeta-paso {
+  background: var(--ee-superficie-clara);
+  border: 1px solid var(--ee-borde-claro);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 200ms ease, border-color 200ms ease;
+}
+
+.ee-tarjeta-paso:hover {
+  transform: translateY(-3px);
+  border-color: var(--ee-acento);
+}
+
+[data-theme='oscuro'] .ee-tarjeta-paso {
+  background: var(--ee-superficie);
+  border: 1px solid var(--ee-borde);
+}
+
+/* Acento de número de paso: gradiente azul → violeta. */
+.ee-paso-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--ee-acento), var(--ee-acento-violeta));
+  color: var(--ee-acento-texto);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px -2px var(--ee-acento-suave);
+}
+
+/* Acento de borde activo: gradiente sutil en bordes de elementos clave. */
+.ee-borde-activo {
+  position: relative;
+}
+
+.ee-borde-activo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--ee-acento), var(--ee-acento-violeta));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ==================================================================
+   EFECTOS DE PROFUNDIDAD Y TEXTURA — Modo claro y oscuro
+   ================================================================== */
+
+/* Granulado sutil para modo claro (fondo no plano). */
+.ee-textura {
+  position: relative;
+  overflow: hidden;
+}
+
+.ee-textura::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  isolation: isolate;
+}
+
+/* Anillo de foco visible y consistente. */
+.ee-foco:focus-visible {
+  outline: 2px solid var(--ee-acento);
+  outline-offset: 2px;
+}
+
+/* Línea conectora entre pasos de "Cómo funciona". */
+.ee-conector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ee-conector::after {
+  content: "";
+  flex: 1 1 100%;
+  height: 1px;
+  background: var(--ee-borde);
+}
+
+.ee-conector:last-child::after {
+  display: none;
+}
+
+.ee-paso-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  background: var(--ee-acento);
+  color: var(--ee-acento-texto);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Utilidades de espaciado y medida para párrafos. */
+.ee-medida {
+  max-width: 42ch;
+}
+
+.ee-texto-suave {
+  color: var(--ee-texto-suave);
 }

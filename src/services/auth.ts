@@ -58,8 +58,17 @@ export async function entrarConGoogle(): Promise<User | null> {
   const proveedor = new GoogleAuthProvider()
   proveedor.setCustomParameters({ prompt: 'select_account' })
   if (esMobile()) {
-    await signInWithRedirect(auth, proveedor)
-    return null
+    // En móvil se prefiere redirect (no depende de popups bloqueados ni
+    // de cookies de terceros). Firebase Dynamic Links se apagó el 25/8/2025,
+    // pero el SDK de Auth v12+ ya no los requiere para web móvil. Si el
+    // redirect falla por cualquier motivo, caemos a popup como respaldo.
+    try {
+      await signInWithRedirect(auth, proveedor)
+      return null
+    } catch {
+      const credencial = await signInWithPopup(auth, proveedor)
+      return credencial.user
+    }
   }
   const credencial = await signInWithPopup(auth, proveedor)
   return credencial.user

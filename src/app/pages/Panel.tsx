@@ -62,10 +62,7 @@ export default function Panel() {
       <h1 className="text-lg font-bold text-texto">{t('panel.titulo')}</h1>
 
       {error ? (
-        <p
-          role="alert"
-          className="rounded-xl border border-borde bg-superficie p-3 text-sm text-texto"
-        >
+        <p role="alert" className="ee-tarjeta p-3 text-sm text-texto ee-sans">
           {error}
         </p>
       ) : null}
@@ -113,26 +110,26 @@ function Resumen({
   const inscriptos = eventos.reduce((total, e) => total + (Number(e.reservas) || 0), 0)
   const abiertos = eventos.filter((e) => e.estado === 'activo').length
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">{t('panel.m.eventos')}</dt>
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 ee-sans">
+      <div className="ee-tarjeta p-3 text-center">
+        <dt className="text-xs text-ee-texto-suave">{t('panel.m.eventos')}</dt>
         <dd className="text-xl font-bold text-texto">{eventos.length}</dd>
       </div>
-      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">{t('panel.m.abiertos')}</dt>
+      <div className="ee-tarjeta p-3 text-center">
+        <dt className="text-xs text-ee-texto-suave">{t('panel.m.abiertos')}</dt>
         <dd className="text-xl font-bold text-texto">{abiertos}</dd>
       </div>
-      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">{t('panel.m.inscriptos')}</dt>
+      <div className="ee-tarjeta p-3 text-center">
+        <dt className="text-xs text-ee-texto-suave">{t('panel.m.inscriptos')}</dt>
         <dd className="text-xl font-bold text-texto">{inscriptos}</dd>
       </div>
-      <div className="rounded-xl border border-borde bg-superficie p-3 text-center">
-        <dt className="text-xs text-texto-suave">{t('panel.m.vendidas')}</dt>
+      <div className="ee-tarjeta p-3 text-center">
+        <dt className="text-xs text-ee-texto-suave">{t('panel.m.vendidas')}</dt>
         <dd className="text-xl font-bold text-texto">
           {ventas === null ? '—' : ventas.entradas}
         </dd>
         {ventas !== null && ventas.monto > 0 ? (
-          <dd className="text-xs text-texto-suave">
+          <dd className="text-xs text-ee-texto-suave">
             $ {ventas.monto.toLocaleString('es-AR')}
           </dd>
         ) : null}
@@ -198,12 +195,12 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
   return (
     <Link
       to={`/panel/eventos/${evento.id}`}
-      className="block rounded-xl border border-borde bg-superficie p-4 active:bg-superficie/60"
+      className="block ee-tarjeta p-4"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 ee-sans">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-texto">{evento.nombre}</h2>
-          <p className="mt-0.5 font-mono text-xs text-texto-suave" aria-label={`${t('panel.codigo.aria')} ${evento.codigoCorto}`}>
+          <p className="mt-0.5 font-mono text-xs text-ee-texto-suave" aria-label={`${t('panel.codigo.aria')} ${evento.codigoCorto}`}>
             {evento.codigoCorto}
           </p>
         </div>
@@ -212,13 +209,13 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
             className={
               cerrado
                 ? 'shrink-0 rounded-full bg-borde px-2 py-0.5 text-xs text-texto-suave'
-                : 'shrink-0 rounded-full bg-primario px-2 py-0.5 text-xs text-sobre-primario'
+                : 'shrink-0 rounded-full bg-ee-acento px-2 py-0.5 text-xs text-ee-acento-texto'
             }
           >
 {cerrado ? t('panel.estado.cerrado') : t('panel.estado.abierto')}
           </span>
           <span
-            className="shrink-0 rounded-full border border-borde px-2 py-0.5 text-xs text-texto-suave"
+            className="shrink-0 rounded-full border border-ee-borde px-2 py-0.5 text-xs text-ee-texto-suave"
             title={evento.visibilidad === 'publico' ? t('panel.vis.pub.t') : t('panel.vis.priv.t')}
           >
 {evento.visibilidad === 'publico' ? t('panel.vis.pub') : t('panel.vis.priv')}
@@ -230,7 +227,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(linkPublico, 'link'); }}
-          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          className="ee-boton-secundario ee-foco min-h-11 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           disabled={copiado !== null}
           aria-label={t('panel.copiarLink.aria')}
         >
@@ -239,7 +236,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void copiar(evento.codigoCorto, 'codigo'); }}
-          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 font-mono text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          className="ee-boton-secundario ee-foco min-h-11 flex-1 rounded-lg font-mono px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           disabled={copiado !== null}
           aria-label={t('panel.copiarCodigo.aria')}
         >
@@ -248,7 +245,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         <button
           type="button"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); void descargarQR(); }}
-          className="min-h-11 flex-1 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition disabled:opacity-50"
+          className="ee-boton-secundario ee-foco min-h-11 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           disabled={copiado !== null}
           aria-label={t('panel.qr.aria')}
         >
@@ -260,7 +257,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         <Link
           to={`/panel/eventos/${evento.id}/escanear`}
           onClick={(e) => { e.stopPropagation(); }}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primario px-3 py-1.5 text-xs font-semibold text-sobre-primario transition hover:brightness-110"
+          className="ee-boton-primario ee-foco inline-flex min-h-11 flex-1 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold transition hover:brightness-110"
           aria-label={`${t('panel.escanear.aria')} ${evento.nombre}`}
         >
           {t('panel.escanear')}
@@ -268,7 +265,7 @@ function TarjetaEvento({ evento }: { evento: EventoConId }) {
         <Link
           to={`/panel/eventos/${evento.id}/registros`}
           onClick={(e) => { e.stopPropagation(); }}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie active:bg-borde transition"
+          className="ee-boton-secundario ee-foco inline-flex min-h-11 flex-1 items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium transition"
           aria-label={`${t('panel.registros.aria')} ${evento.nombre}`}
         >
           {t('panel.registros')}

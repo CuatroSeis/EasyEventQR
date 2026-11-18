@@ -7,7 +7,7 @@
  */
 export function MensajeError({ texto }: { texto: string }) {
   return (
-    <p role="alert" className="rounded-xl border border-borde bg-superficie p-3 text-sm text-texto">
+    <p role="alert" className="ee-tarjeta p-3 text-sm text-texto ee-sans">
       {texto}
     </p>
   )

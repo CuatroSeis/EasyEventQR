@@ -153,9 +153,9 @@ export function OrganizadoresTab() {
           No hay organizadores que coincidan.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-borde">
-          <table className="w-full text-sm">
-            <thead className="bg-superficie text-left text-xs text-texto-suave">
+        <div className="ee-tarjeta overflow-x-auto">
+          <table className="w-full text-sm ee-sans">
+            <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.org')}</th>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.plan')}</th>
@@ -209,7 +209,7 @@ export function OrganizadoresTab() {
                         type="button"
                         onClick={() => alternarSuscripcion(o)}
                         disabled={ocupado === o.uid}
-                        className="rounded px-2 py-1 text-xs text-texto-suave hover:bg-superficie disabled:opacity-50"
+                        className="ee-boton-secundario ee-foco rounded px-2 py-1 text-xs font-medium disabled:opacity-50"
                       >
                         {o.estadoSuscripcion === 'activo' ? t('adm.org.suspender') : t('adm.org.reactivar')}
                       </button>
@@ -217,7 +217,7 @@ export function OrganizadoresTab() {
                         type="button"
                         onClick={() => eliminar(o)}
                         disabled={ocupado === o.uid}
-                        className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
                         {t('adm.org.eliminar')}
                       </button>

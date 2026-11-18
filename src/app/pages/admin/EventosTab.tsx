@@ -116,13 +116,13 @@ export function EventosTab() {
       {error && <MensajeError texto={error} />}
 
       {filtrados.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
+        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
           No hay eventos que coincidan.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-borde">
-          <table className="w-full text-sm">
-            <thead className="bg-superficie text-left text-xs text-texto-suave">
+        <div className="ee-tarjeta overflow-x-auto">
+          <table className="w-full text-sm ee-sans">
+            <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.evento')}</th>
                 <th scope="col" className="hidden px-3 py-2 font-medium md:table-cell">{t('adm.th.org')}</th>
@@ -162,7 +162,7 @@ export function EventosTab() {
                       type="button"
                       onClick={() => void alternarEstado(e)}
                       disabled={ocupado === e.id}
-                      className="rounded px-2 py-1 text-xs text-texto-suave hover:bg-superficie disabled:opacity-50"
+                      className="ee-boton-secundario ee-foco rounded px-2 py-1 text-xs font-medium disabled:opacity-50"
                     >
                       {e.estado === 'activo' ? t('adm.ev.cerrar') : t('adm.ev.reabrir')}
                     </button>

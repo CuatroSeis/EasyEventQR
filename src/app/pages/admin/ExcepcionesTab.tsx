@@ -90,7 +90,7 @@ export function ExcepcionesTab() {
         <button
           type="button"
           onClick={() => setModalAbierto(true)}
-          className="rounded-lg bg-primario px-3 py-1.5 text-sm font-medium text-sobre-primario"
+          className="ee-boton-primario ee-foco rounded-lg px-3 py-1.5 text-sm font-medium"
         >
           {t('adm.exc.conceder')}
         </button>
@@ -99,13 +99,13 @@ export function ExcepcionesTab() {
       {error && <MensajeError texto={error} />}
 
       {excepciones.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
+        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
           {t('adm.exc.vacio')}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-borde">
-          <table className="w-full text-sm">
-            <thead className="bg-superficie text-left text-xs text-texto-suave">
+        <div className="ee-tarjeta overflow-x-auto">
+          <table className="w-full text-sm ee-sans">
+            <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.org')}</th>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.plan')}</th>
@@ -136,7 +136,7 @@ export function ExcepcionesTab() {
                       type="button"
                       onClick={() => void revocar(exc)}
                       disabled={guardando}
-                      className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                     >
                       {t('adm.exc.revocar')}
                     </button>
@@ -227,7 +227,7 @@ function ModalConceder({
       aria-modal="true"
       aria-label={t('adm.exc.conceder.b')}
     >
-      <div className="w-full max-w-md rounded-xl border border-borde bg-sobre-primario p-4">
+      <div className="w-full max-w-md ee-tarjeta p-4 ee-sans">
         <h2 className="text-base font-bold text-texto">{t('adm.exc.conceder.b')}</h2>
 
         <label className="mt-3 block text-sm text-texto" htmlFor="organizador-excepcion">
@@ -279,7 +279,7 @@ function ModalConceder({
           <button
             type="button"
             onClick={onCerrar}
-            className="rounded-lg border border-borde px-3 py-1.5 text-sm text-texto hover:bg-superficie"
+            className="ee-boton-secundario ee-foco rounded-lg px-3 py-1.5 text-sm font-medium"
           >
             {t('adm.exc.cancelar')}
           </button>
@@ -287,7 +287,7 @@ function ModalConceder({
             type="button"
             onClick={() => void guardar()}
             disabled={!elegido || guardando}
-            className="rounded-lg bg-primario px-3 py-1.5 text-sm font-medium text-sobre-primario disabled:opacity-50"
+            className="ee-boton-primario ee-foco rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
           >
             {guardando ? t('adm.exc.guardando') : t('adm.exc.guardar')}
           </button>

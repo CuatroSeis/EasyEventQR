@@ -87,6 +87,7 @@ export const STRINGS = {
   },
   'home.quien.inv.link': { es: 'Buscar mi evento →', en: 'Find my event →' },
   'home.buscar.titulo': { es: 'Encontrá tu evento', en: 'Find your event' },
+  'home.buscar.subtitulo': { es: 'Buscá por código o nombre del evento y accedé directo a tu entrada.', en: 'Search by code or event name and go straight to your ticket.' },
   'home.buscar.ph': { es: 'Código (FEST-8K2P) o nombre del evento', en: 'Code (FEST-8K2P) or event name' },
   'home.buscar.boton': { es: 'Buscar evento', en: 'Find event' },
   'home.buscar.buscando': { es: 'Buscando…', en: 'Searching…' },

@@ -20,13 +20,13 @@ export default function EmptyState({
   to?: string
 }): ReactNode {
   return (
-    <div className="rounded-xl border border-dashed border-borde p-6 text-center">
+    <div className="ee-tarjeta p-6 text-center ee-sans">
       <p className="text-sm font-medium text-texto">{titulo}</p>
-      <p className="mx-auto mt-1 max-w-sm text-xs text-texto-suave">{ayuda}</p>
+      <p className="mx-auto mt-1 max-w-sm text-xs text-ee-texto-suave">{ayuda}</p>
       {cta && to ? (
         <Link
           to={to}
-          className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-primario px-5 text-sm font-semibold text-sobre-primario"
+          className="ee-boton-primario ee-foco mt-4 inline-flex min-h-11 items-center rounded-xl px-5 text-sm font-semibold"
         >
           {cta}
         </Link>

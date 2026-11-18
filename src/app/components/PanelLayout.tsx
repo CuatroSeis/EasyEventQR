@@ -32,7 +32,7 @@ export default function PanelLayout() {
   }, [organizador.brandingPanel])
 
   return (
-    <div className="flex min-h-dvh flex-col bg-superficie text-texto">
+    <div className="flex min-h-dvh flex-col bg-superficie text-texto ee-sans">
       <header className="sticky top-0 z-10 border-b border-borde bg-superficie/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
           <Link
@@ -50,7 +50,7 @@ export default function PanelLayout() {
           </div>
           <Link
             to="/panel/cuenta"
-            className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto hover:bg-superficie"
+            className="ee-boton-secundario ee-foco min-h-[var(--touch-min)] items-center rounded-lg border border-ee-borde px-3 text-xs font-medium hover:bg-ee-superficie/10 hover:border-ee-acento"
           >
             {t('layout.cuenta')}
           </Link>
@@ -60,7 +60,7 @@ export default function PanelLayout() {
             type="button"
             onClick={handleSalir}
             disabled={saliendo}
-            className="flex min-h-[var(--touch-min)] items-center rounded-lg border border-borde px-3 text-xs font-medium text-texto-suave hover:bg-superficie hover:text-texto disabled:opacity-60"
+            className="ee-boton-secundario ee-foco min-h-[var(--touch-min)] items-center rounded-lg border border-ee-borde px-3 text-xs font-medium text-ee-texto-suave hover:bg-ee-superficie/10 hover:border-ee-acento disabled:opacity-60"
           >
             {saliendo ? t('layout.saliendo') : t('layout.salir')}
           </button>
@@ -75,11 +75,11 @@ export default function PanelLayout() {
           diferencia entre crear un evento en la puerta con una mano y con
           dos, que es como se usa el panel. `pb-28` en el main le deja el
           lugar para no quedar tapada por el teclado del formulario. */}
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-borde bg-superficie pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-ee-borde bg-ee-superficie pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto w-full max-w-2xl px-4 py-3">
           <Link
             to="/panel/eventos/nuevo"
-            className="flex min-h-[var(--touch-min)] w-full items-center justify-center gap-2 rounded-xl bg-primario px-4 text-sm font-semibold text-sobre-primario"
+            className="ee-boton-primario ee-foco ee-sans flex min-h-[var(--touch-min)] w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold"
           >
             {t('layout.crear')}
           </Link>

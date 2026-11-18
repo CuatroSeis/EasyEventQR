@@ -60,21 +60,21 @@ export function DashboardTab() {
 
       {error && <MensajeError texto={error} />}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 ee-sans">
         {tarjetas.map((tarjeta) => (
-          <div key={tarjeta.etiqueta} className="rounded-xl border border-borde bg-superficie p-4">
-            <p className="text-xs text-texto-suave">{tarjeta.etiqueta}</p>
+          <div key={tarjeta.etiqueta} className="ee-tarjeta p-4">
+            <p className="text-xs text-ee-texto-suave">{tarjeta.etiqueta}</p>
             <p className="mt-1 text-2xl font-bold text-texto">{tarjeta.valor}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl border border-borde bg-superficie p-4">
-        <p className="text-xs text-texto-suave">{t('adm.dash.ingresos')}</p>
+      <div className="ee-tarjeta p-4">
+        <p className="text-xs text-ee-texto-suave">{t('adm.dash.ingresos')}</p>
         <p className="mt-1 text-2xl font-bold text-texto">
           ${(stats?.ingresosMes ?? 0).toLocaleString('es-AR')}
         </p>
-        <p className="mt-1 text-xs text-texto-suave">
+        <p className="mt-1 text-xs text-ee-texto-suave">
           {t('adm.dash.simulados')}
         </p>
       </div>

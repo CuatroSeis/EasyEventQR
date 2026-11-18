@@ -8,7 +8,7 @@ export function Cargando({ etiqueta = 'Cargando…' }: { etiqueta?: string }) {
   return (
     <div className="flex flex-col gap-3" aria-busy="true">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-20 animate-pulse rounded-xl border border-borde" />
+        <div key={i} className="h-20 animate-pulse rounded-xl border border-ee-borde bg-ee-superficie/50" />
       ))}
       <span className="sr-only">{etiqueta}</span>
     </div>

@@ -77,13 +77,13 @@ export function AuditoriaTab() {
       {error && <MensajeError texto={error} />}
 
       {logs.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
+        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
           Todavía no hay acciones registradas.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-borde">
-          <table className="w-full text-sm">
-            <thead className="bg-superficie text-left text-xs text-texto-suave">
+        <div className="ee-tarjeta overflow-x-auto">
+          <table className="w-full text-sm ee-sans">
+            <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.cuando')}</th>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.accion')}</th>
@@ -99,7 +99,7 @@ export function AuditoriaTab() {
                     {formatearFechaHora(log.creadoEn)}
                   </td>
                   <td className="px-3 py-2">
-                    <span className="rounded-full bg-primario/10 px-2 py-0.5 text-xs font-medium text-primario">
+                    <span className="rounded-full bg-ee-acento/10 px-2 py-0.5 text-xs font-medium text-ee-acento-texto">
                       {log.accion}
                     </span>
                   </td>

@@ -118,7 +118,7 @@ export function RegistrosTab() {
           type="button"
           onClick={exportarCsv}
           disabled={registros.length === 0}
-          className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium text-texto hover:bg-superficie disabled:opacity-50"
+          className="ee-boton-secundario ee-foco rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
         >
           Exportar página ({registros.length})
         </button>
@@ -172,13 +172,13 @@ export function RegistrosTab() {
       {cargando ? (
         <Cargando etiqueta={t('adm.reg.cargando')} />
       ) : registros.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-borde p-6 text-center text-sm text-texto-suave">
+        <p className="ee-tarjeta p-6 text-center text-sm text-texto-suave ee-sans">
           No hay reservas que coincidan.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-borde">
-          <table className="w-full text-sm">
-            <thead className="bg-superficie text-left text-xs text-texto-suave">
+        <div className="ee-tarjeta overflow-x-auto">
+          <table className="w-full text-sm ee-sans">
+            <thead className="bg-ee-superficie text-left text-xs text-ee-texto-suave">
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.asistente')}</th>
                 <th scope="col" className="px-3 py-2 font-medium">{t('adm.th.evento')}</th>
@@ -228,18 +228,18 @@ export function RegistrosTab() {
             type="button"
             onClick={() => setPagina((p) => Math.max(1, p - 1))}
             disabled={pagina === 1}
-            className="rounded-lg border border-borde px-3 py-1.5 text-sm disabled:opacity-50"
+            className="ee-boton-secundario ee-foco rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
           >
             Anterior
           </button>
-          <span className="px-2 text-sm text-texto-suave">
+          <span className="px-2 text-sm text-ee-texto-suave">
             Página {pagina} de {paginas}
           </span>
           <button
             type="button"
             onClick={() => setPagina((p) => Math.min(paginas, p + 1))}
             disabled={pagina >= paginas}
-            className="rounded-lg border border-borde px-3 py-1.5 text-sm disabled:opacity-50"
+            className="ee-boton-secundario ee-foco rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
           >
             Siguiente
           </button>
